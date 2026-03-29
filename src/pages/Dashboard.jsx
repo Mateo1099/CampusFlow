@@ -4,7 +4,15 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { Activity, Target, Zap } from 'lucide-react';
 
 const Dashboard = () => {
-  const { tasks, courses, t } = useApp();
+  const { tasks, courses, t, tasksLoading, coursesLoading } = useApp();
+
+  if (tasksLoading || coursesLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+        <div className="animate-pulse">Cargando dashboard...</div>
+      </div>
+    );
+  }
 
   const upcomingTasks = tasks.filter(task => {
     if (task.status === 'done' || task.status === 'submitted' || !task.dueDate) return false;

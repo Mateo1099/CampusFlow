@@ -23,3 +23,6 @@
 - Creación de tarjetas de estudio con IA.
 - Repetición espaciada automática.
 - Integración directa con los apuntes de clase.
+
+
+

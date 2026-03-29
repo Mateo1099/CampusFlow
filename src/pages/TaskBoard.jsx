@@ -141,50 +141,60 @@ const KanbanColumn = ({ col, tasks, onDelete, onEdit, onDragStart, onDrop, onDra
 
 // ---- TaskBoard Principal ----
 const TaskBoard = () => {
-  const { tasks, addTask, updateTaskStatus, deleteTask, courses, t } = useApp();
+  const { tasks, addTask, updateTaskStatus, deleteTask, updateTask, courses, t, tasksLoading } = useApp();
+
+  if (tasksLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+        <div className="animate-pulse">Sincronizando trabajos...</div>
+      </div>
+    );
+  }
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
-  const [formData, setFormData] = useState({ title: '', course: '', startDate: '', dueDate: '' });
+  const [formData, setFormData] = useState({ title: '', course: '', startDate: '', dueDate: '', day: '', block: '' });
   const [activePicker, setActivePicker] = useState(null); // 'start' | 'due' | null
   const dragId = useRef(null);
 
   const columns = getColumns(t);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title) return;
     
-    if (isEditing) {
-      // Usamos updateTaskStatus para mantener la lógica de XP si se mueve a submitted, 
-      // pero aquí necesitamos una función para actualizar los campos.
-      // Como AppContext no tiene updateTaskDetails, simulamos la edición filtrando y añadiendo 
-      // o extendiendo el estado global si fuera necesario.
-      // PRO TIP: Usaremos la misma lógica de updateTaskStatus pero extendida si existe, 
-      // de lo contrario editamos los campos básicos.
-      // Por simplicidad en este MVP, asumimos que addTask y deleteTask son suficientes 
-      // para "reemplazar" si no hay updateTask.
-      deleteTask(editingTaskId);
-      addTask({ ...formData, id: editingTaskId });
-    } else {
-      addTask(formData);
-    }
+    try {
+      if (isEditing) {
+        await updateTask(editingTaskId, formData);
+      } else {
+        await addTask(formData);
+      }
 
-    setFormData({ title: '', course: '', startDate: '', dueDate: '' });
-    setShowModal(false);
-    setIsEditing(false);
-    setEditingTaskId(null);
+      setFormData({ title: '', course: '', startDate: '', dueDate: '', day: '', block: '' });
+      setShowModal(false);
+      setIsEditing(false);
+      setEditingTaskId(null);
+    } catch (err) {
+      console.error("Error saving task:", err);
+    }
   };
 
   const handleEdit = (task) => {
-    setFormData({ title: task.title, course: task.course, startDate: task.startDate, dueDate: task.dueDate });
+    setFormData({ 
+      title: task.title, 
+      course: task.course, 
+      startDate: task.startDate || '', 
+      dueDate: task.dueDate || '',
+      day: task.day || '',
+      block: task.block || ''
+    });
     setEditingTaskId(task.id);
     setIsEditing(true);
     setShowModal(true);
   };
 
   const openNewTaskModal = () => {
-    setFormData({ title: '', course: '', startDate: '', dueDate: '' });
+    setFormData({ title: '', course: '', startDate: '', dueDate: '', day: '', block: '' });
     setIsEditing(false);
     setEditingTaskId(null);
     setShowModal(true);
@@ -297,6 +307,31 @@ const TaskBoard = () => {
                       />
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Día Planificador</label>
+                  <select className="select" value={formData.day || ''} onChange={e => setFormData({ ...formData, day: e.target.value })}>
+                    <option value="" style={{ background: 'var(--bg-primary)' }}>Sin asignar</option>
+                    <option value="monday" style={{ background: 'var(--bg-primary)' }}>Lunes</option>
+                    <option value="tuesday" style={{ background: 'var(--bg-primary)' }}>Martes</option>
+                    <option value="wednesday" style={{ background: 'var(--bg-primary)' }}>Miércoles</option>
+                    <option value="thursday" style={{ background: 'var(--bg-primary)' }}>Jueves</option>
+                    <option value="friday" style={{ background: 'var(--bg-primary)' }}>Viernes</option>
+                    <option value="saturday" style={{ background: 'var(--bg-primary)' }}>Sábado</option>
+                    <option value="sunday" style={{ background: 'var(--bg-primary)' }}>Domingo</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bloque</label>
+                  <select className="select" value={formData.block || ''} onChange={e => setFormData({ ...formData, block: e.target.value })}>
+                    <option value="" style={{ background: 'var(--bg-primary)' }}>Sin asignar</option>
+                    <option value="morning" style={{ background: 'var(--bg-primary)' }}>Mañana</option>
+                    <option value="afternoon" style={{ background: 'var(--bg-primary)' }}>Tarde</option>
+                    <option value="night" style={{ background: 'var(--bg-primary)' }}>Noche</option>
+                  </select>
                 </div>
               </div>
 

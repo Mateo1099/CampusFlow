@@ -3,7 +3,15 @@ import { useApp } from '../context/AppContext';
 import { Plus, CheckCircle2, Circle, Clock, Trash2, Target } from 'lucide-react';
 
 const DailyPlanner = () => {
-  const { dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, t } = useApp();
+  const { dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, t, habitsLoading } = useApp();
+
+  if (habitsLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+        <div className="animate-pulse">Sincronizando agenda...</div>
+      </div>
+    );
+  }
   const [formData, setFormData] = useState({ title: '', startTime: '06:00', durationMinutes: '30' });
 
   const handleSubmit = (e) => {

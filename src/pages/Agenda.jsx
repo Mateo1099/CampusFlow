@@ -70,7 +70,15 @@ const CourseCard = ({ course, onDelete, onUpdateColor, t }) => {
 };
 
 const Agenda = () => {
-  const { courses, addCourse, deleteCourse, updateCourse, t } = useApp();
+  const { courses, addCourse, deleteCourse, updateCourse, t, coursesLoading } = useApp();
+
+  if (coursesLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+        <div className="animate-pulse">Sincronizando materias...</div>
+      </div>
+    );
+  }
   const [formData, setFormData] = useState({ name: '', code: '', prefixColor: '#00f3ff', teacher: '', institution: 'UNAD', customInstitution: '' });
   const [showCustom, setShowCustom] = useState(false);
 
