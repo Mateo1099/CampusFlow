@@ -1,0 +1,321 @@
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+
+const Sidebar = () => {
+  const { t, settings, logout } = useApp();
+  const navigate = useNavigate();
+  const isHorizontal = settings.sidebarPosition === 'top' || settings.sidebarPosition === 'bottom';
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    logout();
+    navigate('/login');
+  };
+
+  const navItems = [
+    { name: t.dashboard, path: '/', icon: <LayoutDashboard size={isHorizontal ? 20 : 18} /> },
+    { name: t.subjects, path: '/agenda', icon: <Cpu size={isHorizontal ? 20 : 18} /> },
+    { name: t.tasks, path: '/tasks', icon: <CheckSquare size={isHorizontal ? 20 : 18} /> },
+    { name: t.planner, path: '/planner', icon: <CalendarDays size={isHorizontal ? 20 : 18} /> },
+    { name: t.analytics, path: '/stats', icon: <PieChart size={isHorizontal ? 20 : 18} /> },
+    { name: t.pomodoro, path: '/pomodoro', icon: <Timer size={isHorizontal ? 20 : 18} /> },
+  ];
+
+  const sidebarStyles = {
+    width: isHorizontal ? '100%' : '260px',
+    height: isHorizontal ? 'auto' : '100%',
+    padding: isHorizontal ? '12px 24px' : '28px 20px',
+    display: 'flex',
+    flexDirection: isHorizontal ? 'row' : 'column',
+    alignItems: isHorizontal ? 'center' : 'stretch',
+    gap: isHorizontal ? '32px' : '24px',
+    borderRadius: 'var(--radius-lg)',
+    flexShrink: 0,
+    border: '1px solid var(--border-glass-top)',
+    transition: 'all 0.4s var(--ease-out-quint)',
+    zIndex: 100,
+  };
+
+  return (
+    <aside className="glass-panel" style={sidebarStyles}>
+      {/* Branding */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '14px', 
+        paddingBottom: isHorizontal ? '0' : '24px', 
+        marginBottom: isHorizontal ? '0' : '8px', 
+        borderBottom: isHorizontal ? 'none' : '1px solid var(--border-glass-top)',
+        borderRight: isHorizontal ? '1px solid var(--border-glass-top)' : 'none',
+        paddingRight: isHorizontal ? '24px' : '0'
+      }}>
+        <div style={{
+          position: 'relative',
+          width: isHorizontal ? '50px' : '70px', height: isHorizontal ? '50px' : '70px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          {/* Lápiz de Vidrio 1 */}
+          <div className="glass-pencil-container" style={{ position: 'absolute', top: '-12px', right: '-8px', transform: 'rotate(25deg)', animation: 'float 4s ease-in-out infinite' }}>
+            <div style={{ width: '6px', height: '24px', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '2px' }} />
+            <div style={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderTop: '6px solid rgba(255,255,255,0.6)' }} />
+          </div>
+
+          {/* Lápiz de Vidrio 2 */}
+          <div className="glass-pencil-container" style={{ position: 'absolute', bottom: '-4px', right: '-12px', transform: 'rotate(-45deg)', animation: 'float 5s ease-in-out infinite reverse' }}>
+            <div style={{ width: '5px', height: '20px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(3px)', border: '1.2px solid rgba(255,255,255,0.4)', borderRadius: '2px' }} />
+            <div style={{ width: 0, height: 0, borderLeft: '2.5px solid transparent', borderRight: '2.5px solid transparent', borderTop: '5px solid rgba(255,255,255,0.5)' }} />
+          </div>
+
+          {/* Logo Diamante C (CSS Puro) - Sincronizado con Temas */}
+          <div style={{
+            width: '100%', height: '100%',
+            background: `radial-gradient(circle at 30% 30%, #fff 0%, transparent 15%), radial-gradient(circle at 70% 30%, var(--accent-primary) 0%, transparent 15%), conic-gradient(from 180deg at 50% 50%, #e2e8f0, var(--accent-primary), #cbd5e1, var(--accent-primary), #e2e8f0)`,
+            mask: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M85 50C85 69.33 69.33 85 50 85C30.67 85 15 69.33 15 50C15 30.67 30.67 15 50 15C60.5 15 69.8 19.6 76.1 26.9L86.4 16.6C77.4 6.2 64.5 0 50 0C22.4 0 0 22.4 0 50C0 77.6 22.4 100 50 100C77.6 100 100 77.6 100 50H85Z\' fill=\'black\' /%3E%3C/svg%3E") no-repeat center',
+            WebkitMask: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M85 50C85 69.33 69.33 85 50 85C30.67 85 15 69.33 15 50C15 30.67 30.67 15 50 15C60.5 15 69.8 19.6 76.1 26.9L86.4 16.6C77.4 6.2 64.5 0 50 0C22.4 0 0 22.4 0 50C0 77.6 22.4 100 50 100C77.6 100 100 77.6 100 50H85Z\' fill=\'black\' /%3E%3C/svg%3E") no-repeat center',
+            boxShadow: '0 0 30px rgba(255,255,255,0.4)',
+            transition: 'background 0.5s ease, transform 0.4s ease',
+            transform: 'rotate(12deg)'
+          }} />
+        </div>
+        {!isHorizontal && (
+          <div style={{ marginLeft: '6px' }}>
+            <h2 style={{ 
+              fontFamily: 'var(--font-display)', 
+              fontSize: '1.8rem', 
+              fontWeight: 950, 
+              margin: 0, 
+              letterSpacing: '-0.06em', 
+              color: '#fff',
+              display: 'flex', 
+              alignItems: 'center',
+              textShadow: '0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(255,255,255,0.2)',
+              filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.3))'
+            }}>
+              <span style={{ 
+                background: 'linear-gradient(to bottom, #ffffff, #a1a1a1)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}>ampusFlow</span>
+            </h2>
+          </div>
+        )}
+      </div>
+
+      {/* Gamification HUD - Cyber Luxe Level Display */}
+      {!isHorizontal && (
+        <div style={{ 
+          padding: '16px', 
+          position: 'relative',
+          background: 'var(--bg-glass)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-glass-top)',
+          margin: '0 -4px 10px',
+          boxShadow: 'inset 0 0 20px rgba(0, 122, 255, 0.05)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <span style={{ 
+              fontSize: '0.65rem', 
+              color: 'var(--text-secondary)', 
+              fontWeight: 800, 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.15em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{
+                width: '6px', height: '6px',
+                background: 'var(--accent-primary)',
+                borderRadius: '50%',
+                boxShadow: '0 0 10px var(--accent-primary)',
+                animation: 'pulse 2s infinite'
+              }}/>
+              Nivel de Usuario
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                position: 'relative',
+                width: '32px', height: '32px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
+                boxShadow: '0 4px 12px rgba(0, 122, 255, 0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '1px solid rgba(255,255,255,0.2)',
+                transform: 'rotate(-5deg) translateZ(0)'
+              }}>
+                <span style={{
+                  fontSize: '1rem', 
+                  fontWeight: 900, 
+                  color: '#fff',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>★</span>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={{ 
+                  fontSize: '1.8rem', 
+                  color: 'var(--text-primary)', 
+                  fontFamily: 'var(--font-display)', 
+                  fontWeight: 950, 
+                  letterSpacing: '-0.02em',
+                  display: 'block',
+                  lineHeight: 1
+                }}>
+                  {settings.level}
+                </span>
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px', right: '-10px',
+                  fontSize: '0.5rem',
+                  fontWeight: 800,
+                  color: 'var(--accent-primary)',
+                  textTransform: 'uppercase'
+                }}>lvl</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barra de Progreso Minimalista */}
+          <div style={{ 
+            width: '100%', 
+            height: '8px', 
+            background: 'rgba(255,255,255,0.05)', 
+            borderRadius: 'var(--radius-full)', 
+            overflow: 'hidden',
+            position: 'relative',
+            border: '1px solid var(--border-glass-side)'
+          }}>
+            <div style={{ 
+              width: `${Math.min((settings.experience / 1000) * 100, 100)}%`, 
+              height: '100%', 
+              background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
+              borderRadius: 'var(--radius-full)',
+              transition: 'width 1s var(--ease-out-expo)',
+              boxShadow: '0 0 15px var(--accent-primary)66',
+              position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+                animation: 'shimmer 2s infinite'
+              }} />
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: '10px',
+            fontSize: '0.6rem',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 700,
+            letterSpacing: '0.05em'
+          }}>
+            <span style={{ color: 'var(--accent-primary)' }}>{settings.experience} XP</span>
+            <span style={{ color: 'var(--text-muted)' }}>1000 XP</span>
+          </div>
+        </div>
+      ) /* End Gamification HUD */}
+
+      {/* Navegación */}
+      <nav className="nav-stagger" style={{ 
+        display: 'flex', 
+        flexDirection: isHorizontal ? 'row' : 'column', 
+        gap: isHorizontal ? '8px' : '10px', 
+        flex: 1,
+        justifyContent: isHorizontal ? 'center' : 'flex-start'
+      }}>
+        {navItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            end={item.path === '/'}
+            className={({ isActive }) => `nav-link click-press hover-lift ${isActive ? 'active' : ''}`}
+            style={{
+              padding: isHorizontal ? '10px 16px' : '14px 18px',
+              fontSize: isHorizontal ? '0.75rem' : '0.85rem'
+            }}
+          >
+            {item.icon}
+            <span>{item.name}</span>
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Perfil/Ajustes Link  */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isHorizontal ? 'row' : 'column',
+        gap: '8px',
+        marginTop: isHorizontal ? '0' : 'auto'
+      }}>
+        <NavLink
+          to="/profile"
+          style={({ isActive }) => ({
+            display: 'flex', alignItems: 'center', gap: '14px',
+            padding: isHorizontal ? '8px 16px' : '14px 16px',
+            borderRadius: 'var(--radius-md)',
+            textDecoration: 'none',
+            background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
+            border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass-top)',
+            transition: 'all 0.3s var(--ease-out-quint)',
+            flex: 1,
+            transform: 'translateZ(0)',
+            minWidth: isHorizontal ? 'auto' : '0',
+          })}
+          className="glass-card-hover"
+        >
+          <div style={{ 
+            width: isHorizontal ? '30px' : '36px', height: isHorizontal ? '30px' : '36px', borderRadius: '50%', 
+            overflow: 'hidden', border: '2px solid var(--accent-primary)',
+            background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            {settings.profileImage ? (
+              <img src={settings.profileImage} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <UserCircle size={isHorizontal ? 20 : 24} color="var(--text-primary)" />
+            )}
+          </div>
+          {!isHorizontal && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {settings.userName || 'Mateo'}
+              </p>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 600 }}>{t.profile}</p>
+            </div>
+          )}
+        </NavLink>
+<button
+  onClick={handleLogout}
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '14px',
+    padding: isHorizontal ? '8px 16px' : '14px 16px',
+    borderRadius: 'var(--radius-md)',
+    background: 'rgba(255, 0, 0, 0.05)',
+    border: '1px solid rgba(255, 0, 0, 0.2)',
+    color: '#ff4d4d',
+    cursor: 'pointer',
+    transition: 'all 0.3s var(--ease-out-quint)',
+    width: isHorizontal ? 'auto' : '100%'
+  }}
+  className="click-press"
+  title={t.logout}
+>
+  <LogOut size={isHorizontal ? 20 : 18} />
+  {!isHorizontal && <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{t.logout}</span>}
+</button>
+</div>
+</aside>
+);
+};
+
+export default Sidebar;
+
