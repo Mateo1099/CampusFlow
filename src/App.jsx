@@ -1,6 +1,4 @@
 import React from 'react';
-import { supabase } from './lib/supabaseClient'
-import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
@@ -11,10 +9,13 @@ import Pomodoro from './pages/Pomodoro';
 import Profile from './pages/Profile';
 import Stats from './pages/Stats';
 import Login from './pages/Login';
-import { AppProvider, useApp } from './context/AppContext';
+
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
+import { TaskProvider, useTasksContext } from './context/TaskContext';
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useApp();
+  const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -22,7 +23,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function AppRoutes() {
-  const { loading } = useApp();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -35,7 +36,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      
+
       <Route path="/" element={
         <ProtectedRoute>
           <Layout />
@@ -57,11 +58,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AppProvider>
+    <AuthProvider>
+      <SettingsProvider>
+        <TaskProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TaskProvider>
+      </SettingsProvider>
+    </AuthProvider>
   );
 }
 

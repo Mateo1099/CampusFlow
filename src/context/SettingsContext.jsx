@@ -1,8 +1,6 @@
-import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { useTasks } from '../hooks/useTasks';
-import { useCourses } from '../hooks/useCourses';
-import { useHabits } from '../hooks/useHabits';
+import { useAuth } from './AuthContext';
 
 import glassWallpaper from '../assets/glass_wallpaper.png';
 import natureGlass from '../assets/nature_glass.png';
@@ -13,7 +11,7 @@ export const WALLPAPERS = [
   { id: 'custom', label: 'Personalizado', src: null },
   { id: 'cyber', label: 'Cyber Glass', src: glassWallpaper },
   { id: 'nature', label: 'Forest Glass', src: natureGlass },
-  { id: 'synth', label: 'Synthwave Neon', src: synthwaveNeon },
+  { id: 'synth', label: 'Synthwave', src: 'https://images.unsplash.com/photo-1774848372214-3563247a592b?q=80&w=1935&auto=format&fit=crop' },
   { id: 'space', label: 'Dark Space', src: spaceMinimal },
 ];
 
@@ -32,23 +30,16 @@ export const FONT_OPTIONS = [
   { id: 'lexend', label: 'Lexend', css: "'Lexend', sans-serif" },
 ];
 
-const AppContext = createContext();
-
-export function useApp() {
-  return useContext(AppContext);
-}
-
-// Traducciones
 export const translations = {
   es: {
     dashboard: 'Dashboard', subjects: 'Materias', tasks: 'Trabajos',
-    planner: 'Planificador Diario', pomodoro: 'Pomodoro', profile: 'Ajustes', analytics: 'Analítica',
+    planner: 'PLANIFICADOR SEMANAL', pomodoro: 'Pomodoro', profile: 'Ajustes', analytics: 'Analítica',
     stats: 'Estadísticas', addSubject: 'Añadir Materia', subjectName: 'Nombre del Curso', code: 'Código',
     teacher: 'Profesor', institution: 'Institución', tetherColor: 'Color Identificador', save: 'Registrar',
     delete: 'Eliminar', editColor: 'Editar Color', emptyDatabase: 'Base de Datos Vacía',
-    pendingTasks: 'Pendientes', doing: 'En Proceso', done: 'Finalizados', submitted: 'Entregados',
+    pendingTasks: 'Pendientes', doing: 'En Proceso', done: 'Finalizados', submitted: 'ENTREGADOS',
     newTask: 'Nuevo Trabajo', taskTitle: 'Título del Trabajo', startDate: 'Fecha Inicial',
-    dueDate: 'Fecha Límite', subject: 'Materia', cancel: 'Cancelar', execute: 'Guardar',
+    dueDate: 'Fecha Límite', subject: 'Materia', cancel: 'Cancelar', execute: 'GUARDAR',
     dragHint: 'Arrastra las tarjetas entre columnas', lightMode: 'Modo Claro', darkMode: 'Modo Oscuro',
     daltonicMode: 'Modo Daltónico', language: 'Idioma', typography: 'Tipografía', themeMode: 'Tema Visual',
     settingsTitle: 'Perfil y Ajustes', noEvents: 'Sin eventos programados',
@@ -96,63 +87,116 @@ export const translations = {
   }
 };
 
-export function AppProvider({ children }) {
-  const [user, setUser] = useState(null);
+const SettingsContext = createContext();
+
+export function SettingsProvider({ children }) {
+  const { user } = useAuth();
   const [settings, setSettings] = useState({
-    theme: 'dark', language: 'es', font: 'space-grotesk', userName: '',
+    theme: 'dark', language: 'es', font: 'space-grotesk', name: 'Mateo',
     experience: 0, level: 1, stats: { pomodorosCompleted: 0, tasksCompleted: 0 },
-    wallpaper: 'cyber', sidebarPosition: 'left', fontSize: 16
+    wallpaper: 'cyber', sidebarPosition: 'left', 
+    fontSize: Number(localStorage.getItem('campusflow_font_size')) || 16,
+    avatarUrl: null, customWallpaper: null
   });
-  const [loading, setLoading] = useState(true);
   const [recentXPGains, setRecentXPGains] = useState([]);
 
-  // Auth & Sync
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setLoading(false);
-    });
+  const fetchProfile = useCallback(async (uid) => {
+    try {
+      // CARGA BLINDADA Y SINCRONIZADA CON full_name Y wallpaper_id
+      let { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level')
+        .eq('id', uid)
+        .maybeSingle();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else {
-        setSettings({
-          theme: 'dark', language: 'es', font: 'space-grotesk', userName: '',
-          experience: 0, level: 1, stats: { pomodorosCompleted: 0, tasksCompleted: 0 },
-          wallpaper: 'cyber', sidebarPosition: 'left', fontSize: 16
-        });
-        setLoading(false);
+      if (error) {
+        console.warn("Error en carga de perfil, intentando fallback de columnas...");
+        const safeFetch = await supabase
+          .from('profiles')
+          .select('id, language, typography, font_size, avatar_url, xp, level')
+          .eq('id', uid)
+          .maybeSingle();
+        data = safeFetch.data;
       }
-    });
 
-    return () => subscription.unsubscribe();
+      if (data) {
+        const fullAvatarUrl = data.avatar_url 
+          ? (data.avatar_url.startsWith('http') ? data.avatar_url : `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${data.avatar_url}`)
+          : '';
+
+        setSettings(prev => ({
+          ...prev,
+          name: data.full_name || 'Mateo',
+          language: data.language || 'es',
+          font: data.typography || 'space-grotesk',
+          fontSize: Number(data.font_size) || prev.fontSize || 16,
+          experience: data.xp || 0,
+          level: data.level || 1,
+          wallpaper: data.custom_wallpaper ? 'custom' : (data.wallpaper_id || 'cyber'),
+          customWallpaper: data.custom_wallpaper || null,
+          avatarUrl: fullAvatarUrl
+        }));
+      }
+    } catch (err) {
+      console.error("Error crítico al cargar perfil:", err.message);
+    }
   }, []);
 
-  const fetchProfile = async (uid) => {
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', uid).single();
-    if (data) {
-      setSettings(prev => ({
-        ...prev,
-        ...data.settings,
-        userName: data.full_name || data.username || prev.userName,
-        experience: data.xp || 0,
-        level: data.level || 1
-      }));
+  useEffect(() => {
+    if (user) fetchProfile(user.id);
+  }, [user, fetchProfile]);
+
+  const updateSettings = async (updates) => {
+    let processedUpdates = { ...updates };
+    if (updates.wallpaper && updates.wallpaper !== 'custom') {
+      processedUpdates.customWallpaper = null;
     }
-    setLoading(false);
+
+    setSettings(prev => ({ ...prev, ...processedUpdates }));
+    
+    if (user) {
+      if (processedUpdates.fontSize) {
+        localStorage.setItem('campusflow_font_size', processedUpdates.fontSize);
+        document.documentElement.style.fontSize = processedUpdates.fontSize + 'px';
+      }
+
+      const cloudMapping = {};
+      if (processedUpdates.name !== undefined) cloudMapping.full_name = processedUpdates.name;
+      if (processedUpdates.language) cloudMapping.language = processedUpdates.language;
+      if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
+      if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
+      
+      if (updates.wallpaper !== undefined) {
+        if (updates.wallpaper === 'custom') {
+          cloudMapping.custom_wallpaper = (processedUpdates.customWallpaper?.length > 10) ? processedUpdates.customWallpaper : null;
+        } else {
+          cloudMapping.wallpaper_id = updates.wallpaper;
+          cloudMapping.custom_wallpaper = null;
+        }
+      }
+
+      if (processedUpdates.avatarUrl !== undefined) {
+        cloudMapping.avatar_url = processedUpdates.avatarUrl;
+        if (!processedUpdates.avatarUrl.startsWith('http') && !processedUpdates.avatarUrl.startsWith('blob')) {
+          const fullUrl = `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${processedUpdates.avatarUrl}`;
+          setSettings(prev => ({ ...prev, avatarUrl: fullUrl }));
+        }
+      }
+
+      if (Object.keys(cloudMapping).length > 0) {
+        try {
+          const { error } = await supabase.from('profiles').update(cloudMapping).eq('id', user.id);
+          if (error) throw error;
+        } catch (dbErr) {
+          console.error("Error en persistencia:", dbErr.message);
+        }
+      }
+    }
   };
 
-  const updateProfileOnCloud = useCallback(async (updates) => {
-    if (!user) return;
-    await supabase.from('profiles').update(updates).eq('id', user.id);
-  }, [user]);
-
-  // UI Effects
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
-    const fontObj = FONT_OPTIONS.find(f => f.id === settings.font);
+    const fontObj = FONT_OPTIONS.find(f => f.id === settings.font || f.css.includes(settings.font));
     if (fontObj) {
       document.documentElement.style.setProperty('--font-display', fontObj.css);
       document.documentElement.style.setProperty('--font-body', fontObj.css);
@@ -160,90 +204,32 @@ export function AppProvider({ children }) {
     document.documentElement.style.fontSize = settings.fontSize + 'px';
   }, [settings]);
 
-  // Gamification
   const addXP = useCallback((amount) => {
     if (amount === 0 || !user) return;
-    
     setSettings(prev => {
       const xpPerLevel = 1000;
       let totalXP = (prev.level - 1) * xpPerLevel + prev.experience + amount;
       if (totalXP < 0) totalXP = 0;
       let newLevel = Math.floor(totalXP / xpPerLevel) + 1;
       let newXP = totalXP % xpPerLevel;
-      
-      const newSettings = { ...prev, experience: newXP, level: newLevel };
-      updateProfileOnCloud({ xp: newXP, level: newLevel, settings: newSettings });
-      return newSettings;
+      return { ...prev, experience: newXP, level: newLevel };
     });
-
-    if (amount > 0) {
-      const id = Date.now();
-      setRecentXPGains(prev => [...prev.slice(-2), { id, amount }]);
-      setTimeout(() => setRecentXPGains(prev => prev.filter(g => g.id !== id)), 1500);
-    }
-  }, [user, updateProfileOnCloud]);
+  }, [user]);
 
   const incrementStat = useCallback((statName, amount = 1) => {
     setSettings(prev => {
       const newStats = { ...prev.stats, [statName]: (prev.stats[statName] || 0) + amount };
-      const newSettings = { ...prev, stats: newStats };
-      updateProfileOnCloud({ settings: newSettings });
-      return newSettings;
+      return { ...prev, stats: newStats };
     });
-  }, [updateProfileOnCloud]);
-
-  // Hooks de Datos (Centralizados)
-  const { tasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading } = useTasks(user?.id, addXP, incrementStat);
-  const { courses, addCourse, updateCourse, deleteCourse, coursesLoading } = useCourses(user?.id);
-  const { dailyPlan, addHabit: addDailyActivity, toggleHabitLog: toggleDailyActivity, deleteHabit: removeDailyActivity, habitsLoading, logs } = useHabits(user?.id, addXP, incrementStat);
-
-  // Analytics Globales
-  const analytics = useMemo(() => {
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.status === 'submitted').length;
-    const totalHabits = dailyPlan.length;
-    const completedHabits = dailyPlan.filter(h => h.completed).length;
-    
-    // Productividad por día (L-D)
-    const productivity = [0, 0, 0, 0, 0, 0, 0];
-    const dayMap = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
-    
-    tasks.forEach(t => {
-      if (t.status === 'submitted' && t.day && dayMap[t.day] !== undefined) {
-        productivity[dayMap[t.day]] += 1;
-      }
-    });
-
-    return { totalTasks, completedTasks, totalHabits, completedHabits, productivity };
-  }, [tasks, dailyPlan]);
-
-  const login = (userData) => {
-    setUser(userData);
-    fetchProfile(userData.id);
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
-
-  const updateSettings = (updates) => {
-    setSettings(prev => {
-      const newSettings = { ...prev, ...updates };
-      updateProfileOnCloud({ settings: newSettings });
-      return newSettings;
-    });
-  };
+  }, []);
 
   const t = translations[settings.language] || translations.es;
 
   const value = {
-    courses, addCourse, deleteCourse, updateCourse, coursesLoading,
-    tasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading,
-    dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
-    settings, updateSettings, t, addXP, incrementStat, recentXPGains,
-    user, login, logout, isAuthenticated: !!user, loading, analytics
+    settings, updateSettings, t, addXP, incrementStat, recentXPGains
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
+
+export const useSettings = () => useContext(SettingsContext);

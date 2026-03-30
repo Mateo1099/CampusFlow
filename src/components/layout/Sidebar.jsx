@@ -1,12 +1,19 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 
 const Sidebar = () => {
-  const { t, settings, logout } = useApp();
+  const { t, settings } = useSettings();
+  const { logout } = useAuth();
   const navigate = useNavigate();
+  const [avatarLoaded, setAvatarLoaded] = React.useState(false);
   const isHorizontal = settings.sidebarPosition === 'top' || settings.sidebarPosition === 'bottom';
+
+  const avatarDisplayUrl = settings.avatarUrl || settings.profileImage;
+
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -270,21 +277,62 @@ const Sidebar = () => {
           className="glass-card-hover"
         >
           <div style={{ 
-            width: isHorizontal ? '30px' : '36px', height: isHorizontal ? '30px' : '36px', borderRadius: '50%', 
+            width: isHorizontal ? '32px' : '40px', height: isHorizontal ? '32px' : '40px', borderRadius: '50%', 
             overflow: 'hidden', border: '2px solid var(--accent-primary)',
-            background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0
+            background: 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 0 10px rgba(0, 243, 255, 0.2)',
+            position: 'relative'
           }}>
-            {settings.profileImage ? (
-              <img src={settings.profileImage} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {/* SKELETON NEÓN */}
+            {(!avatarLoaded || !avatarDisplayUrl) && (
+              <div 
+                className="animate-pulse-neon"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 243, 255, 0.15)',
+                  boxShadow: 'inset 0 0 15px rgba(0, 243, 255, 0.3)',
+                  zIndex: 2,
+                  transition: 'opacity 0.5s ease-in-out',
+                  opacity: !avatarLoaded ? 1 : 0,
+                  pointerEvents: 'none'
+                }}
+              />
+            )}
+
+            {avatarDisplayUrl ? (
+              <img 
+                key={avatarDisplayUrl}
+                src={avatarDisplayUrl} 
+                alt="User" 
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                  opacity: avatarLoaded ? 1 : 0,
+                  transition: 'opacity 0.4s ease-in-out'
+                }}
+                onLoad={() => setAvatarLoaded(true)}
+                onError={(e) => { 
+                  e.target.onerror = null;
+                  e.target.src = fallbackAvatar;
+                  setAvatarLoaded(true);
+                }}
+              />
             ) : (
-              <UserCircle size={isHorizontal ? 20 : 24} color="var(--text-primary)" />
+              <img 
+                src={fallbackAvatar}
+                alt="Avatar Fallback"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                onLoad={() => setAvatarLoaded(true)}
+              />
             )}
           </div>
           {!isHorizontal && (
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {settings.userName || 'Mateo'}
+                {settings.name || 'Mateo'}
               </p>
               <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 600 }}>{t.profile}</p>
             </div>
@@ -318,4 +366,3 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
-

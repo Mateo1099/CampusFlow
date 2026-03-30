@@ -28,11 +28,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
 
   const addTask = async (task) => {
     try {
-      const newTask = await tasksService.createTask(userId, {
-        ...task,
-        status: 'todo',
-        created_at: new Date().toISOString()
-      });
+      const newTask = await tasksService.createTask(userId, task);
       setTasks(prev => [newTask, ...prev]);
       return newTask;
     } catch (err) {
@@ -41,24 +37,42 @@ export const useTasks = (userId, addXP, incrementStat) => {
     }
   };
 
+  const updateTask = async (id, updates) => {
+    try {
+      const updatedTask = await tasksService.updateTask(id, updates);
+      setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
+      return updatedTask;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
   const updateTaskStatus = async (id, newStatus) => {
     try {
-      const task = tasks.find(t => t.id === id);
+      const task = tasks.find(t => String(t.id) === String(id));
       if (!task) return;
 
       const oldStatus = task.status;
       
       // Lógica de XP
-      if (oldStatus !== 'submitted' && newStatus === 'submitted') {
-        addXP(100);
-        incrementStat('tasksCompleted');
-      } else if (oldStatus === 'submitted' && newStatus !== 'submitted') {
-        addXP(-100);
+      if (oldStatus !== 'ENTREGADO' && newStatus === 'ENTREGADO') {
+        if (addXP) addXP(100);
+        if (incrementStat) incrementStat('tasksCompleted');
+      } else if (oldStatus === 'ENTREGADO' && newStatus !== 'ENTREGADO') {
+        if (addXP) addXP(-100);
       }
 
-      const updatedTask = await tasksService.updateTask(id, { status: newStatus });
-      setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
+      // SURGICAL UPDATE: Enviamos solo lo necesario pero asegurando que no se pierda el mapeo
+      const updates = {
+        status: newStatus,
+        course_id: task.course_id // Preservamos el ID relacional
+      };
+
+      const updatedTask = await tasksService.updateTask(id, updates);
+      setTasks(prev => prev.map(t => String(t.id) === String(id) ? updatedTask : t));
     } catch (err) {
+      console.error("ERROR EN updateTaskStatus:", err);
       setError(err.message);
       throw err;
     }
@@ -76,7 +90,10 @@ export const useTasks = (userId, addXP, incrementStat) => {
 
   const updateTaskSchedule = async (id, day, block) => {
     try {
-      const updatedTask = await tasksService.updateTask(id, { day, block });
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+
+      const updatedTask = await tasksService.updateTask(id, { ...task, day, block });
       setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
       return updatedTask;
     } catch (err) {
@@ -87,12 +104,13 @@ export const useTasks = (userId, addXP, incrementStat) => {
 
   return {
     tasks,
+    setTasks, // Exponemos para actualizaciones optimistas
     loading,
     error,
     addTask,
+    updateTask,
     updateTaskStatus,
     deleteTask,
-    updateTask,
     updateTaskSchedule,
     refreshTasks: fetchTasks
   };

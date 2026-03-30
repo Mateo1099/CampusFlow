@@ -1,35 +1,90 @@
 {
   "version": 1,
   "skills": {
+    "agent-browser": {
+      "source": "vercel-labs/agent-browser",
+      "sourceType": "github",
+      "computedHash": "9757e62a964103e0b5659ccae7aab3ee893957e2c7f2a9a872851773d06efe7e"
+    },
     "ai-image-generation": {
       "source": "inferen-sh/skills",
       "sourceType": "github",
       "computedHash": "9ee6d37669b89f87bb0b1e1f89bf06cca35d69d461786a3fb847b07c4f2c8375"
+    },
+    "algorithmic-art": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "7c446629c20a537aba3496490550bbfddf71b3bb71904c9c0056c9daa025a330"
     },
     "animate": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
       "computedHash": "ce49a6d69e29292fa500c38b9ae70c0abbfb9e0bb5ad849bdcbbd6e61199e8e5"
     },
+    "dispatching-parallel-agents": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "e21044ae7496fc285f1df9ff3fb518a3a20bea6f5216c1f59f4987e12c769a0a"
+    },
     "elevenlabs-sound-effects": {
       "source": "inferen-sh/skills",
       "sourceType": "github",
       "computedHash": "a01786855dc7d6831017da8613b910c8571dc40fc7a0424380d904ea02454ca3"
+    },
+    "error-handling-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "bf0cc90f11c0b249036666117a8b1dd1490cbbc252103e2f7882f64a833a8004"
+    },
+    "extract-errors": {
+      "source": "facebook/react",
+      "sourceType": "github",
+      "computedHash": "4730f6528693ba4b18f00f5ef325d02faca3a67d6b23db854b790c4d3944e912"
     },
     "frontend-design": {
       "source": "anthropics/skills",
       "sourceType": "github",
       "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
     },
+    "git-workflow-manager": {
+      "source": "404kidwiz/claude-supercode-skills",
+      "sourceType": "github",
+      "computedHash": "9b7a5ba1974a8b0876ffbcd56fb06e3930fae0684aab345df6009f4d893fb419"
+    },
+    "security-auditor": {
+      "source": "ovachiever/droid-tings",
+      "sourceType": "github",
+      "computedHash": "001d97cd3b8cb305b2a87b55b9f4d9071f911b61fd788d0d2fdfad86419c6509"
+    },
+    "tailwind-design-system": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "f54f39ce967af3a4bba1f662c3600f0253467508d5fbbc7c545c67e102da2253"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
       "computedHash": "6337038fe1fe6bbe1b9f252ab678ee575859190bab6f0f246f4061824eb40875"
     },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "9fb08ab39585f6f770d0c1c735f83e619aba2089d7ad50ba2a305eff715e08b9"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "9b446f0c7fe1cfb560b1d34439523b1a76d5f177290007b2c053a1c749a4a8ba"
+    },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
+    },
+    "word-document-processor": {
+      "source": "qodex-ai/ai-agent-skills",
+      "sourceType": "github",
+      "computedHash": "64fe859ec69a58c9dc3d1ac38c751ede52a602dfc03268cdad69faa5b74a1779"
     }
   }
 }

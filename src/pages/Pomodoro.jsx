@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Music, Volume2, VolumeX, Square } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useSettings } from '../context/SettingsContext';
 
 const Pomodoro = () => {
-  const { t, addXP, incrementStat } = useApp();
+  const { t, addXP, incrementStat } = useSettings();
   const [mode, setMode] = useState('focus');
   const [isActive, setIsActive] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

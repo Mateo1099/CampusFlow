@@ -3,20 +3,37 @@ import { supabase } from './supabaseClient';
 export const coursesService = {
   async getCourses(userId) {
     if (!userId) return [];
+    
+    // REVERSIÓN TÁCTICA: De 'subjects' a 'courses'
+    console.log("CONSULTANDO courses PARA UID:", userId);
+
     const { data, error } = await supabase
       .from('courses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .select('id, name, color, teacher, code, institution')
+      .eq('user_id', userId);
     
-    if (error) throw error;
+    if (error) {
+      console.error("ERROR SUPABASE courses:", error.message);
+      throw error;
+    }
+
+    console.log("DATOS courses RECIBIDOS:", data);
     return data || [];
   },
 
   async createCourse(userId, course) {
+    const courseData = {
+      name: course.name || 'Materia Sin Nombre',
+      code: course.code || null,
+      institution: course.institution || null,
+      teacher: course.teacher || null,
+      color: course.color || '#ff0000',
+      user_id: userId
+    };
+
     const { data, error } = await supabase
       .from('courses')
-      .insert([{ ...course, user_id: userId }])
+      .insert([courseData])
       .select();
     
     if (error) throw error;

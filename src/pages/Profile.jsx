@@ -1,8 +1,10 @@
-import React, { useRef, useState } from 'react';
-import { useApp, FONT_OPTIONS } from '../context/AppContext';
-import { 
-  User, Palette, Check, ImageIcon, Camera, Languages, Type, 
-  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useSettings, FONT_OPTIONS } from '../context/SettingsContext';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabaseClient';
+import {
+  User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
+  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown, RefreshCcw, Loader2, Pencil
 } from 'lucide-react';
 
 const THEMES = [
@@ -12,9 +14,9 @@ const THEMES = [
 ];
 
 const WALLPAPERS = [
-  { id: 'glass', label: 'Frosted Glass', src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000' },
+  { id: 'cyber', label: 'Frosted Glass', src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000' },
   { id: 'nature', label: 'Forest Glass', src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=1000' },
-  { id: 'synth', label: 'Synthwave', src: 'https://images.unsplash.com/photo-1614850523296-62c0af475430?auto=format&fit=crop&q=80&w=1000' },
+  { id: 'synth', label: 'Synthwave', src: 'https://images.unsplash.com/photo-1774848372214-3563247a592b?q=80&w=1935&auto=format&fit=crop' },
   { id: 'space', label: 'Dark Space', src: 'https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?auto=format&fit=crop&q=80&w=1000' },
 ];
 
@@ -35,302 +37,562 @@ const SectionTitle = ({ icon, label }) => (
     <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
       {React.cloneElement(icon, { size: 18 })}
     </div>
-    <h3 style={{ margin: 0, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>{label}</h3>
+    <h3 style={{ margin: 0, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>{label}</h3>
   </div>
 );
 
-const AccordionSection = ({ title, icon, children, isOpen, onToggle }) => (
-  <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-    <button 
+const AccordionSection = ({ title, icon, children, isOpen, onToggle, subtitle }) => (
+  <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)' }}>
+    <button
       onClick={onToggle}
       style={{
-        width: '100%', padding: '24px 32px', display: 'flex', alignItems: 'center', gap: '16px',
+        width: '100%', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px',
         background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
         color: 'var(--text-primary)', transition: 'background 0.3s'
       }}
-      onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
     >
-      <div style={{ color: 'var(--accent-primary)' }}>{icon}</div>
-      <span style={{ flex: 1, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.9rem' }}>{title}</span>
-      <ChevronDown size={20} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
-    </button>
-    <div style={{ 
-      maxHeight: isOpen ? '800px' : '0', overflow: 'hidden', 
-      transition: 'max-height 0.4s var(--ease-out-quint), opacity 0.4s var(--ease-out-quint)',
-      opacity: isOpen ? 1 : 0,
-      padding: isOpen ? '0 32px 32px' : '0 32px'
-    }}>
-      <div className={isOpen ? 'animate-fade-scale' : ''}>
-        {children}
+      <div style={{ color: 'var(--accent-primary)', opacity: 0.8 }}>{icon}</div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{title}</span>
+        {subtitle && (
+          <span style={{ fontSize: '0.72rem', color: 'var(--accent-primary)', fontWeight: 900, textTransform: 'uppercase' }}>
+            {subtitle}
+          </span>
+        )}
       </div>
-    </div>
+      <ChevronDown size={18} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+    </button>
+    {isOpen && (
+      <div className="animate-fade-in" style={{ padding: '0 24px 20px' }}>
+        <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {children}
+        </div>
+      </div>
+    )}
   </div>
 );
 
 const Profile = () => {
-  const { settings, updateSettings, t } = useApp();
+  const { settings, updateSettings, t } = useSettings();
+  const { user } = useAuth();
   const wallpaperInputRef = useRef(null);
   const profileInputRef = useRef(null);
-  
-  const [openSection, setOpenSection] = useState(null); // 'lang' | 'font' | null
+
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const [openSection, setOpenSection] = useState(null);
+  const [openSetting, setOpenSetting] = useState(null); // 'lang', 'font', 'fontSize'
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+
+  // States para Edición de Nombre
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState(settings.name);
+
+  // States para MFA
+  const [mfaData, setMfaData] = useState(null);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [isMfaActive, setIsMfaActive] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaError, setMfaError] = useState('');
+
+  // States para Desactivar MFA
+  const [isDisablingMfa, setIsDisablingMfa] = useState(false);
+  const [disableVerifyCode, setDisableVerifyCode] = useState('');
+  const [disableMfaLoading, setDisableMfaLoading] = useState(false);
+  const [disableMfaError, setDisableMfaError] = useState('');
+
+  const downloadAvatar = useCallback(async (path) => {
+    try {
+      setIsLoadingAvatar(true);
+      const { data, error } = await supabase.storage.from('avatars').download(path);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      setAvatarUrl(url);
+    } catch (error) {
+      console.error('Error downloading avatar:', error.message);
+    } finally {
+      setIsLoadingAvatar(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user?.user_metadata?.avatar_path) {
+      downloadAvatar(user.user_metadata.avatar_path);
+    }
+    checkMfaStatus();
+  }, [user, downloadAvatar]);
+
+  useEffect(() => {
+    setTempName(settings.name);
+  }, [settings.name]);
+
+  const checkMfaStatus = useCallback(async () => {
+    const { data } = await supabase.auth.mfa.listFactors();
+    if (data?.all?.some(f => f.status === 'verified')) {
+      setIsMfaActive(true);
+    }
+  }, []);
+
+  const handleProfileImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !user) return;
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      await supabase.auth.updateUser({ data: { avatar_path: fileName } });
+      await updateSettings({ avatarUrl: fileName });
+      downloadAvatar(fileName);
+    } catch (error) {
+      alert('Error subiendo imagen: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleNameSave = () => {
+    if (tempName.trim() && tempName !== settings.name) {
+      updateSettings({ name: tempName.trim() });
+    }
+    setIsEditingName(false);
+  };
+
+  const handleEnrollMfa = async () => {
+    setMfaLoading(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      if (error) throw error;
+      setMfaData(data);
+    } catch (err) {
+      setMfaError(err.message);
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleVerifyMfa = async () => {
+    setMfaLoading(true);
+    try {
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaData.id });
+      if (challengeError) throw challengeError;
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaData.id,
+        challengeId: challengeData.id,
+        code: verifyCode
+      });
+      if (verifyError) throw verifyError;
+      setIsMfaActive(true);
+      setMfaData(null);
+    } catch (err) {
+      setMfaError(err.message);
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleDisableMfa = async () => {
+    setDisableMfaLoading(true);
+    setDisableMfaError('');
+    try {
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const totpFactor = factorsData.all.find(f => f.status === 'verified' && f.factorType === 'totp');
+      if (!totpFactor) throw new Error("No se encontró 2FA activo.");
+
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: totpFactor.id,
+        challengeId: challengeData.id,
+        code: disableVerifyCode
+      });
+      if (verifyError) throw verifyError;
+
+      const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id });
+      if (unenrollError) throw unenrollError;
+
+      setIsMfaActive(false);
+      setIsDisablingMfa(false);
+      setDisableVerifyCode('');
+    } catch (err) {
+      setDisableMfaError(err.message);
+    } finally {
+      setDisableMfaLoading(false);
+    }
+  };
 
   const handleWallpaperUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        updateSettings({ wallpaper: 'custom', customWallpaper: event.target.result });
+      reader.onload = async (event) => {
+        const base64 = event.target.result;
+        // Delegamos la persistencia al contexto global que ya maneja Supabase
+        await updateSettings({ wallpaper: 'custom', customWallpaper: base64 });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleProfileImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        updateSettings({ profileImage: event.target.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const avatarSource = (settings.avatarUrl && settings.avatarUrl !== "") ? settings.avatarUrl : (avatarUrl || settings.profileImage);
 
   return (
     <div className="animate-fade-in" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       <header className="page-header" style={{ marginBottom: '40px' }}>
-        <h1 className="page-title">{t.profile}</h1>
+        <h1 className="page-title" style={{ fontSize: '3rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-primary)' }}>{t.profile}</h1>
       </header>
 
-      <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-        
-        {/* Card de Usuario - CABECERA - Ahora más compacta y elegante */}
-        <div className="glass-panel" style={{ padding: '36px', display: 'flex', alignItems: 'center', gap: '40px', gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+
+        {/* User Card */}
+        <div className="glass-panel" style={{ padding: '36px', display: 'flex', alignItems: 'center', gap: '40px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)' }}>
           <div style={{ position: 'relative' }}>
-            <div style={{ padding: '6px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', boxShadow: '0 15px 40px rgba(0, 122, 255, 0.3)' }}>
-              <div style={{ width: '130px', height: '130px', borderRadius: '50%', overflow: 'hidden', border: '4px solid #fff', position: 'relative', background: '#222' }}>
-                {settings.profileImage ? (
-                  <img src={settings.profileImage} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-                    <User size={60} />
-                  </div>
-                )}
-              </div>
+            <div style={{ 
+              width: '130px', height: '130px', borderRadius: '50%', 
+              overflow: 'hidden', border: '4px solid var(--accent-primary)', 
+              background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'relative'
+            }}>
+              {/* SKELETON NEÓN */}
+              {(!avatarLoaded || !avatarSource) && (
+                <div 
+                  className="animate-pulse-neon"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(0, 243, 255, 0.15)',
+                    boxShadow: 'inset 0 0 30px rgba(0, 243, 255, 0.4)',
+                    zIndex: 2,
+                    transition: 'opacity 0.5s ease-in-out',
+                    opacity: !avatarLoaded ? 1 : 0
+                  }}
+                />
+              )}
+
+              {avatarSource && avatarSource !== "" ? (
+                <img
+                  key={avatarSource}
+                  src={avatarSource}
+                  alt="User"
+                  fetchPriority="high"
+                  loading="eager"
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover',
+                    opacity: avatarLoaded ? 1 : 0,
+                    transition: 'opacity 0.4s ease-in-out'
+                  }}
+                  onLoad={() => setAvatarLoaded(true)}
+                  onError={(e) => { 
+                    e.target.onerror = null;
+                    e.target.src = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
+                    setAvatarLoaded(true);
+                  }}
+                />
+              ) : (
+                <div style={{ opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.4s' }}>
+                  <User size={60} color="var(--accent-primary)" style={{ opacity: 0.5 }} />
+                </div>
+              )}
             </div>
-            <button 
-              onClick={() => profileInputRef.current.click()} 
-              style={{ 
-                position: 'absolute', bottom: '5px', right: '5px', width: '38px', height: '38px', 
-                borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#000', 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)', transition: 'transform 0.2s'
-              }}
-              className="glass-card-hover"
-            >
+            <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '5px', right: '5px', width: '38px', height: '38px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <Camera size={18} />
             </button>
             <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
           </div>
-          <div>
-            <h2 className="font-display" style={{ fontSize: '2.4rem', margin: '0 0 4px', fontWeight: 900, color: 'var(--text-primary)' }}>{settings.userName || 'Mateo'}</h2>
-            <p style={{ color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.85rem', fontWeight: 800 }}>ESTUDIANTE DE CAMPUSFLOW</p>
-            <div style={{ display: 'flex', gap: '24px', marginTop: '20px' }}>
-               <div>
-                 <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>TEMA VISUAL</p>
-                 <span style={{ fontWeight: 800, color: 'var(--accent-secondary)', fontSize: '0.95rem' }}>{settings.theme.toUpperCase()}</span>
-               </div>
-               <div style={{ paddingLeft: '24px', borderLeft: '1px solid var(--border-glass-top)' }}>
-                 <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>IDIOMA</p>
-                 <span style={{ fontWeight: 800, color: 'var(--accent-lime)', fontSize: '0.95rem' }}>{settings.language.toUpperCase()}</span>
-               </div>
+          <div style={{ perspective: '1000px' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              padding: '10px 24px',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              width: 'fit-content',
+              marginBottom: '10px',
+              transform: 'rotateX(5deg) rotateY(-2deg)',
+              boxShadow: '0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 243, 255, 0.3)',
+              transformStyle: 'preserve-3d'
+            }}>
+              {isEditingName ? (
+                <input
+                  autoFocus
+                  value={tempName}
+                  onChange={e => setTempName(e.target.value)}
+                  onBlur={handleNameSave}
+                  onKeyDown={e => e.key === 'Enter' && handleNameSave()}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    fontSize: '2rem',
+                    fontWeight: 950,
+                    textTransform: 'uppercase',
+                    outline: 'none',
+                    width: '300px'
+                  }}
+                />
+              ) : (
+                <h2 className="font-display" style={{ fontSize: '2.8rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', color: 'var(--text-primary)' }}>
+                  {settings.name || 'Mateo'}
+                </h2>
+              )}
+              <button
+                onClick={() => setIsEditingName(true)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.7 }}
+              >
+                <Pencil size={20} />
+              </button>
             </div>
+            <p style={{
+              color: '#fff',
+              opacity: 0.6,
+              letterSpacing: '3px',
+              fontSize: '11px',
+              fontWeight: 600,
+              marginLeft: '24px',
+              textTransform: 'uppercase'
+            }}>Estudiante</p>
           </div>
         </div>
 
-        {/* TEMA VISUAL */}
-        <div className="glass-panel" style={{ padding: '32px' }}>
+        {/* RESTAURACIÓN: Tema Visual */}
+        <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
           <SectionTitle icon={<Palette />} label={t.themeMode} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {THEMES.map(theme => (
-              <button key={theme.id} onClick={() => updateSettings({ theme: theme.id })} className="btn-select-modern click-press hover-lift" style={{
-                  padding: '12px 18px',
-                  background: settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent',
-                  borderColor: settings.theme === theme.id ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                  borderWidth: '2px'
-                }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: theme.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', border: '1px solid rgba(255,255,255,0.1)' }}>{theme.icon}</div>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{t[theme.labelKey]}</span>
-                {settings.theme === theme.id && <Check size={20} color="var(--accent-primary)" style={{ marginLeft: 'auto' }} />}
+              <button key={theme.id} onClick={() => updateSettings({ theme: theme.id })} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `1px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`, background: settings.theme === theme.id ? 'rgba(255,255,255,0.05)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <span style={{ fontSize: '1.2rem' }}>{theme.icon}</span>
+                <span style={{ fontWeight: 700 }}>{t[theme.labelKey]}</span>
+                {settings.theme === theme.id && <Check size={16} color="var(--accent-primary)" style={{ marginLeft: 'auto' }} />}
               </button>
             ))}
           </div>
         </div>
 
-        {/* FONDOS DE PANTALLA */}
-        <div className="glass-panel" style={{ padding: '32px' }}>
+        {/* RESTAURACIÓN: Fondos de Pantalla */}
+        <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
           <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {WALLPAPERS.map(wp => (
-              <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{
-                  height: '90px', borderRadius: '16px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`,
-                  backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative',
-                  transition: 'transform 0.3s'
-                }} className="glass-card-hover">
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}>{wp.label}</span>
-                </div>
-                {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={12} color="#000" /></div>}
+              <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative' }}>
+                {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
               </button>
             ))}
-            {/* Botón Cargar Foto */}
-            <button key="custom" onClick={() => wallpaperInputRef.current.click()} style={{
-                  height: '90px', borderRadius: '16px', border: `2px dashed ${settings.wallpaper === 'custom' ? 'var(--accent-primary)' : 'var(--text-secondary)'}`,
-                  background: (settings.wallpaper === 'custom' && settings.customWallpaper) ? `url(${settings.customWallpaper})` : 'transparent', backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative'
-                }}>
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  <Camera size={20} color={settings.wallpaper === 'custom' ? 'var(--accent-primary)' : '#fff'} />
-                  <span style={{ color: '#fff', fontSize: '0.7rem', fontWeight: 700 }}>{t.uploadPhoto.toUpperCase()}</span>
-                </div>
-                {settings.wallpaper === 'custom' && <div style={{ position: 'absolute', top: 8, right: 8, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={12} color="#000" /></div>}
+            <button
+              onClick={() => wallpaperInputRef.current.click()}
+              style={{
+                height: '70px',
+                borderRadius: '12px',
+                border: settings.customWallpaper ? 'none' : '2px dashed var(--text-secondary)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                background: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                position: 'relative',
+                overflow: 'hidden',
+                cursor: 'pointer'
+              }}
+            >
+              {settings.customWallpaper && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }} />}
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Camera size={20} />
+                <span style={{ fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>SUBIR FOTO</span>
+              </div>
             </button>
             <input type="file" ref={wallpaperInputRef} hidden accept="image/*" onChange={handleWallpaperUpload} />
           </div>
         </div>
 
-        {/* POSICIÓN DEL MENÚ */}
-        <div className="glass-panel" style={{ padding: '32px' }}>
+        {/* RESTAURACIÓN: Posición del Menú */}
+        <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
           <SectionTitle icon={<LayoutIcon />} label={t.layoutPos} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {[
-              { id: 'left', label: t.left, icon: <ArrowLeft size={18} /> },
-              { id: 'right', label: t.right, icon: <ArrowRight size={18} /> },
-              { id: 'top', label: t.top, icon: <ArrowUp size={18} /> },
-              { id: 'bottom', label: t.bottom, icon: <ArrowDown size={18} /> }
+              { id: 'left', label: t.left, icon: <ArrowLeft size={16} /> },
+              { id: 'right', label: t.right, icon: <ArrowRight size={16} /> },
+              { id: 'top', label: t.top, icon: <ArrowUp size={16} /> },
+              { id: 'bottom', label: t.bottom, icon: <ArrowDown size={16} /> }
             ].map(pos => (
-              <button key={pos.id} onClick={() => updateSettings({ sidebarPosition: pos.id })} className="btn-select-modern" style={{
-                  background: settings.sidebarPosition === pos.id ? 'var(--bg-glass-hover)' : 'transparent',
-                  borderColor: settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                  borderWidth: '2px',
-                  justifyContent: 'center',
-                  padding: '14px',
-                  gap: '10px'
-                }}>
-                {pos.icon}
-                <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{pos.label}</span>
-                {settings.sidebarPosition === pos.id && <Check size={18} color="var(--accent-primary)" />}
+              <button key={pos.id} onClick={() => updateSettings({ sidebarPosition: pos.id })} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: `1px solid ${settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`, background: settings.sidebarPosition === pos.id ? 'rgba(255,255,255,0.05)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                {pos.icon} <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{pos.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* GRUPO DE AJUSTES - DISEÑO BENTO 3 COLUMNAS SEGÚN FOTO */}
-        <div style={{ 
-          gridColumn: '1 / -1', 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-          gap: '24px', 
-          marginTop: '32px' 
-        }}>
-          <AccordionSection 
-            title={t.language} 
-            icon={<Languages size={22} />} 
-            isOpen={openSection === 'lang'} 
-            onToggle={() => setOpenSection(openSection === 'lang' ? null : 'lang')}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {LANGUAGES.map(lang => (
-                <button key={lang.id} onClick={() => updateSettings({ language: lang.id })} className="btn-select-modern stagger-item click-press" style={{
-                    background: settings.language === lang.id ? 'var(--bg-glass-hover)' : 'transparent',
-                    borderColor: settings.language === lang.id ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                    borderWidth: '1px',
-                    padding: '12px 18px',
-                    width: '100%'
-                }}>
-                  <span style={{ fontSize: '1.4rem' }}>{lang.flag}</span>
-                  <span style={{ flex: 1, fontWeight: settings.language === lang.id ? 800 : 400 }}>{lang.label}</span>
-                  {settings.language === lang.id && <Check size={18} color="var(--accent-primary)" />}
-                </button>
-              ))}
-            </div>
-          </AccordionSection>
+        {/* Ajustes Compactos: Idioma, Tipografía y Tamaño */}
+        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
 
-          <AccordionSection 
-            title={t.typography} 
-            icon={<Type size={22} />} 
-            isOpen={openSection === 'font'} 
-            onToggle={() => setOpenSection(openSection === 'font' ? null : 'font')}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {FONT_OPTIONS.map(font => (
-                <button key={font.id} onClick={() => updateSettings({ font: font.id })} className="btn-select-modern stagger-item click-press" style={{
-                    fontFamily: font.css,
-                    background: settings.font === font.id ? 'var(--accent-primary)11' : 'transparent',
-                    borderColor: settings.font === font.id ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                    borderWidth: '2px',
-                    padding: '12px 18px',
-                    width: '100%'
-                }}>
-                  <span style={{ flex: 1, fontWeight: settings.font === font.id ? 800 : 400 }}>{font.label}</span>
-                  {settings.font === font.id && <Check size={18} color="var(--accent-primary)" />}
-                </button>
-              ))}
+          {/* Selector de Idioma */}
+          <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
+            <button
+              onClick={() => setOpenSetting(openSetting === 'lang' ? null : 'lang')}
+              style={{
+                width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Languages size={18} color="var(--accent-primary)" />
+                <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.language}: <span style={{ color: 'var(--accent-primary)' }}>{LANGUAGES.find(l => l.id === settings.language)?.label}</span></span>
+              </div>
+              <ChevronDown size={18} style={{ transform: openSetting === 'lang' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+            </button>
+            <div style={{ maxHeight: openSetting === 'lang' ? '400px' : '0', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+              <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {LANGUAGES.map(lang => (
+                  <button
+                    key={lang.id}
+                    onClick={() => { updateSettings({ language: lang.id }); setOpenSetting(null); }}
+                    style={{
+                      padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      background: settings.language === lang.id ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}
+                  >
+                    <span style={{ fontWeight: settings.language === lang.id ? 800 : 500 }}>{lang.flag} {lang.label}</span>
+                    {settings.language === lang.id && <Check size={14} color="var(--accent-primary)" />}
+                  </button>
+                ))}
+              </div>
             </div>
-          </AccordionSection>
-
-          {/* Selector de Tamaño de Fuente Numérico (Bento Card) */}
-          <div className="glass-panel" style={{ 
-            padding: '32px', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '16px', 
-            borderRadius: 'var(--radius-lg)', 
-            border: '1px solid var(--border-glass-top)',
-            background: 'var(--bg-glass)'
-          }}>
-            <SectionTitle icon={<Type size={18} />} label={t.fontSize} />
-            <div style={{ position: 'relative', width: '100%' }}>
-              <select 
-                value={settings.fontSize} 
-                onChange={(e) => updateSettings({ fontSize: parseInt(e.target.value) })}
-                className="select hover-lift"
-                style={{
-                  appearance: 'none',
-                  width: '100%',
-                  padding: '14px 40px 14px 20px',
-                  fontWeight: 800,
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  border: '2px solid var(--border-glass-top)',
-                  background: 'var(--bg-secondary)',
-                  borderRadius: '16px',
-                  color: 'var(--text-primary)',
-                  transition: 'all 0.4s var(--ease-out-quint)',
-                  outline: 'none'
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 15px var(--accent-primary)33'; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border-glass-top)'; e.currentTarget.style.boxShadow = 'none'; }}
-              >
-                {[8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 90].map(val => (
-                  <option key={val} value={val} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
-                    {val} px
-                  </option>
-                 ))}
-              </select>
-              <ChevronDown 
-                size={20} 
-                style={{ 
-                  position: 'absolute', right: '15px', top: '50%', 
-                  transform: 'translateY(-50%)', pointerEvents: 'none',
-                  color: 'var(--accent-primary)' 
-                }} 
-              />
-            </div>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-              * Cambia el tamaño de toda la interfaz dinámicamente.
-            </p>
           </div>
+
+          {/* Selector de Tipografía */}
+          <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
+            <button
+              onClick={() => setOpenSetting(openSetting === 'font' ? null : 'font')}
+              style={{
+                width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Type size={18} color="var(--accent-primary)" />
+                <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.typography}: <span style={{ color: 'var(--accent-primary)' }}>{FONT_OPTIONS.find(f => f.id === settings.font)?.label}</span></span>
+              </div>
+              <ChevronDown size={18} style={{ transform: openSetting === 'font' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+            </button>
+            <div style={{ maxHeight: openSetting === 'font' ? '400px' : '0', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+              <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {FONT_OPTIONS.map(font => (
+                  <button
+                    key={font.id}
+                    onClick={() => { updateSettings({ font: font.id }); setOpenSetting(null); }}
+                    style={{
+                      padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      background: settings.font === font.id ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                      color: 'var(--text-primary)', fontFamily: font.css, display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}
+                  >
+                    <span style={{ fontWeight: settings.font === font.id ? 800 : 500 }}>{font.label}</span>
+                    {settings.font === font.id && <Check size={14} color="var(--accent-primary)" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Selector de Tamaño de Fuente */}
+          <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
+            <button
+              onClick={() => setOpenSetting(openSetting === 'fontSize' ? null : 'fontSize')}
+              style={{
+                width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Type size={18} color="var(--accent-primary)" />
+                <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.fontSize}: <span style={{ color: 'var(--accent-primary)' }}>{settings.fontSize}px</span></span>
+              </div>
+              <ChevronDown size={18} style={{ transform: openSetting === 'fontSize' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+            </button>
+            <div style={{ maxHeight: openSetting === 'fontSize' ? '400px' : '0', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+              <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {[12, 14, 16, 18, 20, 24, 28, 32].map(size => (
+                  <button
+                    key={size}
+                    onClick={() => { updateSettings({ fontSize: size }); setOpenSetting(null); }}
+                    style={{
+                      padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      background: settings.fontSize === size ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}
+                  >
+                    <span style={{ fontWeight: settings.fontSize === size ? 800 : 500 }}>{size}px</span>
+                    {settings.fontSize === size && <Check size={14} color="var(--accent-primary)" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Seguridad */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <AccordionSection title="Seguridad" icon={<Shield size={20} />} isOpen={openSection === 'security'} onToggle={() => setOpenSection(openSection === 'security' ? null : 'security')} subtitle={isMfaActive ? "ACTIVA" : "DESACTIVADA"}>
+            <div style={{ padding: '10px 0' }}>
+              {isMfaActive ? (
+                isDisablingMfa ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Ingresa tu código actual para confirmar:</p>
+                    <input type="text" value={disableVerifyCode} onChange={e => setDisableVerifyCode(e.target.value)} placeholder="000000" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px' }} />
+                    {disableMfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>{disableMfaError}</p>}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button onClick={() => { setIsDisablingMfa(false); setDisableVerifyCode(''); setDisableMfaError(''); }} style={{ padding: '10px 16px', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800 }}>Cancelar</button>
+                      <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ padding: '10px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800 }}>
+                        {disableMfaLoading ? 'Verificando...' : 'Confirmar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-glass-top)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-lime)', boxShadow: '0 0 10px var(--accent-lime)' }}></div>
+                      <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 800 }}>AUTENTICACIÓN EN DOS PASOS (TOTP)</p>
+                    </div>
+                    <button onClick={() => setIsDisablingMfa(true)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', fontWeight: 800, cursor: 'pointer' }}>
+                      DESACTIVAR
+                    </button>
+                  </div>
+                )
+              ) : (
+                <>
+                  {!mfaData ? (
+                    <button onClick={handleEnrollMfa} disabled={mfaLoading} style={{ padding: '12px 24px', background: 'var(--accent-primary)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 900, cursor: 'pointer' }}>
+                      {mfaLoading ? 'PROCESANDO...' : 'ACTIVAR 2FA'}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '300px' }}>
+                      <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', width: 'fit-content' }}>
+                        <img src={mfaData.totp.qr_code} alt="QR Code" style={{ width: '150px', height: '150px' }} />
+                      </div>
+                      <input type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value)} placeholder="Código 6 dígitos" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px' }} />
+                      {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>{mfaError}</p>}
+                      <button onClick={handleVerifyMfa} disabled={mfaLoading} style={{ padding: '12px', background: 'var(--accent-lime)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 900, cursor: 'pointer' }}>
+                        {mfaLoading ? 'VERIFICANDO...' : 'VERIFICAR Y ACTIVAR'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </AccordionSection>
         </div>
 
       </div>

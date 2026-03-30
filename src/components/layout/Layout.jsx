@@ -1,10 +1,10 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { useApp, WALLPAPERS } from '../../context/AppContext';
+import { useSettings, WALLPAPERS } from '../../context/SettingsContext';
 
 const Layout = () => {
-  const { settings, recentXPGains } = useApp();
+  const { settings, recentXPGains } = useSettings();
   
   const wp = WALLPAPERS.find(w => w.id === settings.wallpaper);
   const bgSrc = settings.wallpaper === 'custom' ? settings.customWallpaper : (wp ? wp.src : null);

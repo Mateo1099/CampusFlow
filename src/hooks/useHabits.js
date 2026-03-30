@@ -18,15 +18,15 @@ export const useHabits = (userId, addXP, incrementStat) => {
       const h = await habitsService.getHabits(userId);
       setHabits(h);
       
-      // Get logs for the current day (approx range)
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
       
-      const l = await habitsService.getLogs(userId, startOfDay, endOfDay);
+      const l = await habitsService.getLogs(userId, startOfDay, endOfDay).catch(e => []);
       setLogs(l);
     } catch (err) {
-      setError(err.message);
+      // No seteamos setError para no bloquear UI principal
+      console.error("useHabits_Hook_Error:", err.message);
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,7 @@ export const useHabits = (userId, addXP, incrementStat) => {
         duration_minutes: parseInt(activity.durationMinutes) || 30,
         frequency_type: 'daily'
       };
-      const newHabit = await habitsService.createHabit(userId, habitData);
+      const newHabit = await habitsService.createCourse(userId, habitData);
       setHabits(prev => [...prev, newHabit]);
       return newHabit;
     } catch (err) {
@@ -60,15 +60,14 @@ export const useHabits = (userId, addXP, incrementStat) => {
       
       if (result.action === 'added') {
         setLogs(prev => [...prev, result.data]);
-        addXP(50); // XP for habit completion
-        incrementStat('habitsCompleted');
+        if (addXP) addXP(50);
+        if (incrementStat) incrementStat('habitsCompleted');
       } else {
         setLogs(prev => prev.filter(l => l.habit_id !== habitId));
-        addXP(-50);
+        if (addXP) addXP(-50);
       }
     } catch (err) {
-      setError(err.message);
-      throw err;
+      console.error("Error toggling habit:", err);
     }
   };
 
@@ -78,12 +77,10 @@ export const useHabits = (userId, addXP, incrementStat) => {
       setHabits(prev => prev.filter(h => h.id !== id));
       setLogs(prev => prev.filter(l => l.habit_id !== id));
     } catch (err) {
-      setError(err.message);
-      throw err;
+      console.error("Error deleting habit:", err);
     }
   };
 
-  // For compatibility with the existing dailyPlan UI
   const dailyPlan = habits.map(h => ({
     id: h.id,
     title: h.name,

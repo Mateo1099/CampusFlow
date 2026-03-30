@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useTasksContext } from '../context/TaskContext';
+import { useSettings } from '../context/SettingsContext';
 import { Plus, CheckCircle2, Circle, Clock, Trash2, Target } from 'lucide-react';
 
 const DailyPlanner = () => {
-  const { dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, t, habitsLoading } = useApp();
+  const { dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading } = useTasksContext();
+  const { t } = useSettings();
 
   if (habitsLoading) {
     return (

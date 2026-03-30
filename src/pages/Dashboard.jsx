@@ -1,10 +1,12 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useTasksContext } from '../context/TaskContext';
+import { useSettings } from '../context/SettingsContext';
 import { differenceInDays, parseISO } from 'date-fns';
 import { Activity, Target, Zap } from 'lucide-react';
 
 const Dashboard = () => {
-  const { tasks, courses, t, tasksLoading, coursesLoading } = useApp();
+  const { tasks, courses, tasksLoading, coursesLoading } = useTasksContext();
+  const { t } = useSettings();
 
   if (tasksLoading || coursesLoading) {
     return (
@@ -103,11 +105,14 @@ const Dashboard = () => {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t.emptyDatabase}</p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              {courses.map(c => (
-                <div key={c.id} style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', border: `1px solid ${c.prefixColor}`, color: c.prefixColor, fontSize: '0.8rem', fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', boxShadow: `0 0 10px ${c.prefixColor}33` }}>
-                  {c.name}
-                </div>
-              ))}
+              {courses.map(c => {
+                const displayColor = c.color || c.prefixColor || 'var(--accent-primary)';
+                return (
+                  <div key={c.id} style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', border: `1px solid ${displayColor}`, color: displayColor, fontSize: '0.8rem', fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', boxShadow: `0 0 10px ${displayColor}33` }}>
+                    {c.name}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

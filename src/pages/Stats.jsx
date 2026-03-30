@@ -1,9 +1,11 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
+import { useSettings } from '../context/SettingsContext';
+import { useTasksContext } from '../context/TaskContext';
 import { PieChart, Zap, TrendingUp, Target, Clock, Trophy } from 'lucide-react';
 
 const Stats = () => {
-  const { settings, courses, tasks, t, tasksLoading, coursesLoading, analytics, habitsLoading } = useApp();
+  const { settings, t } = useSettings();
+  const { courses, tasks, tasksLoading, coursesLoading, analytics, habitsLoading } = useTasksContext();
 
   if (tasksLoading || coursesLoading || habitsLoading) {
     return (
@@ -19,7 +21,7 @@ const Stats = () => {
 
   const tasksByCourse = courses.map(c => ({
     name: c.name,
-    color: c.prefixColor,
+    color: c.color || c.prefixColor,
     count: tasks.filter(t => t.course === c.name).length
   }));
 

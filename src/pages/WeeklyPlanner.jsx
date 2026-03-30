@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import { useSettings } from '../context/SettingsContext';
+import { useTasksContext } from '../context/TaskContext';
 import { Clock, Calendar, CheckCircle2, Circle } from 'lucide-react';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -11,7 +12,8 @@ const DAY_LABELS = {
 };
 
 const WeeklyPlanner = () => {
-  const { tasks, updateTaskStatus, tasksLoading, t } = useApp();
+  const { tasks, updateTaskStatus, tasksLoading } = useTasksContext();
+  const { t } = useSettings();
 
   const scheduleMap = useMemo(() => {
     const map = BLOCKS.reduce((acc, block) => {
