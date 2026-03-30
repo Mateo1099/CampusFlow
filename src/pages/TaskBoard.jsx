@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
-import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2 } from 'lucide-react';
+import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,12 +13,53 @@ import { RoughEase, SlowMo } from "gsap/EasePack";
 
 gsap.registerPlugin(useGSAP, RoughEase, SlowMo, CustomEase);
 
+// HELPERS DE AUDIO ASMR-TECH (WEB AUDIO API)
+const playClick = (freq) => {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.05);
+};
+
+const playDropSound = () => {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+  const bufferSize = audioCtx.sampleRate * 0.05;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+  const noiseGain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(400, audioCtx.currentTime);
+  noiseGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+  noise.start(); noise.stop(audioCtx.currentTime + 0.1);
+};
+
 // COLUMNAS OFICIALES
 const COLUMNS = [
-  { id: 'SIN ENTREGAR', label: 'SIN ENTREGAR', accent: 'var(--text-secondary)', badgeClass: 'badge-todo' },
-  { id: 'EN PROCESO',   label: 'EN PROCESO',   accent: 'var(--accent-primary)',  badgeClass: 'badge-doing' },
-  { id: 'REVISIÓN',     label: 'REVISIÓN',     accent: '#ffcc00',                badgeClass: 'badge-revision' },
-  { id: 'ENTREGADO',    label: 'ENTREGADO',    accent: 'var(--accent-lime)',     badgeClass: 'badge-submitted' },
+  { id: 'sin entregar', label: 'SIN ENTREGAR', accent: 'var(--text-secondary)', badgeClass: 'badge-todo' },
+  { id: 'en proceso',   label: 'EN PROCESO',   accent: 'var(--accent-primary)',  badgeClass: 'badge-doing' },
+  { id: 'revisión',     label: 'REVISIÓN',     accent: '#ffcc00',                badgeClass: 'badge-revision' },
+  { id: 'entregado',    label: 'ENTREGADO',    accent: 'var(--accent-lime)',     badgeClass: 'badge-submitted' },
 ];
 
 const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
@@ -118,11 +159,41 @@ const TaskBoard = () => {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '' });
   const [activePicker, setActivePicker] = useState(null);
+  const [currentFilter, setCurrentFilter] = useState('TODAS');
+  const [currentSort, setCurrentSort] = useState('RECIENTES');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
   const columnRefs = useRef({});
   const btnNewRef = useRef(null);
   const liquidRef = useRef(null);
   const modalPanelRef = useRef(null);
   const closeIconRef = useRef(null);
+
+  // LÓGICA DE FILTRADO Y ORDENAMIENTO (BLINDAJE DE DND)
+  const filteredTasks = useMemo(() => {
+    let result = tasks.filter(task => {
+      if (currentFilter === 'TODAS') return true;
+      const course = courses.find(c => c.id === task.course_id);
+      const inst = (course?.institution || '').toUpperCase();
+      if (currentFilter === 'UNAD') return inst === 'UNAD';
+      if (currentFilter === 'SENA') return inst === 'SENA';
+      if (currentFilter === 'PERSONALIZADO') return inst !== 'UNAD' && inst !== 'SENA';
+      return true;
+    });
+
+    return result.sort((a, b) => {
+      if (currentSort === 'ALFABETICO') return a.title.localeCompare(b.title);
+      if (currentSort === 'ENTREGA') {
+        const dateA = a.deadline || a.due_date || '9999-12-31';
+        const dateB = b.deadline || b.due_date || '9999-12-31';
+        return dateA.localeCompare(dateB);
+      }
+      // RECIENTES (POR FECHA DE CREACIÓN O ID)
+      const dateA = a.created_at ? new Date(a.created_at) : 0;
+      const dateB = b.created_at ? new Date(b.created_at) : 0;
+      return dateB - dateA;
+    });
+  }, [tasks, courses, currentFilter, currentSort]);
 
   // GSAP: Botón Nuevo Trabajo - Microinteracción Liquid Fill (Radial)
   useGSAP(() => {
@@ -187,7 +258,10 @@ const TaskBoard = () => {
     });
     if (targetColumn !== task.status) {
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: targetColumn } : t));
-      try { await updateTaskStatus(task.id, targetColumn); } catch (err) { console.error("ALFA_SYNC_FAIL:", err); }
+      try { 
+        await updateTaskStatus(task.id, targetColumn);
+        playDropSound();
+      } catch (err) { console.error("ALFA_SAVE_ERROR:", err); }
     }
   };
 
@@ -205,26 +279,44 @@ const TaskBoard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title) return;
+    if (!formData.title || !formData.courseId) return;
+
+    // Validación y formateo de fechas a ISO (YYYY-MM-DD)
+    const formatDateToISO = (dateStr) => {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    };
+
+    // MAPEO EXPLÍCITO DE ID DE MATERIA (FRONT -> BACK)
     const taskData = { 
       title: formData.title, 
-      course_id: formData.courseId || null, 
-      start_date: formData.startDate || null, 
-      deadline: formData.dueDate || null 
+      course_id: formData.courseId, // ASEGURAR UUID DE MATERIA
+      start_date: formatDateToISO(formData.startDate), 
+      deadline: formatDateToISO(formData.dueDate)
     };
+
+    // ALFA_DEBUG: Verificación de integridad de datos antes del envío
+    console.log("ALFA_DEBUG: Objeto preparado para Supabase ->", taskData);
+
     try {
-      if (isEditing) await updateTask(editingTaskId, taskData);
-      else await addTask({ ...taskData, status: 'SIN ENTREGAR' });
+      if (isEditing) {
+        await updateTask(editingTaskId, taskData);
+      } else {
+        await addTask({ ...taskData, status: 'sin entregar' });
+      }
       handleClose();
       setFormData({ title: '', courseId: '', startDate: '', dueDate: '' });
-    } catch (err) { console.error("ALFA_SAVE_ERROR:", err); }
+    } catch (err) { 
+      console.error("ALFA_SAVE_ERROR:", err); 
+    }
   };
 
   if (tasksLoading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--accent-primary)' }}><div className="animate-pulse font-display" style={{ fontWeight: 900, fontSize: '1.2rem' }}>//_SINCRONIZANDO...</div></div>;
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '32px 48px', minHeight: '100%' }}>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '40px' }}>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
         <div>
           <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>TRABAJOS</h1>
           <p style={{ color: 'var(--accent-primary)', fontWeight: 900 }}>SISTEMA_DE_ENTREGAS</p>
@@ -271,16 +363,142 @@ const TaskBoard = () => {
         </button>
       </header>
 
+      {/* FILTROS NEON-PILLS */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {['TODAS', 'UNAD', 'SENA', 'PERSONALIZADO'].map(f => {
+            const getNeonColor = (filter) => {
+              switch(filter) {
+                case 'TODAS': return '#00f3ff'; // Cyan
+                case 'UNAD': return '#ffcc00';  // Yellow
+                case 'SENA': return '#00ff88';  // Green
+                case 'PERSONALIZADO': return '#bc13fe'; // Purple
+                default: return '#00f3ff';
+              }
+            };
+            const neonColor = getNeonColor(f);
+            const isActive = currentFilter === f;
+
+            return (
+              <button
+                key={f}
+                onClick={() => {
+                  setCurrentFilter(f);
+                  const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
+                  playClick(freqs[f] || 800);
+                }}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '50px',
+                  border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
+                  background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
+                  color: isActive ? neonColor : 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}
+              >
+                <div style={{ 
+                  width: '6px', 
+                  height: '6px', 
+                  borderRadius: '50%', 
+                  background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
+                  boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
+                }} />
+                {f}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setShowSortMenu(!showSortMenu)}
+            className="glass-panel click-press"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              padding: '10px 18px', 
+              borderRadius: '12px', 
+              background: 'rgba(255,255,255,0.03)', 
+              border: '1px solid rgba(255,255,255,0.1)',
+              cursor: 'pointer',
+              color: '#fff'
+            }}
+          >
+            <ArrowUpDown size={16} color="#00f3ff" />
+            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{currentSort}</span>
+            <ChevronDown size={14} color="var(--text-muted)" style={{ transform: showSortMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+          </button>
+
+          <AnimatePresence>
+            {showSortMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 5, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  width: '180px',
+                  background: 'rgba(10, 10, 10, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '8px',
+                  zIndex: 100,
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                }}
+              >
+                {['RECIENTES', 'ALFABETICO', 'ENTREGA'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => { setCurrentSort(s); setShowSortMenu(false); }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: currentSort === s ? 'rgba(0, 243, 255, 0.1)' : 'transparent',
+                      color: currentSort === s ? '#00f3ff' : 'var(--text-secondary)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    {s}
+                    {currentSort === s && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#00f3ff' }} />}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: '32px', flex: 1, paddingBottom: '24px', minWidth: 'fit-content' }}>
         {COLUMNS.map(col => (
           <div key={col.id} ref={el => columnRefs.current[col.id] = el} style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderBottom: `2px solid ${col.accent}`, marginBottom: '20px' }}>
               <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{col.label}</h3>
-              <span className={`badge ${col.badgeClass}`} style={{ fontWeight: 950 }}>{tasks.filter(t => t.status === col.id).length}</span>
+              <span className={`badge ${col.badgeClass}`} style={{ fontWeight: 950 }}>{filteredTasks.filter(t => t.status === col.id).length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '200px' }}>
               <AnimatePresence>
-                {tasks.filter(t => t.status === col.id).map(task => (
+                {filteredTasks.filter(t => t.status === col.id).map(task => (
                   <TaskCard key={task.id} task={task} onDelete={deleteTask} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
                 ))}
               </AnimatePresence>
@@ -313,7 +531,28 @@ const TaskBoard = () => {
             </div>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <input className="input" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="TÍTULO DEL TRABAJO *" style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }} />
-              <select className="select" value={formData.courseId} onChange={e => setFormData({ ...formData, courseId: e.target.value })} style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }}><option value="">Selecciona materia...</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <select 
+                className="select" 
+                required
+                value={formData.courseId} 
+                onChange={e => setFormData({ ...formData, courseId: e.target.value })} 
+                style={{ 
+                  background: '#121212', 
+                  color: '#fff',
+                  padding: '14px', 
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  appearance: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="" style={{ background: '#121212', color: '#fff' }}>Selecciona materia...</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id} style={{ background: '#121212', color: '#fff' }}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div onClick={() => setActivePicker('start')} className="input" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }}>{(formData.startDate || '').split('T')[0] || 'FECHA...'} <CalendarIcon size={16} color="#00f3ff" /></div>
                 <div onClick={() => setActivePicker('due')} className="input" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }}>{(formData.dueDate || '').split('T')[0] || 'LÍMITE...'} <CalendarIcon size={16} color="#00f3ff" /></div>
@@ -321,7 +560,12 @@ const TaskBoard = () => {
               {activePicker && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10002 }}><CustomCalendar selectedDate={activePicker === 'start' ? formData.startDate : formData.dueDate} onDateSelect={(d) => { setFormData({ ...formData, [activePicker === 'start' ? 'startDate' : 'dueDate']: d.split('T')[0] }); setActivePicker(null); }} onClose={() => setActivePicker(null)} /></div>}
               <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '10px' }}>
                 <ModalButton label="CANCELAR" onClick={handleClose} variant="cancel" />
-                <ModalButton label="GUARDAR" type="submit" variant="save" />
+                <ModalButton 
+                  label="GUARDAR" 
+                  type="submit" 
+                  variant="save" 
+                  disabled={!formData.title || !formData.courseId} 
+                />
               </div>
             </form>
           </motion.div>
@@ -332,10 +576,10 @@ const TaskBoard = () => {
   );
 };
 
-const ModalButton = ({ label, onClick, type = "button", variant }) => {
+const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => {
   const btnRef = useRef(null);
   useGSAP(() => {
-    if (!btnRef.current) return;
+    if (!btnRef.current || disabled) return;
     const btn = btnRef.current;
     const tl = gsap.timeline({ paused: true });
     if (variant === 'save') tl.to(btn, { backgroundColor: 'rgba(0, 243, 255, 0.2)', boxShadow: '0 0 20px rgba(0, 243, 255, 0.6)', duration: 0.3, ease: "slow(0.7, 0.7, false)" });
@@ -345,8 +589,36 @@ const ModalButton = ({ label, onClick, type = "button", variant }) => {
     btn.addEventListener("mouseenter", enter);
     btn.addEventListener("mouseleave", leave);
     return () => { btn.removeEventListener("mouseenter", enter); btn.removeEventListener("mouseleave", leave); };
-  }, [variant]);
-  return <button ref={btnRef} type={type} onClick={onClick} style={{ width: '180px', height: '48px', padding: '0 24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.05)', border: variant === 'save' ? '1px solid #00f3ff' : '1px solid rgba(255, 255, 255, 0.1)', color: variant === 'save' ? '#00f3ff' : '#fff', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', textTransform: 'uppercase' }}>{label}</button>;
+  }, [variant, disabled]);
+
+  return (
+    <button 
+      ref={btnRef} 
+      type={type} 
+      onClick={onClick} 
+      disabled={disabled}
+      style={{ 
+        width: '180px', 
+        height: '48px', 
+        padding: '0 24px', 
+        borderRadius: '12px', 
+        background: 'rgba(255, 255, 255, 0.05)', 
+        border: variant === 'save' ? '1px solid #00f3ff' : '1px solid rgba(255, 255, 255, 0.1)', 
+        color: variant === 'save' ? '#00f3ff' : '#fff', 
+        fontWeight: 800, 
+        fontSize: '0.9rem', 
+        cursor: disabled ? 'not-allowed' : 'pointer', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        textTransform: 'uppercase',
+        opacity: disabled ? 0.3 : 1,
+        transition: 'all 0.3s ease'
+      }}
+    >
+      {label}
+    </button>
+  );
 };
 
 export default TaskBoard;

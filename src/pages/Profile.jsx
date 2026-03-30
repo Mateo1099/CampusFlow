@@ -252,15 +252,15 @@ const Profile = () => {
         {/* User Card */}
         <div className="glass-panel" style={{ padding: '36px', display: 'flex', alignItems: 'center', gap: '40px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)' }}>
           <div style={{ position: 'relative' }}>
-            <div style={{ 
-              width: '130px', height: '130px', borderRadius: '50%', 
-              overflow: 'hidden', border: '4px solid var(--accent-primary)', 
+            <div style={{
+              width: '130px', height: '130px', borderRadius: '50%',
+              overflow: 'hidden', border: '4px solid var(--accent-primary)',
               background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative'
             }}>
               {/* SKELETON NEÓN */}
               {(!avatarLoaded || !avatarSource) && (
-                <div 
+                <div
                   className="animate-pulse-neon"
                   style={{
                     position: 'absolute',
@@ -281,15 +281,15 @@ const Profile = () => {
                   alt="User"
                   fetchPriority="high"
                   loading="eager"
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
+                  style={{
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'cover',
                     opacity: avatarLoaded ? 1 : 0,
                     transition: 'opacity 0.4s ease-in-out'
                   }}
                   onLoad={() => setAvatarLoaded(true)}
-                  onError={(e) => { 
+                  onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
                     setAvatarLoaded(true);

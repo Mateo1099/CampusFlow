@@ -7,6 +7,21 @@ import emptyStateImg from '../assets/empty_state_cube.png';
 
 const INSTITUTIONS = ['UNAD', 'SENA'];
 
+// HELPERS DE AUDIO ASMR-TECH (WEB AUDIO API)
+const playClick = (freq) => {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.05);
+};
+
 const CourseCard = ({ course, onDelete, onEdit, t }) => {
   const displayColor = course.color || '#ff0000';
   const displayName = course.name || 'Sin Nombre';
@@ -172,40 +187,51 @@ const Agenda = () => {
         <p style={{ color: 'var(--accent-primary)', fontSize: '0.8rem', fontWeight: 800, marginTop: '4px' }}>SISTEMA_DE_REGISTRO</p>
       </header>
 
-      {/* FILTRO TÁCTICO */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        marginBottom: '40px', 
-        padding: '8px', 
-        background: 'rgba(0,0,0,0.3)', 
-        borderRadius: '16px', 
-        border: '1px solid var(--border-glass-top)',
-        width: 'fit-content'
-      }}>
-        {filterOptions.map(opt => (
-          <button
-            key={opt.id}
-            onClick={() => setFiltroActivo(opt.id)}
-            className="click-press"
-            style={{
-              padding: '10px 20px',
-              background: filtroActivo === opt.id ? 'rgba(255,255,255,0.05)' : 'transparent',
-              border: `1px solid ${filtroActivo === opt.id ? opt.color : 'rgba(255,255,255,0.1)'}`,
-              borderRadius: '12px',
-              color: '#fff',
-              fontSize: '0.75rem',
-              fontWeight: 900,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: filtroActivo === opt.id ? `0 0 15px ${opt.color}44` : 'none',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em'
-            }}
-          >
-            {opt.id}
-          </button>
-        ))}
+      {/* FILTROS NEON-PILLS */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap' }}>
+        {filterOptions.map(opt => {
+          const isActive = filtroActivo === opt.id;
+          const neonColor = opt.id === 'TODAS' ? '#00f3ff' : 
+                            opt.id === 'UNAD' ? '#ffcc00' : 
+                            opt.id === 'SENA' ? '#00ff88' : '#bc13fe';
+
+          return (
+            <button
+              key={opt.id}
+              onClick={() => {
+                setFiltroActivo(opt.id);
+                const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
+                playClick(freqs[opt.id] || 800);
+              }}
+              style={{
+                padding: '10px 24px',
+                borderRadius: '50px',
+                border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
+                background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
+                color: isActive ? neonColor : 'var(--text-muted)',
+                fontSize: '0.8rem',
+                fontWeight: 900,
+                cursor: 'pointer',
+                transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}
+            >
+              <div style={{ 
+                width: '6px', 
+                height: '6px', 
+                borderRadius: '50%', 
+                background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
+                boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
+              }} />
+              {opt.id}
+            </button>
+          );
+        })}
       </div>
 
       <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 380px) 1fr', gap: '48px', alignItems: 'start' }}>

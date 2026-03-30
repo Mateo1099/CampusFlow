@@ -43,8 +43,8 @@ const CustomCalendar = ({ selectedDate, onDateSelect, onClose }) => {
       </div>
       
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center' }}>
-        {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => (
-          <span key={d} style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, paddingBottom: '8px' }}>{d}</span>
+        {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, idx) => (
+          <span key={`${d}-${idx}`} style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, paddingBottom: '8px' }}>{d}</span>
         ))}
         {days.map((d, i) => (
           <div key={i} 

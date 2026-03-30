@@ -26,13 +26,13 @@ export const tasksService = {
   },
 
   async createTask(userId, task) {
-    // BLINDAJE FINAL: Solo estados oficiales
+    // MAPEAMOS A LOS NOMBRES DE COLUMNAS DE LA TABLA 'assignments'
     const taskData = { 
       title: task.title,
-      course_id: task.courseId || null,
-      start_date: task.startDate || null,
-      deadline: task.deadline || null,
-      status: 'SIN ENTREGAR', 
+      course_id: task.course_id || task.courseId || null,
+      start_date: task.start_date || task.startDate || null,
+      deadline: task.deadline || task.dueDate || null,
+      status: 'sin entregar', // REGLA DE ORO: MINÚSCULAS
       user_id: userId 
     };
 
@@ -44,40 +44,47 @@ export const tasksService = {
       .select();
     
     if (error) {
-      console.error("ERROR DE INTEGRIDAD (Check Constraint):", error);
+      console.error("ALFA_SAVE_ERROR (assignments):", error);
       throw error;
     }
     return data[0];
   },
 
   async updateTask(id, updates) {
-    // BLINDAJE 23502: Solo mapeamos y enviamos los campos que REALMENTE vienen en el update
+    // BLINDAJE: Solo enviamos lo que viene, mapeando a nombres reales de columnas
     const cloudMapping = {};
     
     if (updates.title !== undefined) cloudMapping.title = updates.title;
-    if (updates.courseId !== undefined) cloudMapping.course_id = updates.courseId;
-    else if (updates.course_id !== undefined) cloudMapping.course_id = updates.course_id;
     
-    if (updates.startDate !== undefined) cloudMapping.start_date = updates.startDate;
-    else if (updates.start_date !== undefined) cloudMapping.start_date = updates.start_date;
+    // Mapeo flexible de Materia
+    if (updates.course_id !== undefined) cloudMapping.course_id = updates.course_id;
+    else if (updates.courseId !== undefined) cloudMapping.course_id = updates.courseId;
+    
+    // Mapeo flexible de Fechas
+    if (updates.start_date !== undefined) cloudMapping.start_date = updates.start_date;
+    else if (updates.startDate !== undefined) cloudMapping.start_date = updates.startDate;
     
     if (updates.deadline !== undefined) cloudMapping.deadline = updates.deadline;
+    else if (updates.dueDate !== undefined) cloudMapping.deadline = updates.dueDate;
     else if (updates.due_date !== undefined) cloudMapping.deadline = updates.due_date;
 
     if (updates.status !== undefined) {
+      // Normalizamos a minúsculas
+      const rawStatus = String(updates.status).toLowerCase();
       const statusMap = {
-        'todo': 'SIN ENTREGAR',
-        'PENDIENTE': 'SIN ENTREGAR',
-        'EN PROCESO': 'EN PROCESO',
-        'REVISIÓN': 'REVISIÓN',
-        'ENTREGADO': 'ENTREGADO',
-        'submitted': 'ENTREGADO',
-        'done': 'ENTREGADO'
+        'todo': 'sin entregar',
+        'sin entregar': 'sin entregar',
+        'pendiente': 'sin entregar',
+        'en proceso': 'en proceso',
+        'revisión': 'revisión',
+        'entregado': 'entregado',
+        'submitted': 'entregado',
+        'done': 'entregado'
       };
-      cloudMapping.status = statusMap[updates.status] || updates.status;
+      cloudMapping.status = statusMap[rawStatus] || rawStatus;
     }
 
-    console.log("ALFA_UPDATE: Enviando PATCH parcial a Supabase ->", cloudMapping);
+    console.log("ALFA_UPDATE: Enviando PATCH a 'assignments' ->", cloudMapping);
 
     const { data, error } = await supabase
       .from('assignments')
@@ -86,7 +93,7 @@ export const tasksService = {
       .select();
     
     if (error) {
-      console.error("ERROR EN PATCH (Supabase):", error);
+      console.error("ALFA_SAVE_ERROR (Update):", error);
       throw error;
     }
     return data[0];

@@ -44,7 +44,7 @@ export const useHabits = (userId, addXP, incrementStat) => {
         duration_minutes: parseInt(activity.durationMinutes) || 30,
         frequency_type: 'daily'
       };
-      const newHabit = await habitsService.createCourse(userId, habitData);
+      const newHabit = await habitsService.createHabit(userId, habitData);
       setHabits(prev => [...prev, newHabit]);
       return newHabit;
     } catch (err) {
