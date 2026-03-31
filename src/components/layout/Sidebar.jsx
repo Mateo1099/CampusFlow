@@ -3,9 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { useTasksContext } from '../../context/TaskContext';
 
 const Sidebar = () => {
   const { t, settings } = useSettings();
+  const { analytics } = useTasksContext();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
@@ -46,7 +48,7 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="glass-panel" style={sidebarStyles}>
+    <aside className="sidebar glass-panel" style={sidebarStyles}>
       {/* Branding */}
       <div style={{ 
         display: 'flex', 
@@ -196,7 +198,7 @@ const Sidebar = () => {
             border: '1px solid var(--border-glass-side)'
           }}>
             <div style={{ 
-              width: `${Math.min((settings.experience / 1000) * 100, 100)}%`, 
+              width: `${Math.min((analytics.totalXP / 1000) * 100, 100)}%`, 
               height: '100%', 
               background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
               borderRadius: 'var(--radius-full)',
@@ -222,7 +224,7 @@ const Sidebar = () => {
             fontWeight: 700,
             letterSpacing: '0.05em'
           }}>
-            <span style={{ color: 'var(--accent-primary)' }}>{settings.experience} XP</span>
+            <span style={{ color: 'var(--accent-primary)' }}>{analytics.totalXP} XP</span>
             <span style={{ color: 'var(--text-muted)' }}>1000 XP</span>
           </div>
         </div>
@@ -338,31 +340,31 @@ const Sidebar = () => {
             </div>
           )}
         </NavLink>
-<button
-  onClick={handleLogout}
-  style={{
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '14px',
-    padding: isHorizontal ? '8px 16px' : '14px 16px',
-    borderRadius: 'var(--radius-md)',
-    background: 'rgba(255, 0, 0, 0.05)',
-    border: '1px solid rgba(255, 0, 0, 0.2)',
-    color: '#ff4d4d',
-    cursor: 'pointer',
-    transition: 'all 0.3s var(--ease-out-quint)',
-    width: isHorizontal ? 'auto' : '100%'
-  }}
-  className="click-press"
-  title={t.logout}
->
-  <LogOut size={isHorizontal ? 20 : 18} />
-  {!isHorizontal && <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{t.logout}</span>}
-</button>
-</div>
-</aside>
-);
+        <button
+          onClick={handleLogout}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '14px',
+            padding: isHorizontal ? '8px 16px' : '14px 16px',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(255, 0, 0, 0.05)',
+            border: '1px solid rgba(255, 0, 0, 0.2)',
+            color: '#ff4d4d',
+            cursor: 'pointer',
+            transition: 'all 0.3s var(--ease-out-quint)',
+            width: isHorizontal ? 'auto' : '100%'
+          }}
+          className="click-press"
+          title={t.logout}
+        >
+          <LogOut size={isHorizontal ? 20 : 18} />
+          {!isHorizontal && <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{t.logout}</span>}
+        </button>
+      </div>
+    </aside>
+  );
 };
 
 export default Sidebar;

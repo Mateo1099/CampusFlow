@@ -36,8 +36,6 @@ export const tasksService = {
       user_id: userId 
     };
 
-    console.log("ALFA_VERIFY: Enviando objeto a Supabase ->", taskData);
-
     const { data, error } = await supabase
       .from('assignments')
       .insert([taskData])
@@ -83,8 +81,6 @@ export const tasksService = {
       };
       cloudMapping.status = statusMap[rawStatus] || rawStatus;
     }
-
-    console.log("ALFA_UPDATE: Enviando PATCH a 'assignments' ->", cloudMapping);
 
     const { data, error } = await supabase
       .from('assignments')

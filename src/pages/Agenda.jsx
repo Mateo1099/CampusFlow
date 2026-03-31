@@ -1,26 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
-import ColorPicker from '../components/ui/ColorPicker';
 import { Plus, Trash2, Hash, Pencil, X, User, Building2, Save, Filter } from 'lucide-react';
 import emptyStateImg from '../assets/empty_state_cube.png';
+import CourseModal from '../components/ui/CourseModal';
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
+
+import { playClick } from '../lib/audioService';
 
 const INSTITUTIONS = ['UNAD', 'SENA'];
-
-// HELPERS DE AUDIO ASMR-TECH (WEB AUDIO API)
-const playClick = (freq) => {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.05);
-};
 
 const CourseCard = ({ course, onDelete, onEdit, t }) => {
   const displayColor = course.color || '#ff0000';
@@ -60,11 +49,11 @@ const CourseCard = ({ course, onDelete, onEdit, t }) => {
           <button
             className="btn-icon"
             title="Editar materia"
-            onClick={() => onEdit(course)}
+            onClick={() => { playClick(1000); onEdit(course); }}
           >
             <Pencil size={15} />
           </button>
-          <button className="btn-icon" title={t.delete} onClick={() => onDelete(course.id)}>
+          <button className="btn-icon" title={t.delete} onClick={() => { playClick(600); onDelete(course.id); }}>
             <Trash2 size={15} />
           </button>
         </div>
@@ -77,23 +66,57 @@ const Agenda = () => {
   const { courses, addCourse, deleteCourse, updateCourse, coursesLoading } = useTasksContext();
   const { t } = useSettings();
 
+  const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ name: '', code: '', color: '#ff0000', teacher: '', institution: 'UNAD', customInstitution: '' });
-  const [showCustom, setShowCustom] = useState(false);
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    code: '', 
+    color: '#ff0000', 
+    teacher: '', 
+    institution: 'UNAD', 
+    customInstitution: '',
+    created_at: new Date().toISOString().split('T')[0]
+  });
   
-  // NIVEL S: Filtro Táctico Persistente
   const [filtroActivo, setFiltroActivo] = useState(() => {
     return localStorage.getItem('cf_filtro_agenda') || 'TODAS';
   });
 
-  // Guardar filtro al cambiar
+  const btnNewRef = useRef(null);
+  const liquidRef = useRef(null);
+
+  useGSAP(() => {
+    if (!btnNewRef.current || !liquidRef.current) return;
+    const btn = btnNewRef.current;
+    const liquid = liquidRef.current;
+    
+    const hoverTl = gsap.timeline({ paused: true });
+    
+    hoverTl.to(liquid, {
+      scale: 1.2,
+      opacity: 1,
+      duration: 0.6,
+      ease: "slow(0.7, 0.7, false)"
+    });
+
+    const enter = () => hoverTl.play();
+    const leave = () => hoverTl.reverse();
+    
+    btn.addEventListener("mouseenter", enter);
+    btn.addEventListener("mouseleave", leave);
+    
+    return () => {
+      btn.removeEventListener("mouseenter", enter);
+      btn.removeEventListener("mouseleave", leave);
+    };
+  }, [showModal]);
+
   React.useEffect(() => {
     localStorage.setItem('cf_filtro_agenda', filtroActivo);
   }, [filtroActivo]);
 
   const filteredCourses = useMemo(() => {
-    console.log("AGENDA_LOG: Cursos actuales en estado ->", courses);
     if (filtroActivo === 'TODAS') return courses;
     
     if (filtroActivo === 'PERSONALIZADO') {
@@ -122,29 +145,37 @@ const Agenda = () => {
     setFormData({
       name: course.name,
       code: course.code || '',
-      color: course.color || course.prefixColor || '#ff0000',
+      color: course.color || '#ff0000',
       teacher: course.teacher || '',
-      institution: isCustomInst ? t.customInstitution : (course.institution || 'UNAD'),
-      customInstitution: isCustomInst ? course.institution : ''
+      institution: isCustomInst ? 'PERSONALIZADO' : (course.institution || 'UNAD'),
+      customInstitution: isCustomInst ? course.institution : '',
+      created_at: course.created_at ? course.created_at.split('T')[0] : new Date().toISOString().split('T')[0]
     });
     setEditingId(course.id);
     setIsEditing(true);
-    setShowCustom(isCustomInst);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowModal(true);
   };
 
-  const cancelEdit = () => {
-    setFormData({ name: '', code: '', color: '#ff0000', teacher: '', institution: 'UNAD', customInstitution: '' });
+  const handleOpenNew = () => {
+    setFormData({ 
+      name: '', 
+      code: '', 
+      color: '#ff0000', 
+      teacher: '', 
+      institution: 'UNAD', 
+      customInstitution: '',
+      created_at: new Date().toISOString().split('T')[0]
+    });
     setIsEditing(false);
     setEditingId(null);
-    setShowCustom(false);
+    setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name) return;
     
-    const institutionValue = formData.institution === t.customInstitution
+    const institutionValue = formData.institution === 'PERSONALIZADO'
       ? formData.customInstitution
       : formData.institution;
 
@@ -153,7 +184,8 @@ const Agenda = () => {
       code: formData.code,
       institution: institutionValue,
       teacher: formData.teacher,
-      color: formData.color
+      color: formData.color,
+      created_at: formData.created_at // Aunque no esté en el service explícito, lo pasamos
     };
 
     try {
@@ -162,15 +194,10 @@ const Agenda = () => {
       } else {
         await addCourse(submissionData);
       }
-      cancelEdit();
+      setShowModal(false);
     } catch (err) {
       console.error("Error saving course:", err);
     }
-  };
-
-  const handleInstitutionChange = (val) => {
-    setFormData({ ...formData, institution: val });
-    setShowCustom(val === t.customInstitution);
   };
 
   const filterOptions = [
@@ -181,10 +208,51 @@ const Agenda = () => {
   ];
 
   return (
-    <div className="animate-fade-in" style={{ padding: '32px 40px' }}>
-      <header className="page-header" style={{ marginBottom: '24px' }}>
-        <h1 className="page-title" style={{ textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.05em' }}>Gestión de Materias</h1>
-        <p style={{ color: 'var(--accent-primary)', fontSize: '0.8rem', fontWeight: 800, marginTop: '4px' }}>SISTEMA_DE_REGISTRO</p>
+    <div className="animate-fade-in" style={{ padding: '32px 48px' }}>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>MATERIAS</h1>
+        </div>
+        <button 
+          ref={btnNewRef} 
+          className="click-press" 
+          onClick={handleOpenNew} 
+          style={{ 
+            padding: '10px 28px', 
+            fontWeight: 700, 
+            borderRadius: '50px', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            color: '#00f3ff', 
+            border: '1px solid #00f3ff', 
+            backdropFilter: 'blur(10px)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            fontSize: '0.9rem', 
+            cursor: 'pointer',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+        >
+          <div 
+            ref={liquidRef}
+            style={{
+              background: 'radial-gradient(circle, rgba(0, 243, 255, 0.4) 0%, rgba(0, 243, 255, 0) 70%)',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%) scale(0)',
+              borderRadius: '50%',
+              width: '150%',
+              aspectRatio: '1/1',
+              pointerEvents: 'none',
+              opacity: 0,
+              zIndex: 0
+            }}
+          />
+          <Plus size={18} style={{ position: 'relative', zIndex: 1 }} /> 
+          <span style={{ position: 'relative', zIndex: 1 }}>NUEVA MATERIA</span>
+        </button>
       </header>
 
       {/* FILTROS NEON-PILLS */}
@@ -234,91 +302,50 @@ const Agenda = () => {
         })}
       </div>
 
-      <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 380px) 1fr', gap: '48px', alignItems: 'start' }}>
-
-        {/* Formulario Estilo Warzone / Gamer */}
-        <div className="glass-panel gamer-glow" style={{ padding: '32px', background: 'rgba(5,5,5,0.8)' }}>
-          <h3 className="font-display" style={{ marginBottom: '28px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 800 }}>
-            {isEditing ? <Pencil size={20} /> : <Plus size={20} />} 
-            {isEditing ? 'EDITAR MATERIA' : 'REGISTRAR MATERIA'}
-          </h3>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>NOMBRE DEL CURSO *</label>
-              <input className="input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Ej. Cálculo Diferencial" required style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,0,0,0.2)' }} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>CÓDIGO</label>
-                <input className="input" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="100410" style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,0,0,0.2)' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>INSTITUCIÓN</label>
-                <select className="select" value={formData.institution} onChange={e => handleInstitutionChange(e.target.value)} style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,0,0,0.2)' }}>
-                  {INSTITUTIONS.map(inst => <option key={inst} value={inst} style={{ background: '#000' }}>{inst}</option>)}
-                  <option value={t.customInstitution} style={{ background: '#000' }}>{t.customInstitution}</option>
-                </select>
-              </div>
-            </div>
-
-            {showCustom && (
-              <div className="animate-fade-in">
-                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>NOMBRE INSTITUCIÓN</label>
-                <input className="input" value={formData.customInstitution} onChange={e => setFormData({ ...formData, customInstitution: e.target.value })} placeholder="Ej. Universidad Nacional" style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,0,0,0.2)' }} />
-              </div>
-            )}
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>PROFESOR *</label>
-              <input className="input" value={formData.teacher} onChange={e => setFormData({ ...formData, teacher: e.target.value })} placeholder="Ej. Ing. Mauricio Silva" required style={{ background: 'rgba(0,0,0,0.4)', borderColor: 'rgba(255,0,0,0.2)' }} />
-            </div>
-
-            <div style={{ marginBottom: '8px' }}>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>COLOR DE IDENTIFICACIÓN</label>
-              <ColorPicker 
-                selectedColor={formData.color} 
-                onSelect={(color) => setFormData({ ...formData, color: color })}
-                t={t} 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+        {filteredCourses.length === 0 ? (
+          <div className="glass-panel animate-fade-in" style={{ padding: '60px 40px', textAlign: 'center', gridColumn: '1 / -1', opacity: 0.8, borderStyle: 'dashed', borderColor: 'var(--border-glass-top)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '180px', height: '180px', marginBottom: '16px', position: 'relative' }}>
+              <img 
+                src={emptyStateImg} 
+                alt="Vacío" 
+                style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9, filter: 'drop-shadow(0 0 20px rgba(255, 0, 0, 0.2))' }} 
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
               />
+              <div style={{ display: 'none', width: '100%', height: '100%', border: '2px solid var(--accent-primary)', borderRadius: '16px', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 243, 255, 0.05)', boxShadow: '0 0 20px rgba(0, 243, 255, 0.2)' }}>
+                <Plus size={40} color="var(--accent-primary)" opacity={0.5} />
+              </div>
             </div>
+            <p className="font-display" style={{ fontSize: '1.2rem', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-muted)' }}>
+              {filtroActivo === 'TODAS' ? 'SISTEMA SIN DATOS' : `SIN MATERIAS EN ${filtroActivo}`}
+            </p>
+          </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              {isEditing && (
-                <button type="button" className="btn btn-secondary" onClick={cancelEdit} style={{ flex: 1 }}>
-                  CANCELAR
-                </button>
-              )}
-              <button type="submit" className="btn btn-primary" style={{ flex: 2, background: 'var(--accent-primary)', color: '#fff', fontWeight: 900 }}>
-                {isEditing ? <Save size={18} /> : <Plus size={18} />} 
-                {isEditing ? 'GUARDAR_CAMBIOS' : 'REGISTRAR'}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Grid de materias filtrado */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
-          {filteredCourses.length === 0 ? (
-            <div className="glass-panel animate-fade-in" style={{ padding: '60px 40px', textAlign: 'center', gridColumn: '1 / -1', opacity: 0.8, borderStyle: 'dashed', borderColor: 'var(--border-glass-top)' }}>
-              <img src={emptyStateImg} alt="Vacío" style={{ maxWidth: '180px', opacity: 0.9, marginBottom: '16px', filter: 'drop-shadow(0 0 20px rgba(255, 0, 0, 0.2))' }} />
-              <p className="font-display" style={{ fontSize: '1.2rem', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-muted)' }}>
-                {filtroActivo === 'TODAS' ? 'SISTEMA SIN DATOS' : `SIN MATERIAS EN ${filtroActivo}`}
-              </p>
-            </div>
-          ) : (
-            filteredCourses.map(course => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                onDelete={deleteCourse}
-                onEdit={handleEdit}
-                t={t}
-              />
-            ))
-          )}
-        </div>
+        ) : (
+          filteredCourses.map(course => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onDelete={deleteCourse}
+              onEdit={handleEdit}
+              t={t}
+            />
+          ))
+        )}
       </div>
+
+      <CourseModal 
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        isEditing={isEditing}
+        formData={formData}
+        setFormData={setFormData}
+        handleSubmit={handleSubmit}
+        t={t}
+      />
     </div>
   );
 };

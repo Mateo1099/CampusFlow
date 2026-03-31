@@ -5,8 +5,6 @@ export const coursesService = {
     if (!userId) return [];
     
     // REVERSIÓN TÁCTICA: De 'subjects' a 'courses'
-    console.log("CONSULTANDO courses PARA UID:", userId);
-
     const { data, error } = await supabase
       .from('courses')
       .select('id, name, color, teacher, code, institution')
@@ -17,7 +15,6 @@ export const coursesService = {
       throw error;
     }
 
-    console.log("DATOS courses RECIBIDOS:", data);
     return data || [];
   },
 

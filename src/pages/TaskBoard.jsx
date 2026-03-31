@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
 import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // GSAP IMPORTS
@@ -12,47 +13,6 @@ import { CustomEase } from "gsap/CustomEase";
 import { RoughEase, SlowMo } from "gsap/EasePack";
 
 gsap.registerPlugin(useGSAP, RoughEase, SlowMo, CustomEase);
-
-// HELPERS DE AUDIO ASMR-TECH (WEB AUDIO API)
-const playClick = (freq) => {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.05);
-};
-
-const playDropSound = () => {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-  const bufferSize = audioCtx.sampleRate * 0.05;
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-  const noise = audioCtx.createBufferSource();
-  noise.buffer = buffer;
-  const noiseGain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(400, audioCtx.currentTime);
-  noiseGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-  noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-  osc.connect(gain); gain.connect(audioCtx.destination);
-  noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
-  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-  noise.start(); noise.stop(audioCtx.currentTime + 0.1);
-};
 
 // COLUMNAS OFICIALES
 const COLUMNS = [
@@ -145,7 +105,6 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
             <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayDate}</span>
           </div>
         )}
-        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)' }}>ID_{String(task.id).slice(0,4).toUpperCase()}</span>
       </div>
     </motion.div>
   );
@@ -154,7 +113,17 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
 const TaskBoard = () => {
   const { tasks, setTasks, updateTaskStatus, deleteTask, updateTask, addTask, courses, tasksLoading } = useTasksContext();
   const { t } = useSettings();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showModal, setShowModal] = useState(false);
+
+  React.useEffect(() => {
+    if (location.state?.openModal) {
+      setShowModal(true);
+      // Limpiar el estado para que no se abra de nuevo al recargar
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '' });
@@ -247,6 +216,14 @@ const TaskBoard = () => {
     }, 0);
   };
 
+  const playDropSound = () => {
+    try {
+      const audio = new Audio('/sounds/alpha.mp3');
+      audio.volume = 0.2;
+      audio.play().catch(() => {});
+    } catch (e) {}
+  };
+
   const handleDragEnd = async (task, info) => {
     const x = info.point.x;
     let targetColumn = task.status;
@@ -297,7 +274,7 @@ const TaskBoard = () => {
     };
 
     // ALFA_DEBUG: Verificación de integridad de datos antes del envío
-    console.log("ALFA_DEBUG: Objeto preparado para Supabase ->", taskData);
+
 
     try {
       if (isEditing) {
@@ -319,7 +296,6 @@ const TaskBoard = () => {
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
         <div>
           <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>TRABAJOS</h1>
-          <p style={{ color: 'var(--accent-primary)', fontWeight: 900 }}>SISTEMA_DE_ENTREGAS</p>
         </div>
         <button 
           ref={btnNewRef} 
@@ -508,8 +484,34 @@ const TaskBoard = () => {
       </div>
 
       {showModal && (
-        <div className="animate-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(12px)' }}>
-          <motion.div ref={modalPanelRef} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel gamer-glow" style={{ width: '100%', maxWidth: '520px', padding: '40px', background: '#050505', border: '1px solid var(--border-glass-top)' }}>
+        <div className="animate-backdrop" style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          background: 'rgba(0,0,0,0.7)', 
+          zIndex: 9999, 
+          backdropFilter: 'blur(15px)'
+        }}>
+          <motion.div 
+            ref={modalPanelRef} 
+            initial={{ scale: 0.8, opacity: 0, x: '-50%', y: '-50%' }} 
+            animate={{ scale: 1, opacity: 1, x: '-50%', y: '-50%' }} 
+            className="glass-panel gamer-glow" 
+            style={{ 
+              width: '90%', 
+              maxWidth: '520px', 
+              padding: '40px', 
+              background: 'rgba(18, 18, 18, 0.8)', 
+              border: '1px solid rgba(0, 243, 255, 0.3)',
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10000,
+              boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(0, 243, 255, 0.1)',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
               <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)' }}>{isEditing ? 'EDITAR TRABAJO' : 'NUEVO TRABAJO'}</h2>
               <button 
@@ -571,7 +573,6 @@ const TaskBoard = () => {
           </motion.div>
         </div>
       )}
-      <style dangerouslySetInnerHTML={{ __html: `.btn-icon-alfa { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 6px; display: flex; transition: all 0.2s ease; } .edit-hover:hover { color: #00f3ff !important; background: rgba(0, 243, 243, 0.1) !important; } .delete-hover:hover { color: #ff0000 !important; background: rgba(255, 0, 0, 0.1) !important; }`}} />
     </div>
   );
 };

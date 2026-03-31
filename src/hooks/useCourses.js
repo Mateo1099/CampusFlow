@@ -28,7 +28,7 @@ export const useCourses = (userId) => {
         return { id, name, color, teacher, code, institution };
       });
 
-      console.log("ALFA_PROOF_OF_LIFE: Materias cargadas y normalizadas ->", normalizedData);
+
       setCourses(normalizedData);
     } catch (err) {
       console.error("HOOK_COURSES_FATAL_ERROR:", err.message);

@@ -15,7 +15,7 @@ const Stats = () => {
     );
   }
 
-  const { totalTasks, completedTasks, totalHabits, completedHabits, productivity } = analytics;
+  const { totalTasks, completedTasks, totalHabits, completedHabits, productivity, totalXP } = analytics;
   const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   const habitProgress = totalHabits > 0 ? (completedHabits / totalHabits) * 100 : 0;
 
@@ -55,10 +55,10 @@ const Stats = () => {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '10px', color: 'var(--text-secondary)' }}>
               <span>Progreso de Nivel</span>
-              <span>{settings.experience} / 1000 XP</span>
+              <span>{totalXP} / 1000 XP</span>
             </div>
             <div style={{ height: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border-glass-top)' }}>
-              <div style={{ width: `${(settings.experience / 1000) * 100}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))', boxShadow: '0 0 10px var(--accent-primary)', transition: 'all 0.6s' }} />
+              <div style={{ width: `${(totalXP / 1000) * 100}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))', boxShadow: '0 0 10px var(--accent-primary)', transition: 'all 0.6s' }} />
             </div>
           </div>
         </div>

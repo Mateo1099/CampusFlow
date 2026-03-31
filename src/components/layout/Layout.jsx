@@ -2,9 +2,24 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useSettings, WALLPAPERS } from '../../context/SettingsContext';
+import { resumeAudio } from '../../lib/audioService';
 
 const Layout = () => {
   const { settings, recentXPGains } = useSettings();
+
+  React.useEffect(() => {
+    const handleGesture = () => {
+      resumeAudio();
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+    window.addEventListener('click', handleGesture);
+    window.addEventListener('touchstart', handleGesture);
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+  }, []);
   
   const wp = WALLPAPERS.find(w => w.id === settings.wallpaper);
   const bgSrc = settings.wallpaper === 'custom' ? settings.customWallpaper : (wp ? wp.src : null);
@@ -38,7 +53,7 @@ const Layout = () => {
         transition: 'flex-direction 0.5s var(--ease-out-quint)'
       }}>
         <Sidebar />
-        <main className="main-content">
+        <main className="main-content" style={{ position: 'relative', zIndex: 1 }}>
           <Outlet />
         </main>
       </div>

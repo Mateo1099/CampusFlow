@@ -31,7 +31,9 @@ export function TaskProvider({ children }) {
   // Analytics Globales
   const analytics = useMemo(() => {
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.status === 'submitted').length;
+    const deliveredTasks = tasks.filter(t => t.status === 'entregado' || t.status === 'submitted');
+    const completedTasks = deliveredTasks.length;
+    const totalXP = completedTasks * 100;
     const totalHabits = dailyPlan.length;
     const completedHabits = dailyPlan.filter(h => h.completed).length;
     
@@ -40,12 +42,12 @@ export function TaskProvider({ children }) {
     const dayMap = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
     
     tasks.forEach(t => {
-      if (t.status === 'submitted' && t.day && dayMap[t.day] !== undefined) {
+      if ((t.status === 'submitted' || t.status === 'entregado') && t.day && dayMap[t.day] !== undefined) {
         productivity[dayMap[t.day]] += 1;
       }
     });
 
-    return { totalTasks, completedTasks, totalHabits, completedHabits, productivity };
+    return { totalTasks, completedTasks, totalXP, totalHabits, completedHabits, productivity };
   }, [tasks, dailyPlan]);
 
   const value = {
