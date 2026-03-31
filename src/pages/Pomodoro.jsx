@@ -363,13 +363,15 @@ const Pomodoro = () => {
         )}
 
         {/* Reproductor Oculto con KEY para forzar re-montaje al cambiar de sonido */}
-        <audio 
-          key={ambientSound}
-          ref={audioRef}
-          loop 
-          crossOrigin="anonymous"
-          src={ambientSound === 'custom' ? customAudioUrl : (SOUNDSCAPES.find(s => s.id === ambientSound)?.src || '')} 
-        />
+        {(ambientSound === 'custom' ? customAudioUrl : (SOUNDSCAPES.find(s => s.id === ambientSound)?.src || '')) && (
+          <audio 
+            key={ambientSound}
+            ref={audioRef}
+            loop 
+            crossOrigin="anonymous"
+            src={ambientSound === 'custom' ? customAudioUrl : (SOUNDSCAPES.find(s => s.id === ambientSound)?.src || '')} 
+          />
+        )}
       </div>
 
     </div>

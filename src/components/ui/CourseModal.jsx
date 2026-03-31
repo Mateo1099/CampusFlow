@@ -19,14 +19,26 @@ const CourseModal = ({
 }) => {
   const [activePicker, setActivePicker] = useState(null);
   const [showCustom, setShowCustom] = useState(false);
+  const [calendarPos, setCalendarPos] = useState({ top: 0, left: 0 });
   const modalPanelRef = useRef(null);
   const closeIconRef = useRef(null);
+  const dateInputRef = useRef(null);
 
   useEffect(() => {
     if (show) {
       const isCustomInst = !INSTITUTIONS.includes(formData.institution) && formData.institution !== '';
       setShowCustom(isCustomInst);
+      // Bloqueo de scroll cuando modal abre
+      document.body.style.overflow = 'hidden';
+    } else {
+      // Liberar scroll cuando modal cierra
+      document.body.style.overflow = 'unset';
     }
+    
+    return () => {
+      // Cleanup: asegurar que scroll se libera
+      document.body.style.overflow = 'unset';
+    };
   }, [show, formData.institution]);
 
   const handleClose = () => {
@@ -59,38 +71,64 @@ const CourseModal = ({
     setShowCustom(val === 'PERSONALIZADO' || (val !== 'UNAD' && val !== 'SENA' && val !== ''));
   };
 
+  const handleDatePickerClick = () => {
+    if (dateInputRef.current) {
+      const rect = dateInputRef.current.getBoundingClientRect();
+      setCalendarPos({
+        top: rect.bottom + 10,  // Sin window.scrollY (modal es position: fixed)
+        left: rect.left         // Sin window.scrollX (modal es position: fixed)
+      });
+    }
+    setActivePicker('created_at');
+  };
+
   if (!show) return null;
 
   return (
-    <div className="animate-backdrop" style={{ 
-      position: 'fixed', 
-      inset: 0, 
-      background: 'rgba(0,0,0,0.8)', 
-      zIndex: 9999, 
-      backdropFilter: 'blur(20px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <motion.div 
-        ref={modalPanelRef} 
-        initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-        animate={{ scale: 1, opacity: 1, y: 0 }} 
-        className="glass-panel gamer-glow" 
-        style={{ 
-          width: '90%', 
-          maxWidth: '520px', 
-          padding: '40px', 
-          background: 'rgba(12, 12, 12, 0.9)', 
-          borderRadius: '24px',
-          border: '1px solid rgba(0, 243, 255, 0.3)',
-          position: 'relative',
-          zIndex: 10000,
-          boxShadow: '0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(0, 243, 255, 0.15)',
-          maxHeight: '90vh',
-          overflow: 'visible'
-        }}
-      >
+    <AnimatePresence>
+      <div className="animate-backdrop" style={{ 
+        position: 'fixed', 
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.5)', 
+        zIndex: 999, 
+        backdropFilter: 'blur(20px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <motion.div 
+          key="course-modal"
+          ref={modalPanelRef} 
+          initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+          animate={{ opacity: 1, scale: 1, y: 0 }} 
+          exit={{ opacity: 0, scale: 0.9, y: 10 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          className="glass-panel gamer-glow" 
+          style={{ 
+            width: '90%', 
+            maxWidth: '520px',
+            minWidth: '450px',
+            minHeight: '580px',
+            padding: '40px', 
+            background: 'rgba(15, 15, 20, 0.85)', 
+            backdropFilter: 'blur(30px)',
+            borderRadius: '24px !important',
+            border: '1px solid rgba(0, 243, 255, 0.35)',
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000,
+            boxShadow: '0 0 30px rgba(0, 243, 255, 0.3), 0 0 15px rgba(0, 243, 255, 0.15), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            overflow: 'visible',
+            pointerEvents: 'auto'
+          }}
+        >
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -115,45 +153,47 @@ const CourseModal = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>NOMBRE DEL CURSO *</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE DEL CURSO *</label>
             <input 
               className="input" 
               required 
               value={formData.name} 
               onChange={e => setFormData({ ...formData, name: e.target.value })} 
               placeholder="Ej. Cálculo Diferencial" 
-              style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }} 
+              style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text' }} 
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>CÓDIGO</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>CÓDIGO</label>
               <input 
                 className="input" 
                 value={formData.code} 
                 onChange={e => setFormData({ ...formData, code: e.target.value })} 
                 placeholder="100410" 
-                style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }} 
+                style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text' }} 
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>INSTITUCIÓN</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>INSTITUCIÓN</label>
               <select 
                 className="select" 
                 value={formData.institution} 
                 onChange={e => handleInstitutionChange(e.target.value)}
                 style={{ 
-                  background: 'rgba(0, 0, 0, 0.3)', 
+                  background: 'rgba(255,255,255,0.04)', 
                   color: '#fff',
-                  padding: '14px', 
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.05)',
+                  padding: '14px 16px', 
+                  borderRadius: '14px',
+                  border: '1px solid rgba(0, 243, 255, 0.15)',
                   appearance: 'none',
                   cursor: 'pointer',
-                  width: '100%'
+                  width: '100%',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease'
                 }}
               >
                 {INSTITUTIONS.map(inst => <option key={inst} value={inst} style={{ background: '#121212' }}>{inst}</option>)}
@@ -164,35 +204,36 @@ const CourseModal = ({
 
           {showCustom && (
             <div className="animate-fade-in">
-              <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>NOMBRE INSTITUCIÓN</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE INSTITUCIÓN</label>
               <input 
                 className="input" 
                 value={formData.customInstitution || ''} 
                 onChange={e => setFormData({ ...formData, customInstitution: e.target.value })} 
                 placeholder="Ej. Universidad Nacional" 
-                style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }} 
+                style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text' }} 
               />
             </div>
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>PROFESOR *</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>PROFESOR *</label>
             <input 
               className="input" 
               required 
               value={formData.teacher} 
               onChange={e => setFormData({ ...formData, teacher: e.target.value })} 
               placeholder="Ej. Ing. Mauricio Silva" 
-              style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }} 
+              style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text' }} 
             />
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>FECHA DE CREACIÓN</label>
+          <div style={{ position: 'relative' }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>FECHA DE CREACIÓN</label>
             <div 
-              onClick={() => setActivePicker('created_at')} 
+              ref={dateInputRef}
+              onClick={handleDatePickerClick} 
               className="input" 
-              style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'rgba(0, 0, 0, 0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}
+              style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', width: '100%' }}
             >
               {formData.created_at || 'SELECCIONAR FECHA...'} 
               <CalendarIcon size={16} color="#00f3ff" />
@@ -200,7 +241,7 @@ const CourseModal = ({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.72rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800 }}>COLOR DE IDENTIFICACIÓN</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>COLOR DE IDENTIFICACIÓN</label>
             <ColorPicker 
               selectedColor={formData.color} 
               onSelect={(color) => setFormData({ ...formData, color: color })}
@@ -208,18 +249,42 @@ const CourseModal = ({
             />
           </div>
 
-          {activePicker && (
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10002 }}>
-              <CustomCalendar 
-                selectedDate={formData.created_at} 
-                onDateSelect={(d) => { 
-                  setFormData({ ...formData, created_at: d.split('T')[0] }); 
-                  setActivePicker(null); 
-                }} 
-                onClose={() => setActivePicker(null)} 
-              />
-            </div>
-          )}
+          <AnimatePresence>
+            {activePicker && (
+              <motion.div
+                key="calendar-dropdown"
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                style={{ 
+                  position: 'absolute', 
+                  top: 'calc(100% + 10px)',
+                  left: 0,
+                  zIndex: 1001,
+                  width: '100%'
+                }}
+              >
+                <div style={{
+                  background: 'rgba(15, 15, 20, 0.95)',
+                  backdropFilter: 'blur(30px)',
+                  border: '1px solid rgba(0, 243, 255, 0.3)',
+                  borderRadius: '16px',
+                  boxShadow: '0 0 30px rgba(0, 243, 255, 0.2), 0 12px 40px rgba(0,0,0,0.5)',
+                  padding: '20px'
+                }}>
+                  <CustomCalendar 
+                    selectedDate={formData.created_at} 
+                    onDateSelect={(d) => { 
+                      setFormData({ ...formData, created_at: d.split('T')[0] }); 
+                      setActivePicker(null); 
+                    }} 
+                    onClose={() => setActivePicker(null)} 
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px' }}>
             <ModalButton label="CANCELAR" onClick={handleClose} variant="cancel" />
@@ -232,53 +297,20 @@ const CourseModal = ({
           </div>
         </form>
       </motion.div>
-    </div>
+      </div>
+    </AnimatePresence>
   );
 };
 
 const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => {
-  const btnRef = useRef(null);
-  
-  useGSAP(() => {
-    if (!btnRef.current || disabled) return;
-    const btn = btnRef.current;
-    const tl = gsap.timeline({ paused: true });
-    
-    if (variant === 'save') {
-      tl.to(btn, { 
-        backgroundColor: 'rgba(0, 243, 255, 0.2)', 
-        boxShadow: '0 0 20px rgba(0, 243, 255, 0.6)', 
-        duration: 0.3, 
-        ease: "slow(0.7, 0.7, false)" 
-      });
-    } else {
-      tl.to(btn, { 
-        backgroundColor: 'rgba(255, 77, 77, 0.15)', 
-        boxShadow: '0 0 15px rgba(255, 77, 77, 0.4)', 
-        borderColor: 'rgba(255, 77, 77, 0.6)', 
-        duration: 0.3, 
-        ease: "power2.out" 
-      });
-    }
-    
-    const enter = () => tl.play();
-    const leave = () => tl.reverse();
-    
-    btn.addEventListener("mouseenter", enter);
-    btn.addEventListener("mouseleave", leave);
-    
-    return () => { 
-      btn.removeEventListener("mouseenter", enter); 
-      btn.removeEventListener("mouseleave", leave); 
-    };
-  }, [variant, disabled]);
-
   return (
-    <button 
-      ref={btnRef} 
+    <motion.button 
       type={type} 
       onClick={onClick} 
       disabled={disabled}
+      whileHover={!disabled ? { scale: 1.06, textShadow: variant === 'save' ? '0 0 10px rgba(0, 243, 255, 0.5)' : '0 0 10px rgba(255, 77, 77, 0.3)' } : {}}
+      whileTap={!disabled ? { scale: 0.98 } : {}}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       style={{ 
         padding: '12px 32px',
         borderRadius: '12px',
@@ -286,20 +318,23 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
         fontWeight: 900,
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.3s ease',
-        background: variant === 'save' ? 'rgba(0, 243, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+        background: variant === 'save' ? 'rgba(0, 243, 255, 0.12)' : 'rgba(255, 77, 77, 0.1)',
         color: variant === 'save' ? '#00f3ff' : '#ff4d4d',
-        border: `1px solid ${variant === 'save' ? '#00f3ff33' : '#ff4d4d33'}`,
+        border: `1px solid ${variant === 'save' ? 'rgba(0, 243, 255, 0.35)' : 'rgba(255, 77, 77, 0.35)'}`,
         opacity: disabled ? 0.5 : 1,
         textTransform: 'uppercase',
         letterSpacing: '1px',
         display: 'flex',
         alignItems: 'center',
-        gap: '8px'
+        gap: '8px',
+        boxShadow: variant === 'save' 
+          ? '0 0 20px rgba(0, 243, 255, 0.15)' 
+          : '0 0 20px rgba(255, 77, 77, 0.1)'
       }}
     >
       {variant === 'save' ? (label.includes('GUARDAR') ? <Save size={16} /> : <Plus size={16} />) : <X size={16} />}
       {label}
-    </button>
+    </motion.button>
   );
 };
 

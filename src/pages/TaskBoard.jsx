@@ -218,10 +218,18 @@ const TaskBoard = () => {
 
   const playDropSound = () => {
     try {
-      const audio = new Audio('/sounds/alpha.mp3');
-      audio.volume = 0.2;
-      audio.play().catch(() => {});
-    } catch (e) {}
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } catch {}
   };
 
   const handleDragEnd = async (task, info) => {
@@ -484,35 +492,41 @@ const TaskBoard = () => {
       </div>
 
       {showModal && (
-        <div className="animate-backdrop" style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          background: 'rgba(0,0,0,0.7)', 
-          zIndex: 9999, 
-          backdropFilter: 'blur(15px)'
-        }}>
-          <motion.div 
-            ref={modalPanelRef} 
-            initial={{ scale: 0.8, opacity: 0, x: '-50%', y: '-50%' }} 
-            animate={{ scale: 1, opacity: 1, x: '-50%', y: '-50%' }} 
-            className="glass-panel gamer-glow" 
-            style={{ 
-              width: '90%', 
-              maxWidth: '520px', 
-              padding: '40px', 
-              background: 'rgba(18, 18, 18, 0.8)', 
-              border: '1px solid rgba(0, 243, 255, 0.3)',
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 10000,
-              boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(0, 243, 255, 0.1)',
-              maxHeight: '90vh',
-              overflowY: 'auto'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
+        <AnimatePresence>
+          <div className="animate-backdrop" style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(0,0,0,0.5)', 
+            zIndex: 9999, 
+            backdropFilter: 'blur(20px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <motion.div 
+              key="task-modal"
+              ref={modalPanelRef} 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              className="glass-panel gamer-glow" 
+              style={{ 
+                width: '90%', 
+                maxWidth: '520px', 
+                padding: '40px', 
+                background: 'rgba(15, 15, 20, 0.85)', 
+                backdropFilter: 'blur(30px)',
+                border: '1px solid rgba(0, 243, 255, 0.25)',
+                borderRadius: '24px',
+                position: 'relative',
+                zIndex: 10000,
+                boxShadow: '0 25px 60px rgba(0,0,0,0.4), 0 0 40px rgba(0, 243, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
+                maxHeight: '90vh',
+                overflowY: 'auto'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
               <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)' }}>{isEditing ? 'EDITAR TRABAJO' : 'NUEVO TRABAJO'}</h2>
               <button 
                 onClick={handleClose} 
@@ -571,41 +585,30 @@ const TaskBoard = () => {
               </div>
             </form>
           </motion.div>
-        </div>
+          </div>
+        </AnimatePresence>
       )}
     </div>
   );
 };
 
 const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => {
-  const btnRef = useRef(null);
-  useGSAP(() => {
-    if (!btnRef.current || disabled) return;
-    const btn = btnRef.current;
-    const tl = gsap.timeline({ paused: true });
-    if (variant === 'save') tl.to(btn, { backgroundColor: 'rgba(0, 243, 255, 0.2)', boxShadow: '0 0 20px rgba(0, 243, 255, 0.6)', duration: 0.3, ease: "slow(0.7, 0.7, false)" });
-    else tl.to(btn, { backgroundColor: 'rgba(255, 77, 77, 0.15)', boxShadow: '0 0 15px rgba(255, 77, 77, 0.4)', borderColor: 'rgba(255, 77, 77, 0.6)', duration: 0.3, ease: "power2.out" });
-    const enter = () => tl.play();
-    const leave = () => tl.reverse();
-    btn.addEventListener("mouseenter", enter);
-    btn.addEventListener("mouseleave", leave);
-    return () => { btn.removeEventListener("mouseenter", enter); btn.removeEventListener("mouseleave", leave); };
-  }, [variant, disabled]);
-
   return (
-    <button 
-      ref={btnRef} 
+    <motion.button 
       type={type} 
       onClick={onClick} 
       disabled={disabled}
+      whileHover={!disabled ? { scale: 1.05 } : {}}
+      whileTap={!disabled ? { scale: 0.98 } : {}}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       style={{ 
         width: '180px', 
         height: '48px', 
         padding: '0 24px', 
         borderRadius: '12px', 
-        background: 'rgba(255, 255, 255, 0.05)', 
-        border: variant === 'save' ? '1px solid #00f3ff' : '1px solid rgba(255, 255, 255, 0.1)', 
-        color: variant === 'save' ? '#00f3ff' : '#fff', 
+        background: variant === 'save' ? 'rgba(0, 243, 255, 0.08)' : 'rgba(255, 77, 77, 0.08)', 
+        border: variant === 'save' ? '1px solid rgba(0, 243, 255, 0.3)' : '1px solid rgba(255, 77, 77, 0.3)', 
+        color: variant === 'save' ? '#00f3ff' : '#ff4d4d', 
         fontWeight: 800, 
         fontSize: '0.9rem', 
         cursor: disabled ? 'not-allowed' : 'pointer', 
@@ -618,7 +621,7 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       }}
     >
       {label}
-    </button>
+    </motion.button>
   );
 };
 
