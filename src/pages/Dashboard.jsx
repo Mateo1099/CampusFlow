@@ -13,7 +13,6 @@ const Dashboard = () => {
   const [currentFilter, setCurrentFilter] = useState('TODAS');
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const playClick = (freq = 800) => {
     try {
@@ -127,10 +126,6 @@ const Dashboard = () => {
   const daysLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
   const fullDaysLabels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-  const handleMouseMove = (e) => {
-    setMousePos({ x: e.clientX, y: e.clientY });
-  };
-
   const formatDateLegible = (dateStr) => {
     if (!dateStr) return '';
     try {
@@ -140,56 +135,13 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="animate-fade-in" onMouseMove={handleMouseMove} style={{ padding: '32px 48px', position: 'relative', overflow: 'visible', minHeight: '100%' }}>
+    <div className="animate-fade-in" style={{ padding: '32px 48px', position: 'relative', overflow: 'visible', minHeight: '100%' }}>
       {/* Watermark gigante */}
       <div style={{ position: 'absolute', top: '-60px', left: '-20px', fontSize: '14rem', fontWeight: 900, color: 'rgba(255,255,255,0.02)', zIndex: -1, fontFamily: 'var(--font-display)', userSelect: 'none', pointerEvents: 'none' }}>
         HUB
       </div>
 
-      {/* TOOLTIP ENERGY GRID */}
-      <AnimatePresence>
-        {hoveredDay !== null && effortMatrixDetails[hoveredDay].length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            style={{
-              position: 'fixed',
-              top: mousePos.y - 20,
-              left: mousePos.x,
-              transform: 'translate(-50%, -100%)',
-              zIndex: 99999,
-              pointerEvents: 'none',
-              padding: '12px 16px',
-              background: 'rgba(10, 10, 10, 0.95)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '16px',
-              border: '1px solid rgba(0, 243, 255, 0.4)',
-              boxShadow: '0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.2)',
-              width: 'fit-content',
-              minWidth: '200px'
-            }}
-          >
-            <h4 style={{ margin: '0 0 10px', fontSize: '0.65rem', fontWeight: 900, color: '#00f3ff', textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '1px solid rgba(0, 243, 255, 0.2)', paddingBottom: '6px' }}>
-              {fullDaysLabels[hoveredDay]}
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {effortMatrixDetails[hoveredDay].sort((a, b) => {
-                const priorities = { alta: 3, media: 2, baja: 1 };
-                return (priorities[b.priority] || 0) - (priorities[a.priority] || 0);
-              }).map(t => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.color, boxShadow: `0 0 8px ${t.color}` }} />
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{t.title}</p>
-                    <p style={{ margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 800 }}>{t.institution}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <header className="page-header" style={{ marginBottom: '40px' }}>
         <h1 className="page-title" style={{
@@ -437,7 +389,7 @@ const Dashboard = () => {
             {effortMatrixDetails.map((dayTasks, idx) => {
               const isActive = selectedDay === idx;
               return (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', position: 'relative' }}>
                   <motion.div 
                     onMouseEnter={() => setHoveredDay(idx)}
                     onMouseLeave={() => setHoveredDay(null)}
@@ -460,9 +412,54 @@ const Dashboard = () => {
                       maxHeight: '200px',
                       overflowY: 'auto',
                       cursor: 'pointer',
-                      transition: 'all 0.3s ease'
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      overflow: 'visible'
                     }}
                   >
+                    <AnimatePresence>
+                      {hoveredDay === idx && dayTasks.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                          style={{
+                            position: 'absolute',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            bottom: '45px',
+                            zIndex: 50,
+                            pointerEvents: 'auto',
+                            padding: '12px 16px',
+                            background: 'rgba(10, 10, 10, 0.95)',
+                            backdropFilter: 'blur(20px)',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(0, 243, 255, 0.4)',
+                            boxShadow: '0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.2)',
+                            width: 'fit-content',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <h4 style={{ margin: '0 0 10px', fontSize: '0.65rem', fontWeight: 900, color: '#00f3ff', textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '1px solid rgba(0, 243, 255, 0.2)', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
+                            {fullDaysLabels[idx]}
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', whiteSpace: 'normal' }}>
+                            {dayTasks.sort((a, b) => {
+                              const priorities = { alta: 3, media: 2, baja: 1 };
+                              return (priorities[b.priority] || 0) - (priorities[a.priority] || 0);
+                            }).map(t => (
+                              <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
+                                <div style={{ width: '6px', height: '6px', minWidth: '6px', borderRadius: '50%', background: t.color, boxShadow: `0 0 8px ${t.color}` }} />
+                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{t.title}</p>
+                                  <p style={{ margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{t.institution}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     {dayTasks.map((taskInfo, tIdx) => (
                       <motion.div 
                         key={taskInfo.id}
