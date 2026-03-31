@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown, RefreshCcw, Loader2, Pencil
+  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown, RefreshCcw, Loader2, Pencil, Bell
 } from 'lucide-react';
 
 const THEMES = [
@@ -17,7 +17,7 @@ const WALLPAPERS = [
   { id: 'cyber', label: 'Frosted Glass', src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000' },
   { id: 'nature', label: 'Forest Glass', src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=1000' },
   { id: 'synth', label: 'Synthwave', src: 'https://images.unsplash.com/photo-1774848372214-3563247a592b?q=80&w=1935&auto=format&fit=crop' },
-  { id: 'space', label: 'Dark Space', src: 'https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?auto=format&fit=crop&q=80&w=1000' },
+  { id: 'space', label: 'Deep Cyber', src: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop' },
 ];
 
 const LANGUAGES = [
@@ -84,6 +84,8 @@ const Profile = () => {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showToast, setShowToast] = useState(false);
 
   // States para Edición de Nombre
   const [isEditingName, setIsEditingName] = useState(false);
@@ -101,6 +103,10 @@ const Profile = () => {
   const [disableVerifyCode, setDisableVerifyCode] = useState('');
   const [disableMfaLoading, setDisableMfaLoading] = useState(false);
   const [disableMfaError, setDisableMfaError] = useState('');
+
+  // Estados para Notificaciones
+  const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
+  const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
 
   const downloadAvatar = useCallback(async (path) => {
     try {
@@ -241,11 +247,185 @@ const Profile = () => {
 
   const avatarSource = (settings.avatarUrl && settings.avatarUrl !== "") ? settings.avatarUrl : (avatarUrl || settings.profileImage);
 
+  // Función auxiliar para mostrar toast
+  const showNotification = (message) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  // Actualizar handlers de notificaciones
+  const handleEmailNotifChange = (newValue) => {
+    setEmailNotif(newValue);
+    updateSettings({ emailNotifications: newValue });
+    showNotification(newValue ? 'Email notifications enabled' : 'Email notifications disabled');
+  };
+
+  const handleWebNotifChange = (newValue) => {
+    setWebNotif(newValue);
+    updateSettings({ webNotifications: newValue });
+    showNotification(newValue ? 'Web notifications enabled' : 'Web notifications disabled');
+  };
+
   return (
-    <div className="animate-fade-in" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-      <header className="page-header" style={{ marginBottom: '40px' }}>
-        <h1 className="page-title" style={{ fontSize: '3rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text-primary)' }}>{t.profile}</h1>
-      </header>
+    <>
+      <style>{`
+        @keyframes cyberSpring {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% + 40px));
+          }
+          50% {
+            opacity: 1;
+            transform: translate(-50%, calc(-50% - 15px));
+          }
+          70% {
+            transform: translate(-50%, calc(-50% + 5px));
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+          }
+        }
+
+        @keyframes neonGlow {
+          0% {
+            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
+            border-color: rgba(0, 243, 255, 1);
+          }
+          50% {
+            box-shadow: inset 0 0 40px rgba(0, 243, 255, 0.8), 0 0 50px rgba(0, 243, 255, 1), 0 0 80px rgba(0, 243, 255, 0.8);
+            border-color: rgba(0, 243, 255, 0.8);
+          }
+          100% {
+            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
+            border-color: rgba(0, 243, 255, 1);
+          }
+        }
+
+        @keyframes gradientShift {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        .cyber-toast {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 9999;
+          animation: cyberSpring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          padding: 24px 32px;
+          backdrop-filter: blur(20px);
+          background: linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%);
+          border: 2px solid rgba(0, 243, 255, 1);
+          border-radius: 16px;
+          color: #00f3ff;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          font-size: 0.95rem;
+          box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
+          animation: cyberSpring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .cyber-toast-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.35);
+          backdrop-filter: blur(2px);
+          z-index: 9998;
+          animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .title-gradient {
+          background: linear-gradient(90deg, #00f3ff 0%, #bc13fe 50%, #00f3ff 100%);
+          background-size: 200% 100%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: gradientShift 4s ease-in-out infinite;
+        }
+
+        .menu-position-visual {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          width: 100%;
+          height: 100%;
+        }
+
+        .menu-position-visual::before,
+        .menu-position-visual::after {
+          content: '';
+          transition: all 0.3s ease;
+        }
+
+        .position-left-visual::before {
+          width: 6px;
+          height: 20px;
+          background: currentColor;
+          border-radius: 2px;
+          margin-right: auto;
+          margin-left: 8px;
+        }
+
+        .position-right-visual::before {
+          width: 6px;
+          height: 20px;
+          background: currentColor;
+          border-radius: 2px;
+          margin-left: auto;
+          margin-right: 8px;
+        }
+
+        .position-top-visual::before {
+          width: 20px;
+          height: 6px;
+          background: currentColor;
+          border-radius: 2px;
+          margin-bottom: auto;
+        }
+
+        .position-bottom-visual::before {
+          width: 20px;
+          height: 6px;
+          background: currentColor;
+          border-radius: 2px;
+          margin-top: auto;
+        }
+
+        button[style*="position"] {
+          transition: all 0.3s ease;
+        }
+
+        .active-menu-visual {
+          color: #00f3ff;
+          text-shadow: 0 0 15px rgba(0, 243, 255, 0.8);
+        }
+      `}</style>
+
+      {showToast && <div className="cyber-toast-backdrop" onClick={() => setShowToast(false)} />}
+      {showToast && <div className="cyber-toast">{toastMessage}</div>}
+
+      <div className="animate-fade-in" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+        <header className="page-header" style={{ marginBottom: '40px' }}>
+          <h1 className="page-title title-gradient" style={{ fontSize: '3rem', fontWeight: 900, textTransform: 'uppercase' }}>AJUSTES</h1>
+        </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
 
@@ -421,13 +601,36 @@ const Profile = () => {
           <SectionTitle icon={<LayoutIcon />} label={t.layoutPos} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {[
-              { id: 'left', label: t.left, icon: <ArrowLeft size={16} /> },
-              { id: 'right', label: t.right, icon: <ArrowRight size={16} /> },
-              { id: 'top', label: t.top, icon: <ArrowUp size={16} /> },
-              { id: 'bottom', label: t.bottom, icon: <ArrowDown size={16} /> }
+              { id: 'left', icon: <ArrowLeft size={16} />, posClass: 'position-left-visual' },
+              { id: 'right', icon: <ArrowRight size={16} />, posClass: 'position-right-visual' },
+              { id: 'top', icon: <ArrowUp size={16} />, posClass: 'position-top-visual' },
+              { id: 'bottom', icon: <ArrowDown size={16} />, posClass: 'position-bottom-visual' }
             ].map(pos => (
-              <button key={pos.id} onClick={() => updateSettings({ sidebarPosition: pos.id })} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '10px', border: `1px solid ${settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`, background: settings.sidebarPosition === pos.id ? 'rgba(255,255,255,0.05)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                {pos.icon} <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{pos.label}</span>
+              <button
+                key={pos.id}
+                onClick={() => updateSettings({ sidebarPosition: pos.id })}
+                className={settings.sidebarPosition === pos.id ? 'active-menu-visual' : ''}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  border: `2px solid ${settings.sidebarPosition === pos.id ? '#00f3ff' : 'rgba(255,255,255,0.05)'}`,
+                  background: settings.sidebarPosition === pos.id ? 'rgba(0, 243, 255, 0.08)' : 'transparent',
+                  color: settings.sidebarPosition === pos.id ? '#00f3ff' : 'var(--text-primary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: settings.sidebarPosition === pos.id ? '0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 243, 255, 0.2)' : 'none',
+                  minHeight: '60px',
+                  position: 'relative'
+                }}
+              >
+                <div className={`menu-position-visual ${pos.posClass}`} style={{ height: '32px', width: '100%' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, marginTop: 'auto' }}>
+                    {settings.sidebarPosition === pos.id && <Check size={14} />}
+                  </div>
+                </div>
               </button>
             ))}
           </div>
@@ -547,6 +750,42 @@ const Profile = () => {
         <div style={{ gridColumn: '1 / -1' }}>
           <AccordionSection title="Seguridad" icon={<Shield size={20} />} isOpen={openSection === 'security'} onToggle={() => setOpenSection(openSection === 'security' ? null : 'security')} subtitle={isMfaActive ? "ACTIVA" : "DESACTIVADA"}>
             <div style={{ padding: '10px 0' }}>
+              {/* Sección: Alertas del Sistema */}
+              <div style={{ marginBottom: '30px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                  <Bell size={16} color="var(--accent-primary)" />
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Alertas del Sistema</h4>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '20px', flexWrap: 'wrap' }}>
+                  {/* Notificaciones Email */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1, margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={emailNotif}
+                        onChange={(e) => handleEmailNotifChange(e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#00f3ff' }}
+                      />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>Email</span>
+                    </label>
+                  </div>
+
+                  {/* Notificaciones Web */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1, margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={webNotif}
+                        onChange={(e) => handleWebNotifChange(e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#00f3ff' }}
+                      />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>Web Interna</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Autenticación MFA */}
               {isMfaActive ? (
                 isDisablingMfa ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
@@ -596,7 +835,8 @@ const Profile = () => {
         </div>
 
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
