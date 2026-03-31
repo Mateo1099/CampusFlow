@@ -17,7 +17,7 @@ const CourseModal = ({
   handleSubmit, 
   t 
 }) => {
-  const [activePicker, setActivePicker] = useState(null);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
   const modalPanelRef = useRef(null);
   const closeIconRef = useRef(null);
@@ -41,7 +41,7 @@ const CourseModal = ({
   }, [show, formData.institution]);
 
   const handleClose = () => {
-    setActivePicker(null);
+    setShowCalendar(false);
     if (!modalPanelRef.current || !closeIconRef.current) {
       onClose();
       return;
@@ -72,48 +72,46 @@ const CourseModal = ({
   };
 
   const handleDatePickerClick = () => {
-    setActivePicker('created_at');
+    setShowCalendar(true);
   };
 
-  if (!show) return null;
+  if (!show && !showCalendar) return null;
 
   return (
-    <AnimatePresence>
-      <div style={{ 
-        position: 'fixed', 
-        top: 0, 
-        left: 0, 
-        width: '100vw', 
-        height: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        zIndex: 1000, 
-        background: 'rgba(0,0,0,0.7)', 
-        backdropFilter: 'blur(10px)' 
-      }}>
-        <motion.div 
-          key="course-modal"
-          ref={modalPanelRef} 
-          initial={{ opacity: 0, scale: 0.95 }} 
-          animate={{ opacity: 1, scale: 1 }} 
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          style={{ 
-            position: 'relative',
-            width: '480px', 
-            minHeight: 'auto', 
-            background: 'rgba(15, 15, 20, 0.95)', 
-            borderRadius: '24px',
-            border: '1px solid rgba(0, 243, 255, 0.35)',
-            overflow: 'visible !important',
-            padding: '40px',
-            backdropFilter: 'blur(30px)',
-            boxShadow: '0 0 30px rgba(0, 243, 255, 0.3), 0 0 15px rgba(0, 243, 255, 0.15), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }}
-        >
+    <>
+      {show && (
+        <AnimatePresence>
+          <div style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 1000, 
+            backgroundColor: 'rgba(0,0,0,0.6)'
+          }}>
+            <motion.div 
+              key="course-modal"
+              ref={modalPanelRef} 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              style={{ 
+                width: '480px',
+                background: 'rgba(15, 15, 20, 0.95)', 
+                borderRadius: '24px',
+                border: '1px solid rgba(0, 243, 255, 0.35)',
+                padding: '40px',
+                backdropFilter: 'blur(30px)',
+                boxShadow: '0 0 30px rgba(0, 243, 255, 0.3), 0 0 15px rgba(0, 243, 255, 0.15), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)',
+                maxHeight: '90vh',
+                overflowY: 'auto'
+              }}
+            >
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -245,34 +243,6 @@ const CourseModal = ({
                 <CalendarIcon size={18} color="#00f3ff" style={{ cursor: 'pointer', flexShrink: 0 }} />
               </div>
             </div>
-
-            <AnimatePresence>
-              {activePicker && (
-                <motion.div
-                  key="calendar-dropdown"
-                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 10px)',
-                    left: 0,
-                    zIndex: 1002,
-                    pointerEvents: 'auto'
-                  }}
-                >
-                  <CustomCalendar 
-                    selectedDate={formData.created_at} 
-                    onDateSelect={(d) => { 
-                      setFormData({ ...formData, created_at: d.split('T')[0] }); 
-                      setActivePicker(null); 
-                    }} 
-                    onClose={() => setActivePicker(null)} 
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           <div>
@@ -296,7 +266,36 @@ const CourseModal = ({
         </form>
       </motion.div>
       </div>
-    </AnimatePresence>
+        </AnimatePresence>
+      )}
+
+      {showCalendar && (
+        <motion.div
+          key="calendar-fixed"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1200,
+            pointerEvents: 'auto'
+          }}
+        >
+          <CustomCalendar 
+            selectedDate={formData.created_at} 
+            onDateSelect={(d) => { 
+              setFormData({ ...formData, created_at: d.split('T')[0] }); 
+              setShowCalendar(false); 
+            }} 
+            onClose={() => setShowCalendar(false)} 
+          />
+        </motion.div>
+      )}
+    </>
   );
 };
 
