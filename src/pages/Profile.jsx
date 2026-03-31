@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown, RefreshCcw, Loader2, Pencil, Bell
+  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, X
 } from 'lucide-react';
 
 const THEMES = [
@@ -258,13 +258,13 @@ const Profile = () => {
   const handleEmailNotifChange = (newValue) => {
     setEmailNotif(newValue);
     updateSettings({ emailNotifications: newValue });
-    showNotification(newValue ? 'Email notifications enabled' : 'Email notifications disabled');
+    showNotification(newValue ? '📧 Notificaciones por email activadas' : '📧 Notificaciones por email desactivadas');
   };
 
   const handleWebNotifChange = (newValue) => {
     setWebNotif(newValue);
     updateSettings({ webNotifications: newValue });
-    showNotification(newValue ? 'Web notifications enabled' : 'Web notifications disabled');
+    showNotification(newValue ? '🔔 Notificaciones web activadas' : '🔔 Notificaciones web desactivadas');
   };
 
   return (
@@ -312,6 +312,29 @@ const Profile = () => {
           }
           100% {
             background-position: 0% 50%;
+          }
+        }
+
+        @keyframes softPulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.85;
+            transform: scale(0.98);
+          }
+        }
+
+        @keyframes pageThemeFade {
+          0% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0;
+          }
+          100% {
+            opacity: 1;
           }
         }
 
@@ -417,6 +440,52 @@ const Profile = () => {
           color: #00f3ff;
           text-shadow: 0 0 15px rgba(0, 243, 255, 0.8);
         }
+
+        /* ANIMACIONES MEJORADAS */
+        .dropdown-smooth {
+          transition: max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        }
+
+        .theme-fade {
+          animation: pageThemeFade 0.6s ease-in-out;
+        }
+
+        .mfa-disable-pulse {
+          animation: softPulse 2s ease-in-out infinite;
+        }
+
+        .header-compact {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          justify-content: space-between;
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          flex: 0 1 auto;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 0 1 auto;
+        }
+
+        @media (max-width: 768px) {
+          .header-compact {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+          }
+          .header-right {
+            width: 100%;
+            justify-content: flex-start;
+          }
+        }
       `}</style>
 
       {showToast && <div className="cyber-toast-backdrop" onClick={() => setShowToast(false)} />}
@@ -429,118 +498,155 @@ const Profile = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
 
-        {/* User Card */}
-        <div className="glass-panel" style={{ padding: '36px', display: 'flex', alignItems: 'center', gap: '40px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)' }}>
-          <div style={{ position: 'relative' }}>
-            <div style={{
-              width: '130px', height: '130px', borderRadius: '50%',
-              overflow: 'hidden', border: '4px solid var(--accent-primary)',
-              background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              position: 'relative'
-            }}>
-              {/* SKELETON NEÓN */}
-              {(!avatarLoaded || !avatarSource) && (
-                <div
-                  className="animate-pulse-neon"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(0, 243, 255, 0.15)',
-                    boxShadow: 'inset 0 0 30px rgba(0, 243, 255, 0.4)',
-                    zIndex: 2,
-                    transition: 'opacity 0.5s ease-in-out',
-                    opacity: !avatarLoaded ? 1 : 0
-                  }}
-                />
-              )}
+        {/* User Card - HEADER COMPACTO Y DINÁMICO */}
+        <div className="glass-panel" style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', gap: '32px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)', justifyContent: 'space-between' }}>
+          {/* LEFT: Avatar y Nombre */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', minWidth: '0' }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div style={{
+                width: '100px', height: '100px', borderRadius: '50%',
+                overflow: 'hidden', border: '4px solid var(--accent-primary)',
+                background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative'
+              }}>
+                {/* SKELETON NEÓN */}
+                {(!avatarLoaded || !avatarSource) && (
+                  <div
+                    className="animate-pulse-neon"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(0, 243, 255, 0.15)',
+                      boxShadow: 'inset 0 0 30px rgba(0, 243, 255, 0.4)',
+                      zIndex: 2,
+                      transition: 'opacity 0.5s ease-in-out',
+                      opacity: !avatarLoaded ? 1 : 0
+                    }}
+                  />
+                )}
 
-              {avatarSource && avatarSource !== "" ? (
-                <img
-                  key={avatarSource}
-                  src={avatarSource}
-                  alt="User"
-                  fetchPriority="high"
-                  loading="eager"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    opacity: avatarLoaded ? 1 : 0,
-                    transition: 'opacity 0.4s ease-in-out'
-                  }}
-                  onLoad={() => setAvatarLoaded(true)}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
-                    setAvatarLoaded(true);
-                  }}
-                />
-              ) : (
-                <div style={{ opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.4s' }}>
-                  <User size={60} color="var(--accent-primary)" style={{ opacity: 0.5 }} />
-                </div>
-              )}
-            </div>
-            <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '5px', right: '5px', width: '38px', height: '38px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <Camera size={18} />
-            </button>
-            <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
-          </div>
-          <div style={{ perspective: '1000px' }}>
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              padding: '10px 24px',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              width: 'fit-content',
-              marginBottom: '10px',
-              transform: 'rotateX(5deg) rotateY(-2deg)',
-              boxShadow: '0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 243, 255, 0.3)',
-              transformStyle: 'preserve-3d'
-            }}>
-              {isEditingName ? (
-                <input
-                  autoFocus
-                  value={tempName}
-                  onChange={e => setTempName(e.target.value)}
-                  onBlur={handleNameSave}
-                  onKeyDown={e => e.key === 'Enter' && handleNameSave()}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-primary)',
-                    fontSize: '2rem',
-                    fontWeight: 950,
-                    textTransform: 'uppercase',
-                    outline: 'none',
-                    width: '300px'
-                  }}
-                />
-              ) : (
-                <h2 className="font-display" style={{ fontSize: '2.8rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', color: 'var(--text-primary)' }}>
-                  {settings.name || 'Mateo'}
-                </h2>
-              )}
-              <button
-                onClick={() => setIsEditingName(true)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.7 }}
-              >
-                <Pencil size={20} />
+                {avatarSource && avatarSource !== "" ? (
+                  <img
+                    key={avatarSource}
+                    src={avatarSource}
+                    alt="User"
+                    fetchPriority="high"
+                    loading="eager"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      opacity: avatarLoaded ? 1 : 0,
+                      transition: 'opacity 0.4s ease-in-out'
+                    }}
+                    onLoad={() => setAvatarLoaded(true)}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
+                      setAvatarLoaded(true);
+                    }}
+                  />
+                ) : (
+                  <div style={{ opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.4s' }}>
+                    <User size={50} color="var(--accent-primary)" style={{ opacity: 0.5 }} />
+                  </div>
+                )}
+              </div>
+              <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                <Camera size={16} />
               </button>
+              <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
             </div>
-            <p style={{
-              color: '#fff',
-              opacity: 0.6,
-              letterSpacing: '3px',
-              fontSize: '11px',
-              fontWeight: 600,
-              marginLeft: '24px',
-              textTransform: 'uppercase'
-            }}>Estudiante</p>
+            
+            {/* Nombre e Info */}
+            <div style={{ minWidth: '0', flex: 1 }}>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                width: 'fit-content',
+                marginBottom: '6px',
+                boxShadow: '0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 243, 255, 0.3)',
+                transformStyle: 'preserve-3d'
+              }}>
+                {isEditingName ? (
+                  <input
+                    autoFocus
+                    value={tempName}
+                    onChange={e => setTempName(e.target.value)}
+                    onBlur={handleNameSave}
+                    onKeyDown={e => e.key === 'Enter' && handleNameSave()}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-primary)',
+                      fontSize: '1.6rem',
+                      fontWeight: 950,
+                      textTransform: 'uppercase',
+                      outline: 'none',
+                      maxWidth: '250px'
+                    }}
+                  />
+                ) : (
+                  <h2 className="font-display" style={{ fontSize: '1.6rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {settings.name || 'Mateo'}
+                  </h2>
+                )}
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.6, transition: 'all 0.3s ease', padding: '4px' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.15)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.transform = 'scale(1)'; }}
+                >
+                  <Pencil size={16} />
+                </button>
+              </div>
+              <p style={{
+                color: '#fff',
+                opacity: 0.5,
+                letterSpacing: '2px',
+                fontSize: '10px',
+                fontWeight: 600,
+                margin: 0,
+                textTransform: 'uppercase'
+              }}>Estudiante de CampusFlow</p>
+            </div>
+          </div>
+
+          {/* RIGHT: Notificaciones del Sistema */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Notificaciones Email */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.3s ease' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={emailNotif}
+                    onChange={(e) => handleEmailNotifChange(e.target.checked)}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#00f3ff' }}
+                  />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>Email</span>
+                </label>
+              </div>
+
+              {/* Notificaciones Web */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.3s ease' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={webNotif}
+                    onChange={(e) => handleWebNotifChange(e.target.checked)}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#00f3ff' }}
+                  />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>Web</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -549,7 +655,13 @@ const Profile = () => {
           <SectionTitle icon={<Palette />} label={t.themeMode} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {THEMES.map(theme => (
-              <button key={theme.id} onClick={() => updateSettings({ theme: theme.id })} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `1px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`, background: settings.theme === theme.id ? 'rgba(255,255,255,0.05)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <button key={theme.id} onClick={() => {
+                document.body.classList.add('theme-fade');
+                setTimeout(() => {
+                  updateSettings({ theme: theme.id });
+                  document.body.classList.remove('theme-fade');
+                }, 300);
+              }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `1px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`, background: settings.theme === theme.id ? 'rgba(255,255,255,0.05)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = settings.theme === theme.id ? 'rgba(255,255,255,0.05)' : 'transparent'}>
                 <span style={{ fontSize: '1.2rem' }}>{theme.icon}</span>
                 <span style={{ fontWeight: 700 }}>{t[theme.labelKey]}</span>
                 {settings.theme === theme.id && <Check size={16} color="var(--accent-primary)" style={{ marginLeft: 'auto' }} />}
@@ -563,7 +675,7 @@ const Profile = () => {
           <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {WALLPAPERS.map(wp => (
-              <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative' }}>
+              <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                 {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
               </button>
             ))}
@@ -583,8 +695,11 @@ const Profile = () => {
                 backgroundPosition: 'center',
                 position: 'relative',
                 overflow: 'hidden',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
               }}
+              onMouseEnter={(e) => !settings.customWallpaper && (e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
               {settings.customWallpaper && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }} />}
               <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -645,8 +760,10 @@ const Profile = () => {
               onClick={() => setOpenSetting(openSetting === 'lang' ? null : 'lang')}
               style={{
                 width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)'
+                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <Languages size={18} color="var(--accent-primary)" />
@@ -654,7 +771,7 @@ const Profile = () => {
               </div>
               <ChevronDown size={18} style={{ transform: openSetting === 'lang' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
             </button>
-            <div style={{ maxHeight: openSetting === 'lang' ? '400px' : '0', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'lang' ? '400px' : '0', overflow: 'hidden' }}>
               <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {LANGUAGES.map(lang => (
                   <button
@@ -663,8 +780,10 @@ const Profile = () => {
                     style={{
                       padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
                       background: settings.language === lang.id ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))',
-                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = settings.language === lang.id ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))'}
                   >
                     <span style={{ fontWeight: settings.language === lang.id ? 800 : 500 }}>{lang.flag} {lang.label}</span>
                     {settings.language === lang.id && <Check size={14} color="var(--accent-primary)" />}
@@ -680,8 +799,10 @@ const Profile = () => {
               onClick={() => setOpenSetting(openSetting === 'font' ? null : 'font')}
               style={{
                 width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)'
+                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <Type size={18} color="var(--accent-primary)" />
@@ -689,7 +810,7 @@ const Profile = () => {
               </div>
               <ChevronDown size={18} style={{ transform: openSetting === 'font' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
             </button>
-            <div style={{ maxHeight: openSetting === 'font' ? '400px' : '0', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'font' ? '400px' : '0', overflow: 'hidden' }}>
               <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {FONT_OPTIONS.map(font => (
                   <button
@@ -698,8 +819,10 @@ const Profile = () => {
                     style={{
                       padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
                       background: settings.font === font.id ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))',
-                      color: 'var(--text-primary)', fontFamily: font.css, display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                      color: 'var(--text-primary)', fontFamily: font.css, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = settings.font === font.id ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))'}
                   >
                     <span style={{ fontWeight: settings.font === font.id ? 800 : 500 }}>{font.label}</span>
                     {settings.font === font.id && <Check size={14} color="var(--accent-primary)" />}
@@ -715,8 +838,10 @@ const Profile = () => {
               onClick={() => setOpenSetting(openSetting === 'fontSize' ? null : 'fontSize')}
               style={{
                 width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)'
+                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <Type size={18} color="var(--accent-primary)" />
@@ -724,7 +849,7 @@ const Profile = () => {
               </div>
               <ChevronDown size={18} style={{ transform: openSetting === 'fontSize' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
             </button>
-            <div style={{ maxHeight: openSetting === 'fontSize' ? '400px' : '0', overflow: 'hidden', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'fontSize' ? '400px' : '0', overflow: 'hidden' }}>
               <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {[12, 14, 16, 18, 20, 24, 28, 32].map(size => (
                   <button
@@ -733,8 +858,10 @@ const Profile = () => {
                     style={{
                       padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
                       background: settings.fontSize === size ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))',
-                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = settings.fontSize === size ? 'rgba(var(--accent-primary-rgb), 0.15)' : 'var(--bg-panel, rgba(0,0,0,0.05))'}
                   >
                     <span style={{ fontWeight: settings.fontSize === size ? 800 : 500 }}>{size}px</span>
                     {settings.fontSize === size && <Check size={14} color="var(--accent-primary)" />}
@@ -750,51 +877,16 @@ const Profile = () => {
         <div style={{ gridColumn: '1 / -1' }}>
           <AccordionSection title="Seguridad" icon={<Shield size={20} />} isOpen={openSection === 'security'} onToggle={() => setOpenSection(openSection === 'security' ? null : 'security')} subtitle={isMfaActive ? "ACTIVA" : "DESACTIVADA"}>
             <div style={{ padding: '10px 0' }}>
-              {/* Sección: Alertas del Sistema */}
-              <div style={{ marginBottom: '30px', paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                  <Bell size={16} color="var(--accent-primary)" />
-                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Alertas del Sistema</h4>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'row', gap: '20px', flexWrap: 'wrap' }}>
-                  {/* Notificaciones Email */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1, margin: 0 }}>
-                      <input
-                        type="checkbox"
-                        checked={emailNotif}
-                        onChange={(e) => handleEmailNotifChange(e.target.checked)}
-                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#00f3ff' }}
-                      />
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>Email</span>
-                    </label>
-                  </div>
-
-                  {/* Notificaciones Web */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1, margin: 0 }}>
-                      <input
-                        type="checkbox"
-                        checked={webNotif}
-                        onChange={(e) => handleWebNotifChange(e.target.checked)}
-                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#00f3ff' }}
-                      />
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>Web Interna</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
               {/* Autenticación MFA */}
               {isMfaActive ? (
                 isDisablingMfa ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Ingresa tu código actual para confirmar:</p>
-                    <input type="text" value={disableVerifyCode} onChange={e => setDisableVerifyCode(e.target.value)} placeholder="000000" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px' }} />
+                    <input type="text" value={disableVerifyCode} onChange={e => setDisableVerifyCode(e.target.value)} placeholder="000000" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px', transition: 'all 0.3s ease' }} onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'} onBlur={(e) => e.target.style.borderColor = 'var(--border-glass-top)'} />
                     {disableMfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>{disableMfaError}</p>}
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => { setIsDisablingMfa(false); setDisableVerifyCode(''); setDisableMfaError(''); }} style={{ padding: '10px 16px', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800 }}>Cancelar</button>
-                      <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ padding: '10px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800 }}>
+                      <button onClick={() => { setIsDisablingMfa(false); setDisableVerifyCode(''); setDisableMfaError(''); }} style={{ padding: '10px 16px', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease' }}>Cancelar</button>
+                      <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ padding: '10px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease' }}>
                         {disableMfaLoading ? 'Verificando...' : 'Confirmar'}
                       </button>
                     </div>
@@ -803,17 +895,18 @@ const Profile = () => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-glass-top)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-lime)', boxShadow: '0 0 10px var(--accent-lime)' }}></div>
-                      <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 800 }}>AUTENTICACIÓN EN DOS PASOS (TOTP)</p>
+                      <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 800 }}>CÓDIGO DE APP (GOOGLE AUTHENTICATOR)</p>
                     </div>
-                    <button onClick={() => setIsDisablingMfa(true)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #ef4444', borderRadius: '8px', color: '#ef4444', fontWeight: 800, cursor: 'pointer' }}>
-                      DESACTIVAR
+                    <button onClick={() => setIsDisablingMfa(true)} style={{ padding: '8px 14px', background: 'transparent', border: '1px solid #ef4444', borderRadius: '6px', color: '#ef4444', fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}>
+                      <X size={14} />
+                      <span>DESACTIVAR</span>
                     </button>
                   </div>
                 )
               ) : (
                 <>
                   {!mfaData ? (
-                    <button onClick={handleEnrollMfa} disabled={mfaLoading} style={{ padding: '12px 24px', background: 'var(--accent-primary)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 900, cursor: 'pointer' }}>
+                    <button onClick={handleEnrollMfa} disabled={mfaLoading} style={{ padding: '12px 24px', background: 'var(--accent-primary)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 900, cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#00d4ff'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.transform = 'scale(1)'; }}>
                       {mfaLoading ? 'PROCESANDO...' : 'ACTIVAR 2FA'}
                     </button>
                   ) : (
@@ -821,9 +914,9 @@ const Profile = () => {
                       <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', width: 'fit-content' }}>
                         <img src={mfaData.totp.qr_code} alt="QR Code" style={{ width: '150px', height: '150px' }} />
                       </div>
-                      <input type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value)} placeholder="Código 6 dígitos" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px' }} />
+                      <input type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value)} placeholder="Código 6 dígitos" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px', transition: 'all 0.3s ease' }} onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'} onBlur={(e) => e.target.style.borderColor = 'var(--border-glass-top)'} />
                       {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>{mfaError}</p>}
-                      <button onClick={handleVerifyMfa} disabled={mfaLoading} style={{ padding: '12px', background: 'var(--accent-lime)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 900, cursor: 'pointer' }}>
+                      <button onClick={handleVerifyMfa} disabled={mfaLoading} style={{ padding: '12px', background: 'var(--accent-lime)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 900, cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                         {mfaLoading ? 'VERIFICANDO...' : 'VERIFICAR Y ACTIVAR'}
                       </button>
                     </div>
