@@ -47,55 +47,62 @@ const ColorPicker = ({ selectedColor, onSelect, t }) => {
       </button>
 
       {isOpen && (
-        <div className="glass-panel animate-fade-in" style={{
-          position: 'absolute',
-          top: 'calc(100% + 8px)',
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-          padding: '20px',
-          background: 'var(--bg-secondary)',
-          backdropFilter: 'blur(100px)',
-          border: '1px solid var(--border-glass-top)',
-          borderRadius: '20px',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-          maxHeight: '400px',
-          overflowY: 'auto'
-        }}>
-          {COLOR_GROUPS.map(group => (
-            <div key={group.label} style={{ marginBottom: '18px' }}>
-              <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group.label}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
-                {group.colors.map(c => (
-                  <div
-                    key={c}
-                    onClick={() => {
-                      onSelect(c);
-                      setIsOpen(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      aspectRatio: '1',
-                      background: c,
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: selectedColor === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                      boxShadow: selectedColor === c ? `0 0 15px ${c}aa` : 'none',
-                      transition: 'transform 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    {selectedColor === c && <Check size={14} color={['#ffffff', '#E5E7EB', '#FDE047'].includes(c) ? '#000' : '#fff'} />}
-                  </div>
-                ))}
+        <>
+          <div
+            onClick={() => setIsOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              zIndex: 1299,
+              background: 'rgba(0,0,0,0.3)'
+            }}
+          />
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1300,
+            padding: '24px',
+            background: 'rgba(15, 15, 20, 0.98)',
+            backdropFilter: 'blur(30px)',
+            border: '1px solid rgba(0, 243, 255, 0.3)',
+            borderRadius: '20px',
+            boxShadow: '0 0 30px rgba(0, 243, 255, 0.2), 0 12px 40px rgba(0,0,0,0.5)',
+            width: '320px'
+          }}>
+            {COLOR_GROUPS.map(group => (
+              <div key={group.label} style={{ marginBottom: '18px' }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group.label}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+                  {group.colors.map(c => (
+                    <div
+                      key={c}
+                      onClick={() => { onSelect(c); setIsOpen(false); }}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '1',
+                        background: c,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        border: selectedColor === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                        boxShadow: selectedColor === c ? `0 0 15px ${c}aa` : 'none',
+                        transition: 'transform 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                      onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      {selectedColor === c && <Check size={14} color={['#ffffff', '#E5E7EB', '#FDE047'].includes(c) ? '#000' : '#fff'} />}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

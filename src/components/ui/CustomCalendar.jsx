@@ -59,11 +59,11 @@ const CustomCalendar = ({ selectedDate, onDateSelect, onClose }) => {
                 fontSize: '0.85rem',
                 cursor: d ? 'pointer' : 'default',
                 borderRadius: '8px',
-                background: isSelected ? '#00f3ff' : 'transparent',
+                background: isSelected ? 'rgba(0, 243, 255, 0.85)' : 'transparent',
                 color: isSelected ? '#000' : '#ffffff',
                 transition: 'all 0.2s',
                 opacity: d ? 1 : 0,
-                fontWeight: d ? '500' : '400'
+                fontWeight: isSelected ? '800' : (d ? '500' : '400')
               }}
               onMouseOver={(e) => {
                 if (d && !isSelected) {

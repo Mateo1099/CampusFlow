@@ -102,14 +102,17 @@ const CourseModal = ({
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               style={{ 
                 width: '480px',
+                maxWidth: '95vw',
                 background: 'rgba(15, 15, 20, 0.95)', 
                 borderRadius: '24px',
                 border: '1px solid rgba(0, 243, 255, 0.35)',
                 padding: '40px',
                 backdropFilter: 'blur(30px)',
                 boxShadow: '0 0 30px rgba(0, 243, 255, 0.3), 0 0 15px rgba(0, 243, 255, 0.15), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)',
-                maxHeight: '90vh',
-                overflowY: 'auto'
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                marginTop: 'auto',
+                marginBottom: 'auto'
               }}
             >
 
@@ -270,30 +273,33 @@ const CourseModal = ({
       )}
 
       {showCalendar && (
-        <motion.div
-          key="calendar-fixed"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          style={{
+        <>
+          <div 
+            onClick={() => setShowCalendar(false)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              zIndex: 1199,
+              background: 'rgba(0,0,0,0.3)'
+            }} 
+          />
+          <div style={{
             position: 'fixed',
-            top: '50%',
+            top: '62%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
             zIndex: 1200,
-            pointerEvents: 'auto'
-          }}
-        >
-          <CustomCalendar 
-            selectedDate={formData.created_at} 
-            onDateSelect={(d) => { 
-              setFormData({ ...formData, created_at: d.split('T')[0] }); 
-              setShowCalendar(false); 
-            }} 
-            onClose={() => setShowCalendar(false)} 
-          />
-        </motion.div>
+          }}>
+            <CustomCalendar 
+              selectedDate={formData.created_at} 
+              onDateSelect={(d) => { 
+                setFormData({ ...formData, created_at: d }); 
+                setShowCalendar(false); 
+              }} 
+              onClose={() => setShowCalendar(false)} 
+            />
+          </div>
+        </>
       )}
     </>
   );
