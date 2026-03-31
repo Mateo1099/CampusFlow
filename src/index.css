@@ -153,6 +153,60 @@ body {
   transition: all var(--transition-med);
 }
 
+.profile-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 40px 40px;
+  overflow-x: hidden;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
+  min-width: 0;
+}
+
+.settings-grid > * {
+  min-width: 0;
+}
+
+.panel-glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-glass-top);
+  border-radius: 24px;
+  box-shadow: var(--shadow-glass), inset 0 0 0 1px rgba(255,255,255,0.05);
+  padding: 28px;
+  overflow: hidden;
+}
+
+.panel-full-width {
+  grid-column: 1 / -1;
+}
+
+.settings-user-panel {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.settings-stack-28 {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.settings-stack-20 {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .input:focus, .select:focus {
   background: rgba(255,255,255,0.07) !important;
   border: 1px solid rgba(0, 243, 255, 0.5) !important;
@@ -463,6 +517,20 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
     right: 0 !important;
     width: 100% !important;
     margin-top: 30px;
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-container {
+    padding: 24px 16px 32px;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-glass {
+    padding: 28px;
   }
 }
 
