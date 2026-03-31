@@ -19,6 +19,7 @@ const CourseModal = ({
 }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const modalPanelRef = useRef(null);
   const closeIconRef = useRef(null);
   const dateInputRef = useRef(null);
@@ -73,6 +74,7 @@ const CourseModal = ({
 
   const handleDatePickerClick = () => {
     setShowCalendar(true);
+    setShowColorPicker(false);
   };
 
   if (!show && !showCalendar) return null;
@@ -253,6 +255,9 @@ const CourseModal = ({
             <ColorPicker 
               selectedColor={formData.color} 
               onSelect={(color) => setFormData({ ...formData, color: color })}
+              isOpen={showColorPicker}
+              onToggle={() => { setShowColorPicker(!showColorPicker); setShowCalendar(false); }}
+              onClose={() => setShowColorPicker(false)}
               t={t} 
             />
           </div>

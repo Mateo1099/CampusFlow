@@ -9,25 +9,24 @@ const COLOR_GROUPS = [
   { label: 'Neutrales', colors: ['#E5E7EB', '#9CA3AF', '#4B5563', '#1F2937', '#000000', '#D97706', '#DC2626'] }
 ];
 
-const ColorPicker = ({ selectedColor, onSelect, t }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const ColorPicker = ({ selectedColor, onSelect, isOpen, onToggle, onClose, t }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
+        onClose();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [onClose]);
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onToggle}
         style={{
           width: '100%',
           display: 'flex',
@@ -49,7 +48,7 @@ const ColorPicker = ({ selectedColor, onSelect, t }) => {
       {isOpen && (
         <>
           <div
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             style={{
               position: 'fixed',
               top: 0, left: 0, right: 0, bottom: 0,
@@ -78,7 +77,7 @@ const ColorPicker = ({ selectedColor, onSelect, t }) => {
                   {group.colors.map(c => (
                     <div
                       key={c}
-                      onClick={() => { onSelect(c); setIsOpen(false); }}
+                      onClick={() => { onSelect(c); onClose(); }}
                       style={{
                         width: '100%',
                         aspectRatio: '1',
