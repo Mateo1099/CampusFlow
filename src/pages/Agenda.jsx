@@ -16,12 +16,12 @@ const CourseCard = ({ course, onDelete, onEdit, t }) => {
   const displayName = course.name || 'Sin Nombre';
 
   return (
-    <div className="glass-panel glass-card-hover animate-fade-in" style={{ 
-      padding: '24px 28px', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      position: 'relative', 
-      overflow: 'visible', 
+    <div className="glass-panel glass-card-hover animate-fade-in" style={{
+      padding: '24px 28px',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'relative',
+      overflow: 'visible',
       minHeight: '160px',
       transition: 'all 0.4s var(--ease-out-quint)'
     }}>
@@ -69,16 +69,16 @@ const Agenda = () => {
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    code: '', 
-    color: '#ff0000', 
-    teacher: '', 
-    institution: 'UNAD', 
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    color: '#ff0000',
+    teacher: '',
+    institution: 'UNAD',
     customInstitution: '',
     created_at: new Date().toISOString().split('T')[0]
   });
-  
+
   const [filtroActivo, setFiltroActivo] = useState(() => {
     return localStorage.getItem('cf_filtro_agenda') || 'TODAS';
   });
@@ -90,9 +90,9 @@ const Agenda = () => {
     if (!btnNewRef.current || !liquidRef.current) return;
     const btn = btnNewRef.current;
     const liquid = liquidRef.current;
-    
+
     const hoverTl = gsap.timeline({ paused: true });
-    
+
     hoverTl.to(liquid, {
       scale: 1.2,
       opacity: 1,
@@ -102,10 +102,10 @@ const Agenda = () => {
 
     const enter = () => hoverTl.play();
     const leave = () => hoverTl.reverse();
-    
+
     btn.addEventListener("mouseenter", enter);
     btn.addEventListener("mouseleave", leave);
-    
+
     return () => {
       btn.removeEventListener("mouseenter", enter);
       btn.removeEventListener("mouseleave", leave);
@@ -118,14 +118,14 @@ const Agenda = () => {
 
   const filteredCourses = useMemo(() => {
     if (filtroActivo === 'TODAS') return courses;
-    
+
     if (filtroActivo === 'PERSONALIZADO') {
       return courses.filter(c => {
         const inst = (c.institution || '').toUpperCase();
         return !INSTITUTIONS.includes(inst);
       });
     }
-    
+
     return courses.filter(c => {
       const inst = (c.institution || '').toUpperCase();
       return inst === filtroActivo.toUpperCase();
@@ -157,12 +157,12 @@ const Agenda = () => {
   };
 
   const handleOpenNew = () => {
-    setFormData({ 
-      name: '', 
-      code: '', 
-      color: '#ff0000', 
-      teacher: '', 
-      institution: 'UNAD', 
+    setFormData({
+      name: '',
+      code: '',
+      color: '#ff0000',
+      teacher: '',
+      institution: 'UNAD',
       customInstitution: '',
       created_at: new Date().toISOString().split('T')[0]
     });
@@ -174,7 +174,7 @@ const Agenda = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name) return;
-    
+
     const institutionValue = formData.institution === 'PERSONALIZADO'
       ? formData.customInstitution
       : formData.institution;
@@ -213,28 +213,28 @@ const Agenda = () => {
         <div>
           <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>MATERIAS</h1>
         </div>
-        <button 
-          ref={btnNewRef} 
-          className="click-press" 
-          onClick={handleOpenNew} 
-          style={{ 
-            padding: '10px 28px', 
-            fontWeight: 700, 
-            borderRadius: '50px', 
-            background: 'rgba(255, 255, 255, 0.05)', 
-            color: '#00f3ff', 
-            border: '1px solid #00f3ff', 
-            backdropFilter: 'blur(10px)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            fontSize: '0.9rem', 
+        <button
+          ref={btnNewRef}
+          className="click-press"
+          onClick={handleOpenNew}
+          style={{
+            padding: '10px 28px',
+            fontWeight: 700,
+            borderRadius: '50px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            color: '#00f3ff',
+            border: '1px solid #00f3ff',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.9rem',
             cursor: 'pointer',
             position: 'relative',
             overflow: 'hidden'
           }}
         >
-          <div 
+          <div
             ref={liquidRef}
             style={{
               background: 'radial-gradient(circle, rgba(0, 243, 255, 0.4) 0%, rgba(0, 243, 255, 0) 70%)',
@@ -250,7 +250,7 @@ const Agenda = () => {
               zIndex: 0
             }}
           />
-          <Plus size={18} style={{ position: 'relative', zIndex: 1 }} /> 
+          <Plus size={18} style={{ position: 'relative', zIndex: 1 }} />
           <span style={{ position: 'relative', zIndex: 1 }}>NUEVA MATERIA</span>
         </button>
       </header>
@@ -259,9 +259,9 @@ const Agenda = () => {
       <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap' }}>
         {filterOptions.map(opt => {
           const isActive = filtroActivo === opt.id;
-          const neonColor = opt.id === 'TODAS' ? '#00f3ff' : 
-                            opt.id === 'UNAD' ? '#ffcc00' : 
-                            opt.id === 'SENA' ? '#00ff88' : '#bc13fe';
+          const neonColor = opt.id === 'TODAS' ? '#00f3ff' :
+            opt.id === 'UNAD' ? '#ffcc00' :
+              opt.id === 'SENA' ? '#00ff88' : '#bc13fe';
 
           return (
             <button
@@ -289,10 +289,10 @@ const Agenda = () => {
                 letterSpacing: '1px'
               }}
             >
-              <div style={{ 
-                width: '6px', 
-                height: '6px', 
-                borderRadius: '50%', 
+              <div style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
                 background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
                 boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
               }} />
@@ -306,10 +306,10 @@ const Agenda = () => {
         {filteredCourses.length === 0 ? (
           <div className="glass-panel animate-fade-in" style={{ padding: '60px 40px', textAlign: 'center', gridColumn: '1 / -1', opacity: 0.8, borderStyle: 'dashed', borderColor: 'var(--border-glass-top)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ width: '180px', height: '180px', marginBottom: '16px', position: 'relative' }}>
-              <img 
-                src={emptyStateImg} 
-                alt="Vacío" 
-                style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9, filter: 'drop-shadow(0 0 20px rgba(255, 0, 0, 0.2))' }} 
+              <img
+                src={emptyStateImg}
+                alt="Vacío"
+                style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9, filter: 'drop-shadow(0 0 20px rgba(255, 0, 0, 0.2))' }}
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
@@ -337,7 +337,7 @@ const Agenda = () => {
         )}
       </div>
 
-      <CourseModal 
+      <CourseModal
         show={showModal}
         onClose={() => setShowModal(false)}
         isEditing={isEditing}
