@@ -298,7 +298,10 @@ const Profile = () => {
     }
   };
 
-  const avatarSource = (settings.avatarUrl && settings.avatarUrl !== "") ? settings.avatarUrl : (avatarUrl || settings.profileImage);
+  const avatarSource = settings.avatarUrl || null;
+
+  // Calcular fallback avatar con nombre del usuario
+  const fallbackAvatarUrl = `https://ui-avatars.com/api/?name=${settings.name || 'User'}&background=00f3ff&color=fff&font-size=0.4&bold=true`;
 
   // Función auxiliar para mostrar toast
   const showNotification = (message) => {
@@ -323,6 +326,31 @@ const Profile = () => {
   return (
     <>
       <style>{`
+        @keyframes arrowLevitate {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-6px);
+          }
+        }
+
+        @keyframes arrowPulse {
+          0%, 100% {
+            opacity: 1;
+            filter: drop-shadow(0 0 0px rgba(0, 243, 255, 0.4));
+          }
+          50% {
+            opacity: 0.85;
+            filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.8));
+          }
+        }
+
+        .arrow-button-hover svg {
+          animation: arrowLevitate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite,
+                    arrowPulse 2s ease-in-out infinite;
+        }
+
         @keyframes cyberSpring {
           0% {
             opacity: 0;
@@ -551,11 +579,12 @@ const Profile = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
 
-        {/* User Card - HEADER RESTRUCTURADO Y EQUILIBRADO */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '32px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)', alignItems: 'center' }}>
-          
-          {/* LEFT COLUMN: Avatar + Nombre + Rango */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        {/* HEADER REDISEÑADO: Dos Paneles Independientes */}
+        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+          {/* Panel 1 (Izquierda): Avatar + Nombre + Rango */}
+          <div className="glass-panel" style={{ padding: '32px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--border-glass-top)' }}>
+            {/* Avatar */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div style={{
                 width: '100px', height: '100px', borderRadius: '50%',
@@ -564,7 +593,7 @@ const Profile = () => {
                 position: 'relative'
               }}>
                 {/* SKELETON NEÓN */}
-                {(!avatarLoaded || !avatarSource) && (
+                {!avatarLoaded && (
                   <div
                     className="animate-pulse-neon"
                     style={{
@@ -579,32 +608,25 @@ const Profile = () => {
                   />
                 )}
 
-                {avatarSource && avatarSource !== "" ? (
-                  <img
-                    key={avatarSource}
-                    src={avatarSource}
-                    alt="User"
-                    fetchPriority="high"
-                    loading="eager"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      opacity: avatarLoaded ? 1 : 0,
-                      transition: 'opacity 0.4s ease-in-out'
-                    }}
-                    onLoad={() => setAvatarLoaded(true)}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
-                      setAvatarLoaded(true);
-                    }}
-                  />
-                ) : (
-                  <div style={{ opacity: avatarLoaded ? 1 : 0, transition: 'opacity 0.4s' }}>
-                    <User size={50} color="var(--accent-primary)" style={{ opacity: 0.5 }} />
-                  </div>
-                )}
+                <img
+                  key={avatarSource || fallbackAvatarUrl}
+                  src={avatarSource || fallbackAvatarUrl}
+                  alt="User Avatar"
+                  fetchPriority="high"
+                  loading="eager"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    opacity: avatarLoaded ? 1 : 0,
+                    transition: 'opacity 0.4s ease-in-out'
+                  }}
+                  onLoad={() => setAvatarLoaded(true)}
+                  onError={(e) => {
+                    e.target.src = fallbackAvatarUrl;
+                    setAvatarLoaded(true);
+                  }}
+                />
               </div>
               <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                 <Camera size={16} />
@@ -672,27 +694,26 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* CENTER: Divisor Visual */}
-          <div style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)', width: '1px', height: '100%', margin: '0 -16px' }}></div>
-
-          {/* RIGHT COLUMN: Notificaciones del Sistema - Switches Cyberpunk */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
-                <Bell size={18} />
+          {/* Panel 2 (Derecha): Sistema de Notificaciones */}
+          <div className="glass-panel" style={{ padding: '32px', border: '1px solid var(--border-glass-top)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
+                  <Bell size={18} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>SISTEMA DE NOTIFICACIONES</h3>
               </div>
-              <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>SISTEMA DE NOTIFICACIONES</h3>
+              <CyberpunkToggle 
+                checked={emailNotif}
+                onChange={handleEmailNotifChange}
+                label="📧 Notificaciones Email"
+              />
+              <CyberpunkToggle 
+                checked={webNotif}
+                onChange={handleWebNotifChange}
+                label="🔔 Notificaciones Web"
+              />
             </div>
-            <CyberpunkToggle 
-              checked={emailNotif}
-              onChange={handleEmailNotifChange}
-              label="📧 Notificaciones Email"
-            />
-            <CyberpunkToggle 
-              checked={webNotif}
-              onChange={handleWebNotifChange}
-              label="🔔 Notificaciones Web"
-            />
           </div>
 
         </div>
@@ -759,53 +780,55 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* RESTAURACIÓN: Posición del Menú - FIX VISIBILIDAD */}
-        <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+        {/* REDISEÑO: Posición del Menú - Panel Compacto con Animaciones */}
+        <div className="glass-panel" style={{ padding: '16px', border: '1px solid var(--border-glass-top)' }}>
           <SectionTitle icon={<LayoutIcon />} label={t.layoutPos} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {[
-              { id: 'left', icon: <ArrowLeft size={16} />, posClass: 'position-left-visual' },
-              { id: 'right', icon: <ArrowRight size={16} />, posClass: 'position-right-visual' },
-              { id: 'top', icon: <ArrowUp size={16} />, posClass: 'position-top-visual' },
-              { id: 'bottom', icon: <ArrowDown size={16} />, posClass: 'position-bottom-visual' }
+              { id: 'left', icon: <ArrowLeft size={20} /> },
+              { id: 'right', icon: <ArrowRight size={20} /> },
+              { id: 'top', icon: <ArrowUp size={20} /> },
+              { id: 'bottom', icon: <ArrowDown size={20} /> }
             ].map(pos => (
               <button
                 key={pos.id}
                 onClick={() => updateSettings({ sidebarPosition: pos.id })}
-                className={settings.sidebarPosition === pos.id ? 'active-menu-visual' : ''}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '16px',
+                  padding: '12px',
                   borderRadius: '10px',
                   border: `2px solid ${settings.sidebarPosition === pos.id ? '#00f3ff' : 'rgba(255,255,255,0.15)'}`,
-                  background: settings.sidebarPosition === pos.id ? 'rgba(0, 243, 255, 0.15)' : 'rgba(255,255,255,0.03)',
-                  color: settings.sidebarPosition === pos.id ? '#00f3ff' : 'var(--text-primary)',
+                  background: settings.sidebarPosition === pos.id ? 'rgba(0, 243, 255, 0.2)' : 'rgba(255,255,255,0.03)',
+                  color: settings.sidebarPosition === pos.id ? '#00f3ff' : 'rgba(255,255,255,0.6)',
                   cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   boxShadow: settings.sidebarPosition === pos.id ? '0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 243, 255, 0.2)' : 'none',
-                  minHeight: '60px',
-                  position: 'relative'
+                  minHeight: '50px',
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
                 onMouseEnter={(e) => {
                   if (settings.sidebarPosition !== pos.id) {
-                    e.currentTarget.style.background = 'rgba(0,243,255,0.08)';
-                    e.currentTarget.style.borderColor = 'rgba(0,243,255,0.4)';
+                    e.currentTarget.style.background = 'rgba(0,243,255,0.12)';
+                    e.currentTarget.style.borderColor = 'rgba(0,243,255,0.5)';
+                    e.currentTarget.style.color = 'rgba(0,243,255,0.9)';
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.querySelector('svg').classList.add('arrow-button-hover');
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (settings.sidebarPosition !== pos.id) {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
                     e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.querySelector('svg').classList.remove('arrow-button-hover');
                   }
                 }}
               >
-                <div className={`menu-position-visual ${pos.posClass}`} style={{ height: '32px', width: '100%' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 700, marginTop: 'auto' }}>
-                    {settings.sidebarPosition === pos.id && <Check size={14} />}
-                  </div>
-                </div>
+                {pos.icon}
               </button>
             ))}
           </div>

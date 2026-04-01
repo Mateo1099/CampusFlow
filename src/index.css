@@ -28,6 +28,7 @@
 [data-theme="dark"], :root {
   --bg-primary: #0a0a0f;
   --bg-secondary: #0f111a;
+  --bg-panel: rgba(15, 17, 26, 0.8);
   --bg-glass: rgba(255, 255, 255, 0.05);
   --bg-glass-hover: rgba(255, 255, 255, 0.08);
   --border-glass-top: rgba(255, 255, 255, 0.12);
@@ -52,6 +53,7 @@
 [data-theme="light"] {
   --bg-primary: #f5f7fb;
   --bg-secondary: #ffffff;
+  --bg-panel: rgba(255, 255, 255, 0.9);
   --bg-glass: rgba(255, 255, 255, 0.75);
   --bg-glass-hover: rgba(240, 246, 255, 0.9);
   --border-glass-top: rgba(0, 100, 255, 0.1);
@@ -76,6 +78,7 @@
 [data-theme="daltonic"] {
   --bg-primary: #050515;
   --bg-secondary: #0a0a25;
+  --bg-panel: rgba(10, 10, 37, 0.95);
   --bg-glass: rgba(20, 20, 50, 0.75);
   --bg-glass-hover: rgba(40, 40, 80, 0.9);
   --border-glass-top: rgba(255, 255, 255, 0.2);

@@ -287,7 +287,7 @@ const Sidebar = () => {
             position: 'relative'
           }}>
             {/* SKELETON NEÓN */}
-            {(!avatarLoaded || !avatarDisplayUrl) && (
+            {!avatarLoaded && (
               <div 
                 className="animate-pulse-neon"
                 style={{
@@ -303,33 +303,24 @@ const Sidebar = () => {
               />
             )}
 
-            {avatarDisplayUrl ? (
-              <img 
-                key={avatarDisplayUrl}
-                src={avatarDisplayUrl} 
-                alt="User" 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'cover',
-                  opacity: avatarLoaded ? 1 : 0,
-                  transition: 'opacity 0.4s ease-in-out'
-                }}
-                onLoad={() => setAvatarLoaded(true)}
-                onError={(e) => { 
-                  e.target.onerror = null;
-                  e.target.src = fallbackAvatar;
-                  setAvatarLoaded(true);
-                }}
-              />
-            ) : (
-              <img 
-                src={fallbackAvatar}
-                alt="Avatar Fallback"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onLoad={() => setAvatarLoaded(true)}
-              />
-            )}
+            <img 
+              key={avatarDisplayUrl || fallbackAvatar}
+              src={avatarDisplayUrl || fallbackAvatar}
+              alt="User Avatar" 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover',
+                opacity: avatarLoaded ? 1 : 0,
+                transition: 'opacity 0.4s ease-in-out'
+              }}
+              onLoad={() => setAvatarLoaded(true)}
+              onError={(e) => { 
+                e.target.onerror = null;
+                e.target.src = fallbackAvatar;
+                setAvatarLoaded(true);
+              }}
+            />
           </div>
           {!isHorizontal && (
             <div style={{ flex: 1, minWidth: 0 }}>

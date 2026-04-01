@@ -102,10 +102,10 @@ export function SettingsProvider({ children }) {
 
   const fetchProfile = useCallback(async (uid) => {
     try {
-      // CARGA BLINDADA Y SINCRONIZADA CON full_name Y wallpaper_id
+      // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id Y theme
       let { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme')
         .eq('id', uid)
         .maybeSingle();
 
@@ -113,7 +113,7 @@ export function SettingsProvider({ children }) {
         console.warn("Error en carga de perfil, intentando fallback de columnas...");
         const safeFetch = await supabase
           .from('profiles')
-          .select('id, language, typography, font_size, avatar_url, xp, level')
+          .select('id, language, typography, font_size, avatar_url, xp, level, theme')
           .eq('id', uid)
           .maybeSingle();
         data = safeFetch.data;
@@ -127,6 +127,7 @@ export function SettingsProvider({ children }) {
         setSettings(prev => ({
           ...prev,
           name: data.full_name || 'Mateo',
+          theme: data.theme || 'dark',
           language: data.language || 'es',
           font: data.typography || 'space-grotesk',
           fontSize: Number(data.font_size) || prev.fontSize || 16,
@@ -162,6 +163,7 @@ export function SettingsProvider({ children }) {
 
       const cloudMapping = {};
       if (processedUpdates.name !== undefined) cloudMapping.full_name = processedUpdates.name;
+      if (processedUpdates.theme) cloudMapping.theme = processedUpdates.theme;
       if (processedUpdates.language) cloudMapping.language = processedUpdates.language;
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
       if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
