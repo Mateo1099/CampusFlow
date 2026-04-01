@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -10,7 +10,9 @@ const Sidebar = () => {
   const { analytics } = useTasksContext();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
+  const [triggerAnimation, setTriggerAnimation] = React.useState({});
   const isHorizontal = settings.sidebarPosition === 'top' || settings.sidebarPosition === 'bottom';
 
   const avatarDisplayUrl = settings.avatarUrl || null;
@@ -21,6 +23,14 @@ const Sidebar = () => {
     logout();
     navigate('/login');
   };
+
+  // Trigger animations on route change
+  React.useEffect(() => {
+    const activePath = navItems.find(item => item.path === location.pathname);
+    if (activePath) {
+      setTriggerAnimation({ key: activePath.path, timestamp: Date.now() });
+    }
+  }, [location.pathname]);
 
   const navItems = [
     { name: t.dashboard, path: '/', icon: <LayoutDashboard size={isHorizontal ? 20 : 18} /> },
@@ -229,7 +239,7 @@ const Sidebar = () => {
         </div>
       ) /* End Gamification HUD */}
 
-      {/* Navegación */}
+      {/* Navegación - GLASSMORPHISM DESIGN */}
       <nav className="nav-stagger" style={{ 
         display: 'flex', 
         flexDirection: isHorizontal ? 'row' : 'column', 
@@ -237,21 +247,135 @@ const Sidebar = () => {
         flex: 1,
         justifyContent: isHorizontal ? 'center' : 'flex-start'
       }}>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === '/'}
-            className={({ isActive }) => `nav-link click-press hover-lift ${isActive ? 'active' : ''}`}
-            style={{
-              padding: isHorizontal ? '10px 16px' : '14px 18px',
-              fontSize: isHorizontal ? '0.75rem' : '0.85rem'
-            }}
-          >
-            {item.icon}
-            <span>{item.name}</span>
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '');
+          const isTriggering = triggerAnimation.key === item.path;
+          
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/'}
+              className={isActive ? 'active' : ''}
+              style={{
+                position: 'relative',
+                padding: isHorizontal ? '10px 16px' : '14px 18px',
+                fontSize: isHorizontal ? '0.75rem' : '0.85rem',
+                borderRadius: 'var(--radius-md)',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: isActive ? '#000' : 'var(--text-secondary)',
+                overflow: 'hidden',
+                transition: 'color 0.3s var(--ease-out-quint)',
+                transform: 'translateZ(0)',
+              }}
+            >
+              {/* GLASS BACKGROUND - Glassmorphism Base */}
+              <div 
+                className="glass-bg"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 'var(--radius-md)',
+                  background: isActive 
+                    ? 'linear-gradient(135deg, var(--accent-primary)ee 0%, var(--accent-secondary)dd 100%)'
+                    : 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.0) 100%)',
+                  opacity: isActive ? 1 : 0,
+                  transition: 'opacity 0.3s var(--ease-out-quint), background 0.3s var(--ease-out-quint)',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                  ...(isActive && { animation: 'barIn 0.4s var(--ease-out-expo) backwards' })
+                }}
+              />
+
+              {/* GLASS BORDER - Luminous Top Border */}
+              <div 
+                className="glass-border"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '1px',
+                  background: isActive 
+                    ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                    : 'transparent',
+                  transition: 'background 0.3s var(--ease-out-quint)',
+                  zIndex: 2,
+                  pointerEvents: 'none'
+                }}
+              />
+
+              {/* SHIMMER WRAP - Destello de luz */}
+              <div 
+                className="shimmer-wrap"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                  zIndex: 1
+                }}
+              >
+                <div 
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.1) 60%, transparent 100%)',
+                    animation: isActive && isTriggering ? 'shimmer 0.8s var(--ease-out-expo) ease-out' : 'none',
+                    pointerEvents: 'none'
+                  }}
+                />
+              </div>
+
+              {/* ACTIVE BAR - Barra lateral vertical */}
+              {isActive && (
+                <div 
+                  className="active-bar"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '3px',
+                    background: 'linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 0 15px var(--accent-primary), 0 0 8px var(--accent-secondary)',
+                    animation: 'barIn 0.4s var(--ease-out-expo) backwards, barPulse 2s ease-in-out 0.4s infinite',
+                    zIndex: 3,
+                    pointerEvents: 'none'
+                  }}
+                />
+              )}
+
+              {/* ICON - Con animación de rebote */}
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  ...(isActive && isTriggering && { animation: 'iconPop 0.6s var(--ease-out-expo) ease-out' })
+                }}
+              >
+                {item.icon}
+              </div>
+
+              {/* TEXT CONTENT */}
+              <span style={{ position: 'relative', zIndex: 4, whiteSpace: 'nowrap' }}>
+                {item.name}
+              </span>
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Perfil/Ajustes Link  */}

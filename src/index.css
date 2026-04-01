@@ -148,8 +148,8 @@ body {
 
 .glass-panel {
   background: var(--bg-glass);
-  backdrop-filter: blur(25px) saturate(180%);
-  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
   border: 1px solid var(--border-glass-top);
   border-top: 1px solid rgba(255,255,255,0.15);
   border-right: 1px solid var(--border-glass-side);
@@ -283,7 +283,7 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   transform: scale(1.1);
 }
 
-/* ========== SIDEBAR NAV-LINK ========== */
+/* ========== SIDEBAR NAV-LINK - GLASSMORPHISM ========== */
 .nav-link {
   display: flex !important;
   align-items: center;
@@ -299,10 +299,11 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   letter-spacing: 0.06em;
   position: relative;
   overflow: hidden;
-  transition: color 0.3s var(--ease-out-quint), opacity 0.3s var(--ease-out-quint);
+  transition: color 0.3s var(--ease-out-quint);
   opacity: 0.7;
   z-index: 1;
-  transform: translateZ(0); /* Force GPU acceleration */
+  transform: translateZ(0);
+  cursor: pointer;
 }
 
 .nav-link.active {
@@ -311,52 +312,26 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
 }
 
 .nav-link:hover:not(.active) {
-  opacity: 1;
+  opacity: 0.9;
   color: var(--text-primary);
 }
 
-/* Fondo Activo (Smooth Transform) */
-.nav-link::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-md);
-  background: var(--accent-primary);
-  opacity: 0;
-  transform: scaleX(0.8);
-  transform-origin: left;
-  transition: opacity 0.3s var(--ease-out-quint), transform 0.3s var(--ease-out-quint);
-  z-index: -1;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+.nav-link:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  transition: background 0.2s var(--ease-out-expo);
 }
 
-.nav-link.active::before {
-  opacity: 1;
-  transform: scaleX(1);
-}
-
-/* Fondo Hover (Subtle Glass) */
-.nav-link::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.05);
-  opacity: 0;
-  transform: scale(0.98);
-  transition: opacity 0.2s, transform 0.2s;
-  z-index: -2;
-}
-
-.nav-link:hover:not(.active)::after {
-  opacity: 1;
-  transform: scale(1);
+/* Glassmorphism: Glassmorphism Background Layer */
+.nav-link .glass-bg {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Animaciones del Icono */
 .nav-link svg {
   transition: transform 0.3s var(--ease-out-quint);
   transform: scale(1);
+  flex-shrink: 0;
 }
 
 .nav-link.active svg {
@@ -445,6 +420,63 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   0%   { transform: translate(0, 0) scale(1); }
   50%  { transform: translate(4vw, 4vh) scale(1.15); }
   100% { transform: translate(-4vw, 8vh) scale(0.9); }
+}
+
+/* ========== SIDEBAR GLASSMORPHISM ANIMATIONS ========== */
+
+/* barIn: Barra activa que crece desde altura 0 a 1 */
+@keyframes barIn {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* barPulse: Pulso suave de sombra en la barra activa */
+@keyframes barPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px var(--accent-primary), 0 0 8px var(--accent-secondary);
+  }
+  50% {
+    box-shadow: 0 0 25px var(--accent-primary)cc, 0 0 15px var(--accent-secondary)aa, inset 0 0 8px var(--accent-primary)66;
+  }
+}
+
+/* shimmer: Destello de luz que cruce SOLO UNA VEZ */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* iconPop: Ícono rebota ligeramente al activarse */
+@keyframes iconPop {
+  0% {
+    transform: scale(0.7) translateY(8px);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 .animate-fade-in { animation: slideUp 0.6s var(--ease-out-expo) both; }
