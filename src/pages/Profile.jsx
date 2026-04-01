@@ -149,15 +149,19 @@ const Profile = () => {
   // Estados para Notificaciones
   const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
   const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
 
   const downloadAvatar = useCallback(async (path) => {
     try {
+      setIsLoadingAvatar(true);
       const { data, error } = await supabase.storage.from('avatars').download(path);
       if (error) throw error;
       const url = URL.createObjectURL(data);
       setAvatarUrl(url);
     } catch (error) {
       console.error('Error downloading avatar:', error.message);
+    } finally {
+      setIsLoadingAvatar(false);
     }
   }, []);
 
@@ -548,7 +552,7 @@ const Profile = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
 
         {/* User Card - HEADER RESTRUCTURADO Y EQUILIBRADO */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '32px', display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '32px', gridColumn: '1 / -1', border: '1px solid var(--border-glass-top)', alignItems: 'center' }}>
           
           {/* LEFT COLUMN: Avatar + Nombre + Rango */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -668,8 +672,17 @@ const Profile = () => {
             </div>
           </div>
 
+          {/* CENTER: Divisor Visual */}
+          <div style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%)', width: '1px', height: '100%', margin: '0 -16px' }}></div>
+
           {/* RIGHT COLUMN: Notificaciones del Sistema - Switches Cyberpunk */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
+                <Bell size={18} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>SISTEMA DE NOTIFICACIONES</h3>
+            </div>
             <CyberpunkToggle 
               checked={emailNotif}
               onChange={handleEmailNotifChange}
