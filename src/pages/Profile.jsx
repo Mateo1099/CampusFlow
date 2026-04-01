@@ -20,47 +20,158 @@ const WALLPAPERS = [
   { id: 'space', label: 'Deep Cyber', src: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop' },
 ];
 
-// SWITCH TOGGLE COMPONENT - Cyberpunk Style
-const CyberpunkToggle = ({ checked, onChange, label }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.3s ease' }}>
-    <button
-      onClick={() => onChange(!checked)}
-      style={{
-        position: 'relative',
-        width: '44px',
-        height: '24px',
-        background: checked ? 'var(--accent-primary)' : 'rgba(255,255,255,0.1)',
-        border: `2px solid ${checked ? 'var(--accent-primary)' : 'rgba(255,255,255,0.2)'}`,
-        borderRadius: '12px',
-        cursor: 'pointer',
-        transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        boxShadow: checked ? '0 0 15px rgba(0, 243, 255, 0.6), inset 0 0 10px rgba(0, 243, 255, 0.3)' : 'none',
-        padding: 0,
-        display: 'flex',
-        alignItems: 'center'
-      }}
-    >
-      <div style={{
+// NOTIFICATION ROW COMPONENT - Glass Design with Micro-interactions
+const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
+  const [hasAnimated, setHasAnimated] = React.useState(false);
+
+  const handleToggle = (newValue) => {
+    onChange(newValue);
+    if (newValue && !hasAnimated) {
+      setHasAnimated(false); // Reset para próxima animación
+      setTimeout(() => setHasAnimated(true), 10);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      cursor: 'pointer',
+      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      transform: checked ? 'scale(1)' : 'scale(1)',
+      opacity: 1
+    }}>
+      {/* Capas de Fondo Glassmorphism */}
+      <div className="glass-bg" style={{
         position: 'absolute',
-        left: checked ? 'calc(100% - 20px)' : '2px',
-        width: '18px',
-        height: '18px',
-        background: '#fff',
-        borderRadius: '50%',
-        transition: 'left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '10px',
-        fontWeight: 900,
-        color: checked ? '#00f3ff' : '#999'
-      }}>
-        {checked ? '✓' : '✕'}
-      </div>
-    </button>
-    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', flex: 1 }}>{label}</span>
-  </div>
-);
+        inset: 0,
+        background: checked 
+          ? 'linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(0, 243, 255, 0.03) 100%)'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        zIndex: 1
+      }} />
+
+      <div className="glass-border" style={{
+        position: 'absolute',
+        inset: 0,
+        border: `2px solid ${checked ? 'rgba(0, 243, 255, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+        borderRadius: '12px',
+        boxShadow: checked 
+          ? '0 0 30px rgba(0, 243, 255, 0.3), inset 0 0 20px rgba(0, 243, 255, 0.1)'
+          : '0 0 0px transparent',
+        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        zIndex: 2,
+        pointerEvents: 'none'
+      }} />
+
+      {/* Shimmer Animation - Solo cuando está ON */}
+      {checked && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+            animation: 'shimmer 1.5s ease-in-out',
+            zIndex: 3,
+            pointerEvents: 'none',
+            borderRadius: '12px'
+          }}
+        />
+      )}
+
+      {/* Contenido Interactivo */}
+      <button
+        onClick={() => handleToggle(!checked)}
+        style={{
+          position: 'relative',
+          zIndex: 4,
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '16px 20px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--text-primary)',
+          transition: 'all 0.3s ease'
+        }}
+        onMouseEnter={(e) => {
+          if (!checked) {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+        }}
+      >
+        {/* Status Dot - Brilla en azul */}
+        <div style={{
+          position: 'relative',
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          background: checked ? 'var(--accent-primary)' : 'rgba(255,255,255,0.2)',
+          boxShadow: checked 
+            ? '0 0 12px var(--accent-primary), inset 0 0 8px var(--accent-primary)'
+            : 'none',
+          transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          flexShrink: 0
+        }} />
+
+        {/* Label */}
+        <span style={{
+          fontSize: '0.9rem',
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          flex: 1,
+          textAlign: 'left',
+          transition: 'all 0.3s ease'
+        }}>
+          {label}
+        </span>
+
+        {/* Icon Swap - X Roja / Check Azul con PopIn */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '24px',
+          height: '24px',
+          position: 'relative',
+          flexShrink: 0
+        }}>
+          {checked ? (
+            <Check
+              size={20}
+              color="var(--accent-primary)"
+              style={{
+                animation: 'iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                filter: 'drop-shadow(0 0 8px rgba(0, 243, 255, 0.5))'
+              }}
+            />
+          ) : (
+            <X
+              size={20}
+              color="rgba(255,255,255,0.3)"
+              style={{
+                animation: 'iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                transition: 'all 0.3s ease'
+              }}
+            />
+          )}
+        </div>
+      </button>
+    </div>
+  );
+};
 
 const LANGUAGES = [
   { id: 'es', label: 'Español', flag: '🇪🇸' },
@@ -709,27 +820,54 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Panel 2 (Derecha): Sistema de Notificaciones - CENTRADO */}
-          <div className="glass-panel" style={{ padding: '32px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', alignItems: 'center', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
-                  <Bell size={18} />
-                </div>
-                <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>SISTEMA DE NOTIFICACIONES</h3>
+          {/* Panel 2 (Derecha): Sistema de Notificaciones PRO - Glassmorphism */}
+          <div className="glass-panel" style={{ 
+            padding: '32px', 
+            border: '1px solid var(--border-glass-top)', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.03) 0%, rgba(255, 255, 255, 0.02) 100%)'
+          }}>
+            {/* Header con Animación Bell Ring */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ 
+                color: 'var(--accent-primary)', 
+                display: 'flex', 
+                alignItems: 'center',
+                animation: emailNotif || webNotif ? 'bellRing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
+              }}>
+                <Bell size={20} />
               </div>
-              <div style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <CyberpunkToggle 
-                  checked={emailNotif}
-                  onChange={handleEmailNotifChange}
-                  label="Notificaciones Email"
-                />
-                <CyberpunkToggle 
-                  checked={webNotif}
-                  onChange={handleWebNotifChange}
-                  label="Notificaciones Web"
-                />
-              </div>
+              <h3 style={{ 
+                margin: 0, 
+                fontSize: '0.9rem', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.12em', 
+                fontWeight: 900, 
+                color: 'var(--text-primary)',
+                textShadow: '0 0 15px rgba(0, 243, 255, 0.2)'
+              }}>
+                NOTIFICACIONES
+              </h3>
+            </div>
+
+            {/* Rows de Notificación */}
+            <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 auto' }}>
+              <NotificationRow 
+                checked={emailNotif}
+                onChange={handleEmailNotifChange}
+                label="Correo Electrónico"
+                icon={Bell}
+              />
+              <NotificationRow 
+                checked={webNotif}
+                onChange={handleWebNotifChange}
+                label="Notificaciones Web"
+                icon={Bell}
+              />
             </div>
           </div>
 
