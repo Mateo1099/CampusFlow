@@ -13,9 +13,8 @@ const Sidebar = () => {
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
   const isHorizontal = settings.sidebarPosition === 'top' || settings.sidebarPosition === 'bottom';
 
-  const avatarDisplayUrl = settings.avatarUrl || settings.profileImage;
-
-  const fallbackAvatar = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff`;
+  const avatarDisplayUrl = settings.avatarUrl || null;
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff&font-size=0.4&bold=true`;
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -279,11 +278,17 @@ const Sidebar = () => {
           className="glass-card-hover"
         >
           <div style={{ 
-            width: isHorizontal ? '32px' : '40px', height: isHorizontal ? '32px' : '40px', borderRadius: '50%', 
-            overflow: 'hidden', border: '2px solid var(--accent-primary)',
-            background: 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: isHorizontal ? '32px' : '40px', 
+            height: isHorizontal ? '32px' : '40px', 
+            borderRadius: '50%', 
+            overflow: 'hidden', 
+            border: '2px solid var(--accent-primary)',
+            background: 'var(--bg-glass)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: '0 0 10px rgba(0, 243, 255, 0.2)',
+            boxShadow: '0 0 10px var(--accent-primary)33',
             position: 'relative'
           }}>
             {/* SKELETON NEÓN */}
@@ -293,8 +298,8 @@ const Sidebar = () => {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'rgba(0, 243, 255, 0.15)',
-                  boxShadow: 'inset 0 0 15px rgba(0, 243, 255, 0.3)',
+                  background: 'var(--accent-primary)15',
+                  boxShadow: 'inset 0 0 15px var(--accent-primary)33',
                   zIndex: 2,
                   transition: 'opacity 0.5s ease-in-out',
                   opacity: !avatarLoaded ? 1 : 0,

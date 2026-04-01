@@ -651,3 +651,29 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
 }
+
+/* Arrow Button Animations for Sidebar Position Menu */
+@keyframes arrowLevitate {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes arrowPulse {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 0px var(--accent-primary));
+  }
+  50% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 10px var(--accent-primary));
+  }
+}
+
+.arrow-button-hover svg {
+  animation: arrowLevitate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite,
+            arrowPulse 2s ease-in-out infinite !important;
+}

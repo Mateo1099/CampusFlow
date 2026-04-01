@@ -183,9 +183,11 @@ const Profile = () => {
   }, [settings.name]);
 
   // Apply theme to document element for CSS variable updates
+  // Sync theme to DOM and persist to localStorage
   useEffect(() => {
     if (settings.theme) {
       document.documentElement.setAttribute('data-theme', settings.theme);
+      localStorage.setItem('campusflow_theme', settings.theme);
     }
   }, [settings.theme]);
 
@@ -599,8 +601,8 @@ const Profile = () => {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'rgba(0, 243, 255, 0.15)',
-                      boxShadow: 'inset 0 0 30px rgba(0, 243, 255, 0.4)',
+                      background: 'var(--accent-primary)15',
+                      boxShadow: 'inset 0 0 30px var(--accent-primary)33',
                       zIndex: 2,
                       transition: 'opacity 0.5s ease-in-out',
                       opacity: !avatarLoaded ? 1 : 0
@@ -694,25 +696,27 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Panel 2 (Derecha): Sistema de Notificaciones */}
-          <div className="glass-panel" style={{ padding: '32px', border: '1px solid var(--border-glass-top)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          {/* Panel 2 (Derecha): Sistema de Notificaciones - CENTRADO */}
+          <div className="glass-panel" style={{ padding: '32px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                 <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
                   <Bell size={18} />
                 </div>
-                <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>SISTEMA DE NOTIFICACIONES</h3>
+                <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>NOTIFICACIONES</h3>
               </div>
-              <CyberpunkToggle 
-                checked={emailNotif}
-                onChange={handleEmailNotifChange}
-                label="📧 Notificaciones Email"
-              />
-              <CyberpunkToggle 
-                checked={webNotif}
-                onChange={handleWebNotifChange}
-                label="🔔 Notificaciones Web"
-              />
+              <div style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <CyberpunkToggle 
+                  checked={emailNotif}
+                  onChange={handleEmailNotifChange}
+                  label="📧 Email"
+                />
+                <CyberpunkToggle 
+                  checked={webNotif}
+                  onChange={handleWebNotifChange}
+                  label="🔔 Web"
+                />
+              </div>
             </div>
           </div>
 
@@ -726,11 +730,12 @@ const Profile = () => {
               <button key={theme.id} onClick={() => {
                 document.body.classList.add('theme-fade');
                 document.documentElement.setAttribute('data-theme', theme.id);
+                localStorage.setItem('campusflow_theme', theme.id);
                 setTimeout(() => {
                   updateSettings({ theme: theme.id });
                   document.body.classList.remove('theme-fade');
                 }, 300);
-              }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `2px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.15)'}`, background: settings.theme === theme.id ? 'rgba(0,243,255,0.1)' : 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: settings.theme === theme.id ? '0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 243, 255, 0.2)' : 'none' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.08)'} onMouseLeave={(e) => e.currentTarget.style.background = settings.theme === theme.id ? 'rgba(0,243,255,0.1)' : 'rgba(255,255,255,0.03)'}>
+              }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `2px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'var(--border-glass-side)'}`, background: settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: settings.theme === theme.id ? '0 0 20px var(--accent-primary)66, inset 0 0 10px var(--accent-primary)33' : 'none' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-glass)'} onMouseLeave={(e) => e.currentTarget.style.background = settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent'}>
                 <span style={{ fontSize: '1.2rem' }}>{theme.icon}</span>
                 <span style={{ fontWeight: 700 }}>{t[theme.labelKey]}</span>
                 {settings.theme === theme.id && <Check size={16} color="var(--accent-primary)" style={{ marginLeft: 'auto' }} />}
@@ -799,30 +804,30 @@ const Profile = () => {
                   justifyContent: 'center',
                   padding: '12px',
                   borderRadius: '10px',
-                  border: `2px solid ${settings.sidebarPosition === pos.id ? '#00f3ff' : 'rgba(255,255,255,0.15)'}`,
-                  background: settings.sidebarPosition === pos.id ? 'rgba(0, 243, 255, 0.2)' : 'rgba(255,255,255,0.03)',
-                  color: settings.sidebarPosition === pos.id ? '#00f3ff' : 'rgba(255,255,255,0.6)',
+                  border: `2px solid ${settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'var(--border-glass-side)'}`,
+                  background: settings.sidebarPosition === pos.id ? 'var(--bg-glass-hover)' : 'transparent',
+                  color: settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  boxShadow: settings.sidebarPosition === pos.id ? '0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 243, 255, 0.2)' : 'none',
+                  boxShadow: settings.sidebarPosition === pos.id ? '0 0 20px var(--accent-primary)66, inset 0 0 10px var(--accent-primary)33' : 'none',
                   minHeight: '50px',
                   position: 'relative',
                   overflow: 'hidden'
                 }}
                 onMouseEnter={(e) => {
                   if (settings.sidebarPosition !== pos.id) {
-                    e.currentTarget.style.background = 'rgba(0,243,255,0.12)';
-                    e.currentTarget.style.borderColor = 'rgba(0,243,255,0.5)';
-                    e.currentTarget.style.color = 'rgba(0,243,255,0.9)';
+                    e.currentTarget.style.background = 'var(--bg-glass)';
+                    e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                    e.currentTarget.style.color = 'var(--accent-primary)';
                     e.currentTarget.style.transform = 'translateY(-4px)';
                     e.currentTarget.querySelector('svg').classList.add('arrow-button-hover');
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (settings.sidebarPosition !== pos.id) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                    e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = 'var(--border-glass-side)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.querySelector('svg').classList.remove('arrow-button-hover');
                   }

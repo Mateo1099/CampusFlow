@@ -92,11 +92,18 @@ const SettingsContext = createContext();
 export function SettingsProvider({ children }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState({
-    theme: 'dark', language: 'es', font: 'space-grotesk', name: 'Mateo',
-    experience: 0, level: 1, stats: { pomodorosCompleted: 0, tasksCompleted: 0 },
-    wallpaper: 'cyber', sidebarPosition: 'left', 
+    theme: localStorage.getItem('campusflow_theme') || 'dark', 
+    language: 'es', 
+    font: 'space-grotesk', 
+    name: 'Mateo',
+    experience: 0, 
+    level: 1, 
+    stats: { pomodorosCompleted: 0, tasksCompleted: 0 },
+    wallpaper: 'cyber', 
+    sidebarPosition: 'left', 
     fontSize: Number(localStorage.getItem('campusflow_font_size')) || 16,
-    avatarUrl: null, customWallpaper: null
+    avatarUrl: null, 
+    customWallpaper: null
   });
   const [recentXPGains, setRecentXPGains] = useState([]);
 
@@ -163,7 +170,10 @@ export function SettingsProvider({ children }) {
 
       const cloudMapping = {};
       if (processedUpdates.name !== undefined) cloudMapping.full_name = processedUpdates.name;
-      if (processedUpdates.theme) cloudMapping.theme = processedUpdates.theme;
+      if (processedUpdates.theme) {
+        cloudMapping.theme = processedUpdates.theme;
+        localStorage.setItem('campusflow_theme', processedUpdates.theme);
+      }
       if (processedUpdates.language) cloudMapping.language = processedUpdates.language;
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
       if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
