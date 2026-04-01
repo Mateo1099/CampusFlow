@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ArrowLeft, ArrowRight, ArrowUp, ArrowDown, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, X
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, X
 } from 'lucide-react';
 
 const THEMES = [
@@ -798,65 +798,263 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* REDISEÑO: Posición del Menú - Panel Minimalista y Compacto */}
-        <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        {/* PREMIUM MINI-SCREENS SELECTOR: Posición del Menú */}
+        <div className="glass-panel" style={{ padding: '32px', border: '1px solid var(--border-glass-top)', width: '100%', height: 'fit-content' }}>
+          {/* Title Section */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px' }}>
             <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
-              <LayoutIcon size={18} />
+              <LayoutIcon size={20} />
             </div>
-            <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>{t.layoutPos}</h3>
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '0.95rem', 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.12em', 
+              fontWeight: 900, 
+              color: 'var(--text-primary)',
+              textShadow: '0 0 20px rgba(0, 243, 255, 0.2)'
+            }}>
+              {t.layoutPos}
+            </h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '12px', width: 'fit-content' }}>
+
+          {/* Mini-Screens Grid */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(4, 1fr)', 
+            gap: '20px',
+            width: '100%'
+          }}>
             {[
-              { id: 'left', icon: <ArrowLeft size={20} /> },
-              { id: 'right', icon: <ArrowRight size={20} /> },
-              { id: 'top', icon: <ArrowUp size={20} /> },
-              { id: 'bottom', icon: <ArrowDown size={20} /> }
-            ].map(pos => {
-              const isActive = settings.sidebarPosition === pos.id;
+              { 
+                id: 'left', 
+                label: t.left,
+                preview: (isActive) => (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '3px',
+                    width: '100%',
+                    height: '100%'
+                  }}>
+                    {/* Sidebar indicator (left) */}
+                    <div style={{
+                      width: '18%',
+                      height: '85%',
+                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
+                      borderRadius: '4px',
+                      opacity: isActive ? 0.95 : 0.6,
+                      transition: 'all 0.3s ease'
+                    }} />
+                    {/* Content lines */}
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      paddingRight: '4px',
+                      height: '85%',
+                      justifyContent: 'space-around'
+                    }}>
+                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
+                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
+                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
+                    </div>
+                  </div>
+                )
+              },
+              { 
+                id: 'right', 
+                label: t.right,
+                preview: (isActive) => (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '3px',
+                    width: '100%',
+                    height: '100%'
+                  }}>
+                    {/* Content lines */}
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      paddingLeft: '4px',
+                      height: '85%',
+                      justifyContent: 'space-around'
+                    }}>
+                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
+                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
+                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
+                    </div>
+                    {/* Sidebar indicator (right) */}
+                    <div style={{
+                      width: '18%',
+                      height: '85%',
+                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
+                      borderRadius: '4px',
+                      opacity: isActive ? 0.95 : 0.6,
+                      transition: 'all 0.3s ease'
+                    }} />
+                  </div>
+                )
+              },
+              { 
+                id: 'top', 
+                label: t.top,
+                preview: (isActive) => (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '3px',
+                    width: '100%',
+                    height: '100%'
+                  }}>
+                    {/* Header indicator (top) */}
+                    <div style={{
+                      width: '85%',
+                      height: '16%',
+                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
+                      borderRadius: '4px',
+                      opacity: isActive ? 0.95 : 0.6,
+                      transition: 'all 0.3s ease'
+                    }} />
+                    {/* Content lines */}
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '3px',
+                      paddingTop: '3px',
+                      width: '85%',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
+                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
+                    </div>
+                  </div>
+                )
+              },
+              { 
+                id: 'bottom', 
+                label: t.bottom,
+                preview: (isActive) => (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '3px',
+                    width: '100%',
+                    height: '100%'
+                  }}>
+                    {/* Content lines */}
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '3px',
+                      paddingBottom: '3px',
+                      width: '85%',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
+                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
+                    </div>
+                    {/* Footer indicator (bottom) */}
+                    <div style={{
+                      width: '85%',
+                      height: '16%',
+                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
+                      borderRadius: '4px',
+                      opacity: isActive ? 0.95 : 0.6,
+                      transition: 'all 0.3s ease'
+                    }} />
+                  </div>
+                )
+              }
+            ].map(position => {
+              const isActive = settings.sidebarPosition === position.id;
               return (
-              <button
-                key={pos.id}
-                onClick={() => updateSettings({ sidebarPosition: pos.id })}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '12px 14px',
-                  borderRadius: '8px',
-                  border: `2px solid ${isActive ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)'}`,
-                  background: isActive ? 'rgba(255,255,255,0.03)' : 'transparent',
-                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  boxShadow: isActive ? '0 0 20px var(--accent-primary)80, inset 0 0 15px var(--accent-primary)40' : 'none',
-                  width: '50px',
-                  height: '50px',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                    e.currentTarget.style.color = 'var(--accent-primary)';
-                    e.currentTarget.style.transform = 'scale(1.08)';
-                    e.currentTarget.querySelector('svg').classList.add('arrow-button-hover');
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.querySelector('svg').classList.remove('arrow-button-hover');
-                  }
-                }}
-              >
-                {pos.icon}
-              </button>
-            );
+                <button
+                  key={position.id}
+                  onClick={() => updateSettings({ sidebarPosition: position.id })}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '0',
+                    border: `2px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)'}`,
+                    background: isActive ? 'rgba(0, 243, 255, 0.08)' : 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    boxShadow: isActive 
+                      ? '0 0 30px var(--accent-primary), inset 0 0 20px rgba(0, 243, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.3)' 
+                      : '0 4px 16px rgba(0, 0, 0, 0.2)',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    transform: isActive ? 'scale(1)' : 'scale(0.98)',
+                    opacity: 1,
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(0, 243, 255, 0.04)';
+                      e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 0 20px var(--accent-primary), 0 8px 32px rgba(0, 0, 0, 0.3)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'var(--border-glass-top)';
+                      e.currentTarget.style.transform = 'scale(0.98)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
+                    }
+                  }}
+                >
+                  {/* Mini-Screen Container */}
+                  <div style={{
+                    width: '100%',
+                    aspectRatio: '3/4',
+                    background: 'var(--bg-glass)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid var(--border-glass-top)',
+                    borderRadius: '12px',
+                    padding: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative'
+                  }}>
+                    {position.preview(isActive)}
+                  </div>
+
+                  {/* Label */}
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 900,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    textShadow: isActive ? '0 0 10px rgba(0, 243, 255, 0.3)' : 'none',
+                    transition: 'all 0.3s ease',
+                    paddingBottom: '8px'
+                  }}>
+                    {position.label}
+                  </span>
+                </button>
+              );
             })}
           </div>
         </div>
