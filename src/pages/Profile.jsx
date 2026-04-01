@@ -328,6 +328,19 @@ const Profile = () => {
   return (
     <>
       <style>{`
+        .glassmorphism-enhanced {
+          background: var(--bg-glass);
+          backdrop-filter: blur(25px) saturate(180%);
+          -webkit-backdrop-filter: blur(25px) saturate(180%);
+          border: 1px solid var(--border-glass-top);
+          border-top: 1px solid rgba(255,255,255,0.15);
+          border-right: 1px solid var(--border-glass-side);
+          border-left: 1px solid var(--border-glass-side);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-glass), inset 0 0 20px rgba(255,255,255,0.05);
+          transition: all var(--transition-med);
+        }
+
         @keyframes arrowLevitate {
           0%, 100% {
             transform: translateY(0px);
@@ -703,18 +716,18 @@ const Profile = () => {
                 <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
                   <Bell size={18} />
                 </div>
-                <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>NOTIFICACIONES</h3>
+                <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>SISTEMA DE NOTIFICACIONES</h3>
               </div>
               <div style={{ width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <CyberpunkToggle 
                   checked={emailNotif}
                   onChange={handleEmailNotifChange}
-                  label="📧 Email"
+                  label="Notificaciones Email"
                 />
                 <CyberpunkToggle 
                   checked={webNotif}
                   onChange={handleWebNotifChange}
-                  label="🔔 Web"
+                  label="Notificaciones Web"
                 />
               </div>
             </div>
@@ -785,16 +798,23 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* REDISEÑO: Posición del Menú - Panel Compacto con Animaciones */}
-        <div className="glass-panel" style={{ padding: '16px', border: '1px solid var(--border-glass-top)' }}>
-          <SectionTitle icon={<LayoutIcon />} label={t.layoutPos} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+        {/* REDISEÑO: Posición del Menú - Panel Minimalista y Compacto */}
+        <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
+              <LayoutIcon size={18} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 800, color: 'var(--text-primary)' }}>{t.layoutPos}</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'row', gap: '12px', width: 'fit-content' }}>
             {[
               { id: 'left', icon: <ArrowLeft size={20} /> },
               { id: 'right', icon: <ArrowRight size={20} /> },
               { id: 'top', icon: <ArrowUp size={20} /> },
               { id: 'bottom', icon: <ArrowDown size={20} /> }
-            ].map(pos => (
+            ].map(pos => {
+              const isActive = settings.sidebarPosition === pos.id;
+              return (
               <button
                 key={pos.id}
                 onClick={() => updateSettings({ sidebarPosition: pos.id })}
@@ -802,40 +822,42 @@ const Profile = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: '12px',
-                  borderRadius: '10px',
-                  border: `2px solid ${settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'var(--border-glass-side)'}`,
-                  background: settings.sidebarPosition === pos.id ? 'var(--bg-glass-hover)' : 'transparent',
-                  color: settings.sidebarPosition === pos.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  border: `2px solid ${isActive ? 'var(--accent-primary)' : 'rgba(255,255,255,0.08)'}`,
+                  background: isActive ? 'rgba(255,255,255,0.03)' : 'transparent',
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  boxShadow: settings.sidebarPosition === pos.id ? '0 0 20px var(--accent-primary)66, inset 0 0 10px var(--accent-primary)33' : 'none',
-                  minHeight: '50px',
+                  boxShadow: isActive ? '0 0 20px var(--accent-primary)80, inset 0 0 15px var(--accent-primary)40' : 'none',
+                  width: '50px',
+                  height: '50px',
                   position: 'relative',
                   overflow: 'hidden'
                 }}
                 onMouseEnter={(e) => {
-                  if (settings.sidebarPosition !== pos.id) {
-                    e.currentTarget.style.background = 'var(--bg-glass)';
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
                     e.currentTarget.style.borderColor = 'var(--accent-primary)';
                     e.currentTarget.style.color = 'var(--accent-primary)';
-                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.transform = 'scale(1.08)';
                     e.currentTarget.querySelector('svg').classList.add('arrow-button-hover');
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (settings.sidebarPosition !== pos.id) {
+                  if (!isActive) {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.borderColor = 'var(--border-glass-side)';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
                     e.currentTarget.style.color = 'var(--text-secondary)';
-                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.transform = 'scale(1)';
                     e.currentTarget.querySelector('svg').classList.remove('arrow-button-hover');
                   }
                 }}
               >
                 {pos.icon}
               </button>
-            ))}
+            );
+            })}
           </div>
         </div>
 
