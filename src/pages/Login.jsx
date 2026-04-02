@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { User, Lock, ArrowRight, Zap, GraduationCap, AlertCircle } from 'lucide-react';
 
 const Login = () => {
-  const { login } = useAuth();
+  const { login, checkMFAStatus } = useAuth();
   const { t } = useSettings();
   const navigate = useNavigate();
 
@@ -16,6 +16,28 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
+
+  const checkAndRouteMFA = async (user) => {
+    // Esperar a que AuthContext actualice el estado
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Verificar si el usuario tiene MFA activo
+    await checkMFAStatus(user.id);
+    const { data } = await supabase
+      .from('user_security')
+      .select('mfa_enabled, mfa_status')
+      .eq('user_id', user.id)
+      .single();
+
+    const hasMFA = data?.mfa_enabled === true && data?.mfa_status === 'PROTEGIDA';
+    
+    // Si está en AAL1 y tiene MFA, redirigir a challenge
+    if (user.aal === 'aal1' && hasMFA) {
+      navigate('/mfa-challenge');
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -50,7 +72,9 @@ const Login = () => {
             name: data.user.user_metadata?.display_name || email.split('@')[0],
             id: data.user.id
           });
-          navigate('/');
+          
+          // Verificar MFA y rutear según sea necesario
+          await checkAndRouteMFA(data.user);
         }
       }
     } catch (err) {
@@ -66,13 +90,13 @@ const Login = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}?provider=${provider}`,
         },
       });
       if (error) throw error;
+      // El resto del flujo ocurre después del redirect
     } catch (err) {
       setErrorMsg(err.message);
-    } finally {
       setIsLoading(false);
     }
   };

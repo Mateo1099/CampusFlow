@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, X
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, X, Copy, AlertCircle
 } from 'lucide-react';
 
 const THEMES = [
@@ -20,14 +20,13 @@ const WALLPAPERS = [
   { id: 'space', label: 'Deep Cyber', src: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop' },
 ];
 
-// NOTIFICATION ROW COMPONENT - Glass Design with Micro-interactions
 const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
   const [hasAnimated, setHasAnimated] = React.useState(false);
 
   const handleToggle = (newValue) => {
     onChange(newValue);
     if (newValue && !hasAnimated) {
-      setHasAnimated(false); // Reset para próxima animación
+      setHasAnimated(false);
       setTimeout(() => setHasAnimated(true), 10);
     }
   };
@@ -43,7 +42,6 @@ const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
       transform: checked ? 'scale(1)' : 'scale(1)',
       opacity: 1
     }}>
-      {/* Capas de Fondo Glassmorphism */}
       <div className="glass-bg" style={{
         position: 'absolute',
         inset: 0,
@@ -69,7 +67,6 @@ const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
         pointerEvents: 'none'
       }} />
 
-      {/* Shimmer Animation - Solo cuando está ON */}
       {checked && (
         <div
           style={{
@@ -84,7 +81,6 @@ const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
         />
       )}
 
-      {/* Contenido Interactivo */}
       <button
         onClick={() => handleToggle(!checked)}
         style={{
@@ -110,7 +106,6 @@ const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
           e.currentTarget.style.background = 'transparent';
         }}
       >
-        {/* Status Dot - Brilla en azul */}
         <div style={{
           position: 'relative',
           width: '12px',
@@ -124,7 +119,6 @@ const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
           flexShrink: 0
         }} />
 
-        {/* Label */}
         <span style={{
           fontSize: '0.9rem',
           fontWeight: 700,
@@ -138,7 +132,6 @@ const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
           {label}
         </span>
 
-        {/* Icon Swap - X Roja / Check Azul con PopIn */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -235,32 +228,31 @@ const Profile = () => {
 
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [openSection, setOpenSection] = useState(null);
-  const [openSetting, setOpenSetting] = useState(null); // 'lang', 'font', 'fontSize'
+  const [openSetting, setOpenSetting] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [showToast, setShowToast] = useState(false);
 
-  // States para Edición de Nombre
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(settings.name);
 
-  // States para MFA
+  // MFA States
   const [mfaData, setMfaData] = useState(null);
+  const [qrCodeSvg, setQrCodeSvg] = useState(null);
   const [verifyCode, setVerifyCode] = useState('');
-  const [isMfaActive, setIsMfaActive] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState('');
+  const [mfaSuccessMessage, setMfaSuccessMessage] = useState('');
 
-  // States para Desactivar MFA
   const [isDisablingMfa, setIsDisablingMfa] = useState(false);
   const [disableVerifyCode, setDisableVerifyCode] = useState('');
   const [disableMfaLoading, setDisableMfaLoading] = useState(false);
   const [disableMfaError, setDisableMfaError] = useState('');
 
-  // Estados para Notificaciones
   const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
   const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+  const [manualSecret, setManualSecret] = useState('');
 
   const downloadAvatar = useCallback(async (path) => {
     try {
@@ -280,12 +272,6 @@ const Profile = () => {
     if (user?.user_metadata?.avatar_path) {
       downloadAvatar(user.user_metadata.avatar_path);
     }
-    checkMfaStatus();
-
-    // Cleanup effect - avoid message channel closed errors
-    return () => {
-      // Add cleanup handlers for any listeners if needed
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -293,21 +279,12 @@ const Profile = () => {
     setTempName(settings.name);
   }, [settings.name]);
 
-  // Apply theme to document element for CSS variable updates
-  // Sync theme to DOM and persist to localStorage
   useEffect(() => {
     if (settings.theme) {
       document.documentElement.setAttribute('data-theme', settings.theme);
       localStorage.setItem('campusflow_theme', settings.theme);
     }
   }, [settings.theme]);
-
-  const checkMfaStatus = useCallback(async () => {
-    const { data } = await supabase.auth.mfa.listFactors();
-    if (data?.all?.some(f => f.status === 'verified')) {
-      setIsMfaActive(true);
-    }
-  }, []);
 
   const handleProfileImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -332,40 +309,116 @@ const Profile = () => {
     setIsEditingName(false);
   };
 
+  // ==================== MFA LOGIC ====================
+  
   const handleEnrollMfa = async () => {
     setMfaLoading(true);
+    setMfaError('');
     try {
-      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
-      if (error) throw error;
-      setMfaData(data);
+      // REFRESH: Renovar sesión para actualizar permisos
+      await supabase.auth.refreshSession();
+
+      // Verify email is confirmed before enrolling
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser?.email_confirmed_at) {
+        setMfaError('❌ Debes verificar tu email antes de activar 2FA. Revisa tu bandeja de entrada.');
+        setMfaLoading(false);
+        return;
+      }
+
+      // Direct enroll - no cleanup of existing factors
+      const { data, error } = await supabase.auth.mfa.enroll({ 
+        factorType: 'totp', 
+        friendlyName: 'CampusFlow MFA' 
+      });
+
+      if (error) {
+        console.error('Error detallado al enrolar MFA:', {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          fullError: JSON.stringify(error)
+        });
+        setMfaError(`❌ ${error.message || 'Error al generar QR'}`);
+        setMfaLoading(false);
+        return;
+      }
+
+      // Store QR code and data
+      if (data?.totp) {
+        setMfaData(data);
+        // Store SVG QR code
+        if (data.totp.qr_code) {
+          setQrCodeSvg(data.totp.qr_code);
+        }
+        // Store secret for manual entry
+        if (data.totp.secret) {
+          setManualSecret(data.totp.secret);
+        }
+        console.log('QR generado exitosamente');
+      } else {
+        setMfaError('❌ No se pudo obtener los datos de autenticación. Intenta de nuevo.');
+        setMfaLoading(false);
+        return;
+      }
     } catch (err) {
-      setMfaError(err.message);
+      console.error('Error en handleEnrollMfa:', {
+        message: err.message,
+        stack: err.stack,
+        error: err
+      });
+      setMfaError(`❌ Error inesperado: ${err.message || 'Error al generar QR'}`);
     } finally {
       setMfaLoading(false);
     }
   };
 
   const handleVerifyMfa = async () => {
+    if (!verifyCode || verifyCode.length !== 6) {
+      setMfaError('Por favor ingresa un código de 6 dígitos');
+      return;
+    }
+
     setMfaLoading(true);
+    setMfaError('');
     try {
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaData.id });
       if (challengeError) throw challengeError;
+
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: mfaData.id,
         challengeId: challengeData.id,
         code: verifyCode
       });
       if (verifyError) throw verifyError;
-      setIsMfaActive(true);
-      setMfaData(null);
+
+      // Sync to database
+      await updateSettings({ two_factor_enabled: true });
+      if (user) {
+        await supabase.from('profiles').update({ two_factor_enabled: true }).eq('id', user.id);
+      }
+
+      setMfaSuccessMessage('✅ 2FA activado exitosamente');
+      setTimeout(() => {
+        setMfaData(null);
+        setQrCodeSvg(null);
+        setVerifyCode('');
+        setManualSecret('');
+        setMfaSuccessMessage('');
+      }, 2000);
     } catch (err) {
-      setMfaError(err.message);
+      setMfaError(err.message || 'Código incorrecto');
     } finally {
       setMfaLoading(false);
     }
   };
 
   const handleDisableMfa = async () => {
+    if (!disableVerifyCode || disableVerifyCode.length !== 6) {
+      setDisableMfaError('Por favor ingresa un código de 6 dígitos');
+      return;
+    }
+
     setDisableMfaLoading(true);
     setDisableMfaError('');
     try {
@@ -388,11 +441,16 @@ const Profile = () => {
       const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id });
       if (unenrollError) throw unenrollError;
 
-      setIsMfaActive(false);
+      // Sync to database
+      await updateSettings({ two_factor_enabled: false });
+      if (user) {
+        await supabase.from('profiles').update({ two_factor_enabled: false }).eq('id', user.id);
+      }
+
       setIsDisablingMfa(false);
       setDisableVerifyCode('');
     } catch (err) {
-      setDisableMfaError(err.message);
+      setDisableMfaError(err.message || 'Error desactivando 2FA');
     } finally {
       setDisableMfaLoading(false);
     }
@@ -404,7 +462,6 @@ const Profile = () => {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64 = event.target.result;
-        // Delegamos la persistencia al contexto global que ya maneja Supabase
         await updateSettings({ wallpaper: 'custom', customWallpaper: base64 });
       };
       reader.readAsDataURL(file);
@@ -412,18 +469,14 @@ const Profile = () => {
   };
 
   const avatarSource = settings.avatarUrl || null;
-
-  // Calcular fallback avatar con nombre del usuario
   const fallbackAvatarUrl = `https://ui-avatars.com/api/?name=${settings.name || 'User'}&background=00f3ff&color=fff&font-size=0.4&bold=true`;
 
-  // Función auxiliar para mostrar toast
   const showNotification = (message) => {
     setToastMessage(message);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  // Actualizar handlers de notificaciones
   const handleEmailNotifChange = (newValue) => {
     setEmailNotif(newValue);
     updateSettings({ emailNotifications: newValue });
@@ -434,6 +487,11 @@ const Profile = () => {
     setWebNotif(newValue);
     updateSettings({ webNotifications: newValue });
     showNotification(newValue ? '🔔 Notificaciones web activadas' : '🔔 Notificaciones web desactivadas');
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    showNotification('✅ Copiado al portapapeles');
   };
 
   return (
@@ -452,96 +510,58 @@ const Profile = () => {
           transition: all var(--transition-med);
         }
 
-        @keyframes arrowLevitate {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-6px);
-          }
-        }
-
-        @keyframes arrowPulse {
-          0%, 100% {
-            opacity: 1;
-            filter: drop-shadow(0 0 0px rgba(0, 243, 255, 0.4));
-          }
-          50% {
-            opacity: 0.85;
-            filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.8));
-          }
-        }
-
-        .arrow-button-hover svg {
-          animation: arrowLevitate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite,
-                    arrowPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes cyberSpring {
+        @keyframes shimmer {
           0% {
-            opacity: 0;
-            transform: translate(-50%, calc(-50% + 40px));
-          }
-          50% {
-            opacity: 1;
-            transform: translate(-50%, calc(-50% - 15px));
-          }
-          70% {
-            transform: translate(-50%, calc(-50% + 5px));
+            left: -100%;
           }
           100% {
-            opacity: 1;
-            transform: translate(-50%, -50%);
+            left: 100%;
           }
         }
 
-        @keyframes neonGlow {
-          0% {
-            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
-            border-color: rgba(0, 243, 255, 1);
-          }
-          50% {
-            box-shadow: inset 0 0 40px rgba(0, 243, 255, 0.8), 0 0 50px rgba(0, 243, 255, 1), 0 0 80px rgba(0, 243, 255, 0.8);
-            border-color: rgba(0, 243, 255, 0.8);
-          }
-          100% {
-            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
-            border-color: rgba(0, 243, 255, 1);
-          }
-        }
-
-        @keyframes gradientShift {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-
-        @keyframes softPulse {
+        @keyframes shieldPulse {
           0%, 100% {
-            opacity: 1;
+            box-shadow: 0 0 20px var(--accent-primary), inset 0 0 10px rgba(0, 243, 255, 0.3);
             transform: scale(1);
           }
           50% {
-            opacity: 0.85;
-            transform: scale(0.98);
+            box-shadow: 0 0 40px var(--accent-primary), inset 0 0 20px rgba(0, 243, 255, 0.5);
+            transform: scale(1.02);
           }
         }
 
-        @keyframes pageThemeFade {
+        @keyframes popIn {
           0% {
-            opacity: 1;
+            opacity: 0;
+            transform: scale(0.8);
           }
           50% {
-            opacity: 0;
+            opacity: 1;
+            transform: scale(1.05);
           }
           100% {
             opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        @keyframes iconPop {
+          0% {
+            opacity: 0;
+            transform: scale(0.3);
+          }
+          60% {
+            transform: scale(1.15);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
           }
         }
 
@@ -551,7 +571,7 @@ const Profile = () => {
           left: 50%;
           transform: translate(-50%, -50%);
           z-index: 9999;
-          animation: cyberSpring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
           padding: 24px 32px;
           backdrop-filter: blur(20px);
           background: linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%);
@@ -563,7 +583,6 @@ const Profile = () => {
           text-transform: uppercase;
           font-size: 0.95rem;
           box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
-          animation: cyberSpring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .cyber-toast-backdrop {
@@ -589,66 +608,65 @@ const Profile = () => {
           animation: gradientShift 4s ease-in-out infinite;
         }
 
-        .menu-position-visual {
-          display: flex;
-          flex-direction: column;
+        @keyframes gradientShift {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        .mfa-qr-container {
+          background: #fff;
+          padding: 16px;
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .mfa-input {
+          letter-spacing: 8px;
+          font-size: 1.8rem;
+          font-weight: 900;
+          text-align: center;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .shield-icon-pulse {
+          animation: shieldPulse 2s ease-in-out infinite;
+        }
+
+        .status-pill {
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          gap: 4px;
-          width: 100%;
-          height: 100%;
+          gap: 8px;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-weight: 900;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        .menu-position-visual::before,
-        .menu-position-visual::after {
-          content: '';
-          transition: all 0.3s ease;
+        .status-pill-active {
+          background: linear-gradient(135deg, rgba(0, 243, 255, 0.2) 0%, rgba(0, 243, 255, 0.1) 100%);
+          color: var(--accent-primary);
+          border: 1px solid var(--accent-primary);
+          box-shadow: 0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 10px rgba(0, 243, 255, 0.2);
         }
 
-        .position-left-visual::before {
-          width: 6px;
-          height: 20px;
-          background: currentColor;
-          border-radius: 2px;
-          margin-right: auto;
-          margin-left: 8px;
+        .status-pill-inactive {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+          color: var(--text-secondary);
+          border: 1px solid var(--border-glass-side);
+          box-shadow: none;
         }
 
-        .position-right-visual::before {
-          width: 6px;
-          height: 20px;
-          background: currentColor;
-          border-radius: 2px;
-          margin-left: auto;
-          margin-right: 8px;
-        }
-
-        .position-top-visual::before {
-          width: 20px;
-          height: 6px;
-          background: currentColor;
-          border-radius: 2px;
-          margin-bottom: auto;
-        }
-
-        .position-bottom-visual::before {
-          width: 20px;
-          height: 6px;
-          background: currentColor;
-          border-radius: 2px;
-          margin-top: auto;
-        }
-
-        button[style*="position"] {
-          transition: all 0.3s ease;
-        }
-
-        .active-menu-visual {
-          color: #00f3ff;
-          text-shadow: 0 0 15px rgba(0, 243, 255, 0.8);
-        }
-
-        /* ANIMACIONES MEJORADAS */
         .dropdown-smooth {
           transition: max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
         }
@@ -657,41 +675,10 @@ const Profile = () => {
           animation: pageThemeFade 0.6s ease-in-out;
         }
 
-        .mfa-disable-pulse {
-          animation: softPulse 2s ease-in-out infinite;
-        }
-
-        .header-compact {
-          display: flex;
-          align-items: center;
-          gap: 24px;
-          justify-content: space-between;
-        }
-
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 24px;
-          flex: 0 1 auto;
-        }
-
-        .header-right {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          flex: 0 1 auto;
-        }
-
-        @media (max-width: 768px) {
-          .header-compact {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 16px;
-          }
-          .header-right {
-            width: 100%;
-            justify-content: flex-start;
-          }
+        @keyframes pageThemeFade {
+          0% { opacity: 1; }
+          50% { opacity: 0; }
+          100% { opacity: 1; }
         }
       `}</style>
 
@@ -703,677 +690,703 @@ const Profile = () => {
           <h1 className="page-title title-gradient" style={{ fontSize: '3rem', fontWeight: 900, textTransform: 'uppercase' }}>AJUSTES</h1>
         </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
 
-        {/* HEADER REDISEÑADO: Dos Paneles Independientes */}
-        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          {/* HEADER PROFILE + NOTIFICATIONS */}
+          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
 
-          {/* Panel 1 (Izquierda): Avatar + Nombre + Rango */}
-          <div className="glass-panel" style={{ padding: '32px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--border-glass-top)' }}>
-            {/* Avatar */}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <div style={{
-                width: '100px', height: '100px', borderRadius: '50%',
-                overflow: 'hidden', border: '4px solid var(--accent-primary)',
-                background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative'
-              }}>
-                {/* SKELETON NEÓN */}
-                {!avatarLoaded && (
-                  <div
-                    className="animate-pulse-neon"
+            {/* PANEL 1: Avatar + Name */}
+            <div className="glass-panel" style={{ padding: '32px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--border-glass-top)' }}>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{
+                  width: '100px', height: '100px', borderRadius: '50%',
+                  overflow: 'hidden', border: '4px solid var(--accent-primary)',
+                  background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  position: 'relative'
+                }}>
+                  {!avatarLoaded && (
+                    <div
+                      className="animate-pulse-neon"
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'var(--accent-primary)15',
+                        boxShadow: 'inset 0 0 30px var(--accent-primary)33',
+                        zIndex: 2,
+                        transition: 'opacity 0.5s ease-in-out',
+                        opacity: !avatarLoaded ? 1 : 0
+                      }}
+                    />
+                  )}
+
+                  <img
+                    key={avatarSource || fallbackAvatarUrl}
+                    src={avatarSource || fallbackAvatarUrl}
+                    alt="User Avatar"
+                    fetchPriority="high"
+                    loading="eager"
                     style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'var(--accent-primary)15',
-                      boxShadow: 'inset 0 0 30px var(--accent-primary)33',
-                      zIndex: 2,
-                      transition: 'opacity 0.5s ease-in-out',
-                      opacity: !avatarLoaded ? 1 : 0
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      opacity: avatarLoaded ? 1 : 0,
+                      transition: 'opacity 0.4s ease-in-out'
+                    }}
+                    onLoad={() => setAvatarLoaded(true)}
+                    onError={(e) => {
+                      e.target.src = fallbackAvatarUrl;
+                      setAvatarLoaded(true);
                     }}
                   />
-                )}
+                </div>
+                <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                  <Camera size={16} />
+                </button>
+                <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
+              </div>
+              
+              <div style={{ minWidth: '0', flex: 1 }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  width: 'fit-content',
+                  marginBottom: '6px',
+                  boxShadow: '0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 243, 255, 0.3)',
+                  transformStyle: 'preserve-3d'
+                }}>
+                  {isEditingName ? (
+                    <input
+                      autoFocus
+                      value={tempName}
+                      onChange={e => setTempName(e.target.value)}
+                      onBlur={handleNameSave}
+                      onKeyDown={e => e.key === 'Enter' && handleNameSave()}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-primary)',
+                        fontSize: '1.6rem',
+                        fontWeight: 950,
+                        textTransform: 'uppercase',
+                        outline: 'none',
+                        maxWidth: '250px'
+                      }}
+                    />
+                  ) : (
+                    <h2 className="font-display" style={{ fontSize: '1.6rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {settings.name || 'Mateo'}
+                    </h2>
+                  )}
+                  <button
+                    onClick={() => setIsEditingName(true)}
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.6, transition: 'all 0.3s ease', padding: '4px' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.15)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
+                <p style={{
+                  color: 'var(--text-secondary)',
+                  opacity: 0.7,
+                  letterSpacing: '2px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  margin: 0,
+                  textTransform: 'uppercase'
+                }}>Estudiante de CampusFlow</p>
+              </div>
+            </div>
 
-                <img
-                  key={avatarSource || fallbackAvatarUrl}
-                  src={avatarSource || fallbackAvatarUrl}
-                  alt="User Avatar"
-                  fetchPriority="high"
-                  loading="eager"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    opacity: avatarLoaded ? 1 : 0,
-                    transition: 'opacity 0.4s ease-in-out'
-                  }}
-                  onLoad={() => setAvatarLoaded(true)}
-                  onError={(e) => {
-                    e.target.src = fallbackAvatarUrl;
-                    setAvatarLoaded(true);
-                  }}
+            {/* PANEL 2: Notifications */}
+            <div className="glass-panel" style={{ 
+              padding: '32px', 
+              border: '1px solid var(--border-glass-top)', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              justifyContent: 'center',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.03) 0%, rgba(255, 255, 255, 0.02) 100%)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
+                <div style={{ 
+                  color: 'var(--accent-primary)', 
+                  display: 'flex', 
+                  alignItems: 'center'
+                }}>
+                  <Bell size={20} />
+                </div>
+                <h3 style={{ 
+                  margin: 0, 
+                  fontSize: '0.9rem', 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.12em', 
+                  fontWeight: 900, 
+                  color: 'var(--text-primary)',
+                  textShadow: '0 0 15px rgba(0, 243, 255, 0.2)'
+                }}>
+                  NOTIFICACIONES
+                </h3>
+              </div>
+
+              <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 auto' }}>
+                <NotificationRow 
+                  checked={emailNotif}
+                  onChange={handleEmailNotifChange}
+                  label="Correo Electrónico"
+                  icon={Bell}
+                />
+                <NotificationRow 
+                  checked={webNotif}
+                  onChange={handleWebNotifChange}
+                  label="Notificaciones Web"
+                  icon={Bell}
                 />
               </div>
-              <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                <Camera size={16} />
-              </button>
-              <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
             </div>
-            
-            {/* Nombre e Info */}
-            <div style={{ minWidth: '0', flex: 1 }}>
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                width: 'fit-content',
-                marginBottom: '6px',
-                boxShadow: '0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 243, 255, 0.3)',
-                transformStyle: 'preserve-3d'
-              }}>
-                {isEditingName ? (
-                  <input
-                    autoFocus
-                    value={tempName}
-                    onChange={e => setTempName(e.target.value)}
-                    onBlur={handleNameSave}
-                    onKeyDown={e => e.key === 'Enter' && handleNameSave()}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-primary)',
-                      fontSize: '1.6rem',
-                      fontWeight: 950,
-                      textTransform: 'uppercase',
-                      outline: 'none',
-                      maxWidth: '250px'
-                    }}
-                  />
-                ) : (
-                  <h2 className="font-display" style={{ fontSize: '1.6rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {settings.name || 'Mateo'}
-                  </h2>
-                )}
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.6, transition: 'all 0.3s ease', padding: '4px' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.15)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.transform = 'scale(1)'; }}
-                >
-                  <Pencil size={16} />
+
+          </div>
+
+          {/* THEME SELECTOR */}
+          <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+            <SectionTitle icon={<Palette />} label={t.themeMode} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {THEMES.map(theme => (
+                <button key={theme.id} onClick={() => {
+                  document.body.classList.add('theme-fade');
+                  document.documentElement.setAttribute('data-theme', theme.id);
+                  localStorage.setItem('campusflow_theme', theme.id);
+                  setTimeout(() => {
+                    updateSettings({ theme: theme.id });
+                    document.body.classList.remove('theme-fade');
+                  }, 300);
+                }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `2px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'var(--border-glass-side)'}`, background: settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: settings.theme === theme.id ? '0 0 20px var(--accent-primary)66, inset 0 0 10px var(--accent-primary)33' : 'none' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-glass)'} onMouseLeave={(e) => e.currentTarget.style.background = settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent'}>
+                  <span style={{ fontSize: '1.2rem' }}>{theme.icon}</span>
+                  <span style={{ fontWeight: 700 }}>{t[theme.labelKey]}</span>
+                  {settings.theme === theme.id && <Check size={16} color="var(--accent-primary)" style={{ marginLeft: 'auto' }} />}
                 </button>
-              </div>
-              <p style={{
-                color: 'var(--text-secondary)',
-                opacity: 0.7,
-                letterSpacing: '2px',
-                fontSize: '10px',
-                fontWeight: 600,
-                margin: 0,
-                textTransform: 'uppercase'
-              }}>Estudiante de CampusFlow</p>
+              ))}
             </div>
           </div>
 
-          {/* Panel 2 (Derecha): Sistema de Notificaciones PRO - Glassmorphism */}
-          <div className="glass-panel" style={{ 
-            padding: '32px', 
-            border: '1px solid var(--border-glass-top)', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'center',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.03) 0%, rgba(255, 255, 255, 0.02) 100%)'
-          }}>
-            {/* Header con Animación Bell Ring */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ 
-                color: 'var(--accent-primary)', 
-                display: 'flex', 
-                alignItems: 'center',
-                animation: emailNotif || webNotif ? 'bellRing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none'
-              }}>
-                <Bell size={20} />
-              </div>
-              <h3 style={{ 
-                margin: 0, 
-                fontSize: '0.9rem', 
-                textTransform: 'uppercase', 
-                letterSpacing: '0.12em', 
-                fontWeight: 900, 
-                color: 'var(--text-primary)',
-                textShadow: '0 0 15px rgba(0, 243, 255, 0.2)'
-              }}>
-                NOTIFICACIONES
-              </h3>
-            </div>
-
-            {/* Rows de Notificación */}
-            <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 auto' }}>
-              <NotificationRow 
-                checked={emailNotif}
-                onChange={handleEmailNotifChange}
-                label="Correo Electrónico"
-                icon={Bell}
-              />
-              <NotificationRow 
-                checked={webNotif}
-                onChange={handleWebNotifChange}
-                label="Notificaciones Web"
-                icon={Bell}
-              />
-            </div>
-          </div>
-
-        </div>
-
-        {/* RESTAURACIÓN: Tema Visual */}
-        <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
-          <SectionTitle icon={<Palette />} label={t.themeMode} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {THEMES.map(theme => (
-              <button key={theme.id} onClick={() => {
-                document.body.classList.add('theme-fade');
-                document.documentElement.setAttribute('data-theme', theme.id);
-                localStorage.setItem('campusflow_theme', theme.id);
-                setTimeout(() => {
-                  updateSettings({ theme: theme.id });
-                  document.body.classList.remove('theme-fade');
-                }, 300);
-              }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: `2px solid ${settings.theme === theme.id ? 'var(--accent-primary)' : 'var(--border-glass-side)'}`, background: settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', boxShadow: settings.theme === theme.id ? '0 0 20px var(--accent-primary)66, inset 0 0 10px var(--accent-primary)33' : 'none' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-glass)'} onMouseLeave={(e) => e.currentTarget.style.background = settings.theme === theme.id ? 'var(--bg-glass-hover)' : 'transparent'}>
-                <span style={{ fontSize: '1.2rem' }}>{theme.icon}</span>
-                <span style={{ fontWeight: 700 }}>{t[theme.labelKey]}</span>
-                {settings.theme === theme.id && <Check size={16} color="var(--accent-primary)" style={{ marginLeft: 'auto' }} />}
+          {/* WALLPAPERS */}
+          <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+            <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              {WALLPAPERS.map(wp => (
+                <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                  {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
+                </button>
+              ))}
+              <button
+                onClick={() => wallpaperInputRef.current.click()}
+                style={{
+                  height: '70px',
+                  borderRadius: '12px',
+                  border: settings.customWallpaper ? 'none' : '2px dashed var(--text-secondary)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  background: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => !settings.customWallpaper && (e.currentTarget.style.transform = 'scale(1.05)')}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                {settings.customWallpaper && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }} />}
+                <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Camera size={20} />
+                  <span style={{ fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>SUBIR FOTO</span>
+                </div>
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* RESTAURACIÓN: Fondos de Pantalla */}
-        <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
-          <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-            {WALLPAPERS.map(wp => (
-              <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
-              </button>
-            ))}
-            <button
-              onClick={() => wallpaperInputRef.current.click()}
-              style={{
-                height: '70px',
-                borderRadius: '12px',
-                border: settings.customWallpaper ? 'none' : '2px dashed var(--text-secondary)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                background: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'var(--bg-panel, rgba(0,0,0,0.05))',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => !settings.customWallpaper && (e.currentTarget.style.transform = 'scale(1.05)')}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              {settings.customWallpaper && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }} />}
-              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Camera size={20} />
-                <span style={{ fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>SUBIR FOTO</span>
-              </div>
-            </button>
-            <input type="file" ref={wallpaperInputRef} hidden accept="image/*" onChange={handleWallpaperUpload} />
-          </div>
-        </div>
-
-        {/* PREMIUM MINI-SCREENS SELECTOR: Posición del Menú */}
-        <div className="glass-panel" style={{ padding: '32px', border: '1px solid var(--border-glass-top)', width: '100%', height: 'fit-content' }}>
-          {/* Title Section */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px' }}>
-            <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
-              <LayoutIcon size={20} />
+              <input type="file" ref={wallpaperInputRef} hidden accept="image/*" onChange={handleWallpaperUpload} />
             </div>
-            <h3 style={{ 
-              margin: 0, 
-              fontSize: '0.95rem', 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.12em', 
-              fontWeight: 900, 
-              color: 'var(--text-primary)',
-              textShadow: '0 0 20px rgba(0, 243, 255, 0.2)'
-            }}>
-              {t.layoutPos}
-            </h3>
           </div>
 
-          {/* Mini-Screens Grid */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(4, 1fr)', 
-            gap: '20px',
-            width: '100%'
-          }}>
-            {[
-              { 
-                id: 'left', 
-                label: t.left,
-                preview: (isActive) => (
-                  <div style={{
+          {/* LANGUAGE, FONT, FONT SIZE */}
+          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+
+            {/* Language Selector */}
+            <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
+              <button
+                onClick={() => setOpenSetting(openSetting === 'lang' ? null : 'lang')}
+                style={{
+                  width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Languages size={18} color="var(--accent-primary)" />
+                  <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.language}: <span style={{ color: 'var(--accent-primary)' }}>{LANGUAGES.find(l => l.id === settings.language)?.label}</span></span>
+                </div>
+                <ChevronDown size={18} style={{ transform: openSetting === 'lang' ? 'rotate(180deg)' : 'none', transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+              </button>
+              <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'lang' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+                <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.id}
+                      onClick={() => { updateSettings({ language: lang.id }); setOpenSetting(null); }}
+                      style={{
+                        padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: settings.language === lang.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)',
+                        color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = settings.language === lang.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)'}
+                    >
+                      <span style={{ fontWeight: settings.language === lang.id ? 800 : 500 }}>{lang.flag} {lang.label}</span>
+                      {settings.language === lang.id && <Check size={14} color="var(--accent-primary)" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Font Selector */}
+            <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
+              <button
+                onClick={() => setOpenSetting(openSetting === 'font' ? null : 'font')}
+                style={{
+                  width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Type size={18} color="var(--accent-primary)" />
+                  <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.typography}: <span style={{ color: 'var(--accent-primary)' }}>{FONT_OPTIONS.find(f => f.id === settings.font)?.label}</span></span>
+                </div>
+                <ChevronDown size={18} style={{ transform: openSetting === 'font' ? 'rotate(180deg)' : 'none', transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+              </button>
+              <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'font' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+                <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {FONT_OPTIONS.map(font => (
+                    <button
+                      key={font.id}
+                      onClick={() => { updateSettings({ font: font.id }); setOpenSetting(null); }}
+                      style={{
+                        padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: settings.font === font.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)',
+                        color: 'var(--text-primary)', fontFamily: font.css, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = settings.font === font.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)'}
+                    >
+                      <span style={{ fontWeight: settings.font === font.id ? 800 : 500 }}>{font.label}</span>
+                      {settings.font === font.id && <Check size={14} color="var(--accent-primary)" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Font Size Selector */}
+            <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
+              <button
+                onClick={() => setOpenSetting(openSetting === 'fontSize' ? null : 'fontSize')}
+                style={{
+                  width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Type size={18} color="var(--accent-primary)" />
+                  <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.fontSize}: <span style={{ color: 'var(--accent-primary)' }}>{settings.fontSize}px</span></span>
+                </div>
+                <ChevronDown size={18} style={{ transform: openSetting === 'fontSize' ? 'rotate(180deg)' : 'none', transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+              </button>
+              <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'fontSize' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+                <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {[12, 14, 16, 18, 20, 24, 28, 32].map(size => (
+                    <button
+                      key={size}
+                      onClick={() => { updateSettings({ fontSize: size }); setOpenSetting(null); }}
+                      style={{
+                        padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                        background: settings.fontSize === size ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)',
+                        color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = settings.fontSize === size ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)'}
+                    >
+                      <span style={{ fontWeight: settings.fontSize === size ? 800 : 500 }}>{size}px</span>
+                      {settings.fontSize === size && <Check size={14} color="var(--accent-primary)" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* ==================== SECURITY BLOCK (MFA) ==================== */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)' }}>
+              
+              {/* Header Security Panel */}
+              <button
+                onClick={() => setOpenSection(openSection === 'security' ? null : 'security')}
+                style={{
+                  width: '100%', padding: '24px', display: 'flex', alignItems: 'center', gap: '16px',
+                  background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left',
+                  color: 'var(--text-primary)', transition: 'background 0.3s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.02)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <div 
+                  className={settings.two_factor_enabled ? 'shield-icon-pulse' : ''}
+                  style={{ 
+                    color: 'var(--accent-primary)', 
+                    opacity: 0.8,
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '3px',
-                    width: '100%',
-                    height: '100%'
-                  }}>
-                    {/* Sidebar indicator (left) */}
-                    <div style={{
-                      width: '18%',
-                      height: '85%',
-                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                      borderRadius: '4px',
-                      opacity: isActive ? 0.95 : 0.6,
-                      transition: 'all 0.3s ease'
-                    }} />
-                    {/* Content lines */}
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      paddingRight: '4px',
-                      height: '85%',
-                      justifyContent: 'space-around'
-                    }}>
-                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
-                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
-                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
-                    </div>
-                  </div>
-                )
-              },
-              { 
-                id: 'right', 
-                label: t.right,
-                preview: (isActive) => (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '3px',
-                    width: '100%',
-                    height: '100%'
-                  }}>
-                    {/* Content lines */}
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      paddingLeft: '4px',
-                      height: '85%',
-                      justifyContent: 'space-around'
-                    }}>
-                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
-                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
-                      <div style={{ height: '4px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
-                    </div>
-                    {/* Sidebar indicator (right) */}
-                    <div style={{
-                      width: '18%',
-                      height: '85%',
-                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                      borderRadius: '4px',
-                      opacity: isActive ? 0.95 : 0.6,
-                      transition: 'all 0.3s ease'
-                    }} />
-                  </div>
-                )
-              },
-              { 
-                id: 'top', 
-                label: t.top,
-                preview: (isActive) => (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '3px',
-                    width: '100%',
-                    height: '100%'
-                  }}>
-                    {/* Header indicator (top) */}
-                    <div style={{
-                      width: '85%',
-                      height: '16%',
-                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                      borderRadius: '4px',
-                      opacity: isActive ? 0.95 : 0.6,
-                      transition: 'all 0.3s ease'
-                    }} />
-                    {/* Content lines */}
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '3px',
-                      paddingTop: '3px',
-                      width: '85%',
-                      justifyContent: 'center'
-                    }}>
-                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
-                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
-                    </div>
-                  </div>
-                )
-              },
-              { 
-                id: 'bottom', 
-                label: t.bottom,
-                preview: (isActive) => (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '3px',
-                    width: '100%',
-                    height: '100%'
-                  }}>
-                    {/* Content lines */}
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '3px',
-                      paddingBottom: '3px',
-                      width: '85%',
-                      justifyContent: 'center'
-                    }}>
-                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.5 }} />
-                      <div style={{ height: '3px', background: 'var(--border-glass-top)', borderRadius: '2px', opacity: 0.4 }} />
-                    </div>
-                    {/* Footer indicator (bottom) */}
-                    <div style={{
-                      width: '85%',
-                      height: '16%',
-                      background: isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)',
-                      borderRadius: '4px',
-                      opacity: isActive ? 0.95 : 0.6,
-                      transition: 'all 0.3s ease'
-                    }} />
-                  </div>
-                )
-              }
-            ].map(position => {
-              const isActive = settings.sidebarPosition === position.id;
-              return (
-                <button
-                  key={position.id}
-                  onClick={() => updateSettings({ sidebarPosition: position.id })}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '0',
-                    border: `2px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-glass-top)'}`,
-                    background: isActive ? 'rgba(0, 243, 255, 0.08)' : 'transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    boxShadow: isActive 
-                      ? '0 0 30px var(--accent-primary), inset 0 0 20px rgba(0, 243, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.3)' 
-                      : '0 4px 16px rgba(0, 0, 0, 0.2)',
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    transform: isActive ? 'scale(1)' : 'scale(0.98)',
-                    opacity: 1,
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'rgba(0, 243, 255, 0.04)';
-                      e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                      e.currentTarget.style.transform = 'scale(1.02)';
-                      e.currentTarget.style.boxShadow = '0 0 20px var(--accent-primary), 0 8px 32px rgba(0, 0, 0, 0.3)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'var(--border-glass-top)';
-                      e.currentTarget.style.transform = 'scale(0.98)';
-                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
-                    }
+                    alignItems: 'center'
                   }}
                 >
-                  {/* Mini-Screen Container */}
-                  <div style={{
-                    width: '100%',
-                    aspectRatio: '3/4',
-                    background: 'var(--bg-glass)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid var(--border-glass-top)',
-                    borderRadius: '12px',
-                    padding: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative'
-                  }}>
-                    {position.preview(isActive)}
+                  <Shield size={24} />
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>SEGURIDAD</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span className={`status-pill ${settings.two_factor_enabled ? 'status-pill-active' : 'status-pill-inactive'}`}>
+                      {settings.two_factor_enabled ? (
+                        <>
+                          <div style={{
+                            width: '6px', height: '6px', borderRadius: '50%',
+                            background: 'var(--accent-primary)',
+                            boxShadow: '0 0 8px var(--accent-primary)',
+                            animation: 'shieldPulse 2s ease-in-out infinite'
+                          }} />
+                          PROTEGIDA
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle size={14} />
+                          DESACTIVADA
+                        </>
+                      )}
+                    </span>
                   </div>
+                </div>
 
-                  {/* Label */}
-                  <span style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 900,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    textShadow: isActive ? '0 0 10px rgba(0, 243, 255, 0.3)' : 'none',
-                    transition: 'all 0.3s ease',
-                    paddingBottom: '8px'
-                  }}>
-                    {position.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                <ChevronDown size={20} style={{ transform: openSection === 'security' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+              </button>
 
-        {/* Ajustes Compactos: Idioma, Tipografía y Tamaño */}
-        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+              {/* Security Content */}
+              {openSection === 'security' && (
+                <div className="animate-fade-in" style={{ padding: '0 24px 24px' }}>
+                  <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    
+                    {/* ACTIVE MFA STATE */}
+                    {settings.two_factor_enabled ? (
+                      
+                      isDisablingMfa ? (
+                        // DISABLE CONFIRMATION
+                        <div style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <AlertCircle size={18} color="#ef4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                              Ingresa tu código TOTP de 6 dígitos para confirmar la desactivación de 2FA
+                            </p>
+                          </div>
+                          
+                          <input 
+                            type="text" 
+                            maxLength="6"
+                            value={disableVerifyCode} 
+                            onChange={e => setDisableVerifyCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="000000" 
+                            className="mfa-input"
+                            style={{ 
+                              padding: '16px', 
+                              background: 'var(--bg-primary)', 
+                              border: '2px solid var(--border-glass-top)', 
+                              color: 'var(--text-primary)', 
+                              borderRadius: '8px', 
+                              transition: 'all 0.3s ease' 
+                            }} 
+                            onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                            onBlur={(e) => e.target.style.borderColor = 'var(--border-glass-top)'}
+                          />
+                          
+                          {disableMfaError && <p style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, margin: 0 }}>❌ {disableMfaError}</p>}
+                          
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <button 
+                              onClick={() => { setIsDisablingMfa(false); setDisableVerifyCode(''); setDisableMfaError(''); }} 
+                              style={{ padding: '12px 20px', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-panel)'}
+                            >
+                              Cancelar
+                            </button>
+                            <button 
+                              onClick={handleDisableMfa} 
+                              disabled={disableMfaLoading} 
+                              style={{ padding: '12px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: disableMfaLoading ? 'not-allowed' : 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease', opacity: disableMfaLoading ? 0.6 : 1 }}
+                              onMouseEnter={(e) => !disableMfaLoading && (e.currentTarget.style.background = '#dc2626')}
+                              onMouseLeave={(e) => !disableMfaLoading && (e.currentTarget.style.background = '#ef4444')}
+                            >
+                              {disableMfaLoading ? '⏳ VERIFICANDO...' : '✖️ DESACTIVAR'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // ACTIVE STATE DISPLAY
+                        <div style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(0, 243, 255, 0.02) 100%)', borderRadius: '12px', border: '1px solid rgba(0, 243, 255, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{
+                              width: '12px', height: '12px', borderRadius: '50%',
+                              background: 'var(--accent-primary)',
+                              boxShadow: '0 0 12px var(--accent-primary), inset 0 0 8px var(--accent-primary)',
+                              animation: 'shieldPulse 2s ease-in-out infinite'
+                            }} />
+                            <div>
+                              <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.95rem' }}>AUTENTICACIÓN EN DOS PASOS</p>
+                              <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Google Authenticator / Bitwarden</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => setIsDisablingMfa(true)} 
+                            style={{ padding: '10px 16px', background: 'transparent', border: '2px solid #ef4444', borderRadius: '8px', color: '#ef4444', fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+                          >
+                            <X size={16} />
+                            DESACTIVAR
+                          </button>
+                        </div>
+                      )
+                    ) : (
+                      
+                      !mfaData ? (
+                        // ACTIVATE BUTTON
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <div style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 193, 7, 0.02) 100%)', borderRadius: '12px', border: '1px solid rgba(255, 193, 7, 0.3)', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <AlertCircle size={18} color="#ffc107" style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                              La autenticación en dos pasos proporciona una capa adicional de seguridad para tu cuenta.
+                            </p>
+                          </div>
+                          
+                          <button 
+                            onClick={handleEnrollMfa} 
+                            disabled={mfaLoading} 
+                            style={{ 
+                              padding: '16px 24px', 
+                              background: 'linear-gradient(135deg, var(--accent-primary) 0%, rgba(0, 243, 255, 0.7) 100%)',
+                              border: 'none', 
+                              borderRadius: '10px', 
+                              color: '#000', 
+                              fontWeight: 900, 
+                              cursor: mfaLoading ? 'not-allowed' : 'pointer', 
+                              transition: 'all 0.3s ease',
+                              fontSize: '0.95rem',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.08em',
+                              opacity: mfaLoading ? 0.7 : 1,
+                              boxShadow: '0 0 20px rgba(0, 243, 255, 0.3)'
+                            }}
+                            onMouseEnter={(e) => !mfaLoading && (e.currentTarget.style.transform = 'scale(1.05)')}
+                            onMouseLeave={(e) => !mfaLoading && (e.currentTarget.style.transform = 'scale(1)')}
+                          >
+                            {mfaLoading ? '⏳ GENERANDO QR...' : '🔐 ACTIVAR 2FA'}
+                          </button>
 
-          {/* Selector de Idioma */}
-          <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
-            <button
-              onClick={() => setOpenSetting(openSetting === 'lang' ? null : 'lang')}
-              style={{
-                width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Languages size={18} color="var(--accent-primary)" />
-                <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.language}: <span style={{ color: 'var(--accent-primary)' }}>{LANGUAGES.find(l => l.id === settings.language)?.label}</span></span>
-              </div>
-              <ChevronDown size={18} style={{ transform: openSetting === 'lang' ? 'rotate(180deg)' : 'none', transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-            </button>
-            <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'lang' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-              <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {LANGUAGES.map(lang => (
-                  <button
-                    key={lang.id}
-                    onClick={() => { updateSettings({ language: lang.id }); setOpenSetting(null); }}
-                    style={{
-                      padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      background: settings.language === lang.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)',
-                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = settings.language === lang.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)'}
-                  >
-                    <span style={{ fontWeight: settings.language === lang.id ? 800 : 500 }}>{lang.flag} {lang.label}</span>
-                    {settings.language === lang.id && <Check size={14} color="var(--accent-primary)" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+                          {mfaError && (
+                            <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'flex-start', gap: '8px', animation: 'shake 0.4s ease-in-out' }}>
+                              <AlertCircle size={14} color="#ef4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                              <p style={{ margin: 0, color: '#ef4444', fontSize: '0.85rem', fontWeight: 700, lineHeight: '1.4' }}>
+                                {mfaError}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // QR SETUP FORM
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px' }}>
+                          
+                          {/* STEP INDICATOR */}
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', marginBottom: '12px' }}>
+                            <div style={{ flex: 1, height: '2px', background: 'var(--accent-primary)', borderRadius: '2px' }} />
+                            <div style={{ flex: 1, height: '2px', background: 'var(--accent-primary)', borderRadius: '2px' }} />
+                            <div style={{ flex: 1, height: '2px', background: 'var(--border-glass-top)', borderRadius: '2px' }} />
+                          </div>
 
-          {/* Selector de Tipografía */}
-          <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
-            <button
-              onClick={() => setOpenSetting(openSetting === 'font' ? null : 'font')}
-              style={{
-                width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Type size={18} color="var(--accent-primary)" />
-                <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.typography}: <span style={{ color: 'var(--accent-primary)' }}>{FONT_OPTIONS.find(f => f.id === settings.font)?.label}</span></span>
-              </div>
-              <ChevronDown size={18} style={{ transform: openSetting === 'font' ? 'rotate(180deg)' : 'none', transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-            </button>
-            <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'font' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-              <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {FONT_OPTIONS.map(font => (
-                  <button
-                    key={font.id}
-                    onClick={() => { updateSettings({ font: font.id }); setOpenSetting(null); }}
-                    style={{
-                      padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      background: settings.font === font.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)',
-                      color: 'var(--text-primary)', fontFamily: font.css, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = settings.font === font.id ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)'}
-                  >
-                    <span style={{ fontWeight: settings.font === font.id ? 800 : 500 }}>{font.label}</span>
-                    {settings.font === font.id && <Check size={14} color="var(--accent-primary)" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+                          {/* QR CODE SECTION */}
+                          <div>
+                            <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              1. Escanea este código QR
+                            </p>
+                            <div className="mfa-qr-container" style={{ width: 'fit-content', margin: '0 auto' }}>
+                              {qrCodeSvg ? (
+                                qrCodeSvg.startsWith('<') ? (
+                                  // SVG or HTML QR code
+                                  <div 
+                                    style={{ width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    dangerouslySetInnerHTML={{ __html: qrCodeSvg }} 
+                                  />
+                                ) : (
+                                  // URL-based QR code
+                                  <img 
+                                    src={qrCodeSvg} 
+                                    alt="QR Code" 
+                                    style={{ width: '150px', height: '150px', display: 'block' }} 
+                                  />
+                                )
+                              ) : (
+                                <div style={{ width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                                  Error: QR no disponible
+                                </div>
+                              )}
+                            </div>
+                            <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center', fontStyle: 'italic' }}>
+                              Usa Google Authenticator, Bitwarden o Microsoft Authenticator
+                            </p>
+                          </div>
 
-          {/* Selector de Tamaño de Fuente */}
-          <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--border-glass-top)', transition: 'all 0.3s ease' }}>
-            <button
-              onClick={() => setOpenSetting(openSetting === 'fontSize' ? null : 'fontSize')}
-              style={{
-                width: '100%', height: '60px', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Type size={18} color="var(--accent-primary)" />
-                <span style={{ fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>{t.fontSize}: <span style={{ color: 'var(--accent-primary)' }}>{settings.fontSize}px</span></span>
-              </div>
-              <ChevronDown size={18} style={{ transform: openSetting === 'fontSize' ? 'rotate(180deg)' : 'none', transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-            </button>
-            <div className="dropdown-smooth" style={{ maxHeight: openSetting === 'fontSize' ? '400px' : '0', overflow: 'hidden', transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-              <div style={{ padding: '10px 12px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {[12, 14, 16, 18, 20, 24, 28, 32].map(size => (
-                  <button
-                    key={size}
-                    onClick={() => { updateSettings({ fontSize: size }); setOpenSetting(null); }}
-                    style={{
-                      padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      background: settings.fontSize === size ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)',
-                      color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = settings.fontSize === size ? 'rgba(0,243,255,0.15)' : 'rgba(255,255,255,0.03)'}
-                  >
-                    <span style={{ fontWeight: settings.fontSize === size ? 800 : 500 }}>{size}px</span>
-                    {settings.fontSize === size && <Check size={14} color="var(--accent-primary)" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+                          {/* MANUAL SECRET SECTION */}
+                          {manualSecret && (
+                            <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--border-glass-top)' }}>
+                              <p style={{ margin: '0 0 8px', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Si no puedes escanear, ingresa esta clave:
+                              </p>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-primary)', borderRadius: '6px', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                <span>{manualSecret}</span>
+                                <button 
+                                  onClick={() => copyToClipboard(manualSecret)}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', padding: '4px', opacity: 0.7, transition: 'all 0.3s ease' }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.15)'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                  title="Copiar"
+                                >
+                                  <Copy size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
-        </div>
+                          {/* CODE VERIFICATION */}
+                          <div>
+                            <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              2. Ingresa el código de 6 dígitos
+                            </p>
+                            <input 
+                              type="text" 
+                              maxLength="6"
+                              value={verifyCode} 
+                              onChange={e => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                              placeholder="000000" 
+                              className="mfa-input"
+                              style={{ 
+                                width: '100%',
+                                padding: '16px', 
+                                background: 'var(--bg-primary)', 
+                                border: mfaError ? '2px solid #ef4444' : '2px solid var(--border-glass-top)', 
+                                color: 'var(--text-primary)', 
+                                borderRadius: '8px', 
+                                transition: 'all 0.3s ease',
+                                boxSizing: 'border-box'
+                              }} 
+                              onFocus={(e) => !mfaError && (e.target.style.borderColor = 'var(--accent-primary)')}
+                              onBlur={(e) => mfaError ? (e.target.style.borderColor = '#ef4444') : (e.target.style.borderColor = 'var(--border-glass-top)')}
+                            />
+                          </div>
 
-        {/* Seguridad */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <AccordionSection title="Seguridad" icon={<Shield size={20} />} isOpen={openSection === 'security'} onToggle={() => setOpenSection(openSection === 'security' ? null : 'security')} subtitle={isMfaActive ? "ACTIVA" : "DESACTIVADA"}>
-            <div style={{ padding: '10px 0' }}>
-              {/* Autenticación MFA */}
-              {isMfaActive ? (
-                isDisablingMfa ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>Ingresa tu código actual para confirmar:</p>
-                    <input type="text" value={disableVerifyCode} onChange={e => setDisableVerifyCode(e.target.value)} placeholder="000000" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px', transition: 'all 0.3s ease' }} onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'} onBlur={(e) => e.target.style.borderColor = 'var(--border-glass-top)'} />
-                    {disableMfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>{disableMfaError}</p>}
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => { setIsDisablingMfa(false); setDisableVerifyCode(''); setDisableMfaError(''); }} style={{ padding: '10px 16px', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease' }}>Cancelar</button>
-                      <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ padding: '10px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease' }}>
-                        {disableMfaLoading ? 'Verificando...' : 'Confirmar'}
-                      </button>
-                    </div>
+                          {/* MESSAGES */}
+                          {mfaError && (
+                            <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'flex-start', gap: '8px', animation: 'shake 0.4s ease-in-out' }}>
+                              <AlertCircle size={16} color="#ef4444" style={{ marginTop: '2px', flexShrink: 0 }} />
+                              <p style={{ margin: 0, color: '#ef4444', fontSize: '0.85rem', fontWeight: 700 }}>
+                                {mfaError}
+                              </p>
+                            </div>
+                          )}
+
+                          {mfaSuccessMessage && (
+                            <div style={{ padding: '12px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)', display: 'flex', alignItems: 'flex-start', gap: '8px', animation: 'popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+                              <Check size={16} color="#22c55e" style={{ marginTop: '2px', flexShrink: 0 }} />
+                              <p style={{ margin: 0, color: '#22c55e', fontSize: '0.85rem', fontWeight: 700 }}>
+                                {mfaSuccessMessage}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* ACTION BUTTONS */}
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <button 
+                              onClick={() => { setMfaData(null); setQrCodeSvg(null); setVerifyCode(''); setMfaError(''); setManualSecret(''); }} 
+                              style={{ padding: '12px 20px', background: 'var(--bg-panel)', color: 'var(--text-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', flex: 1, fontWeight: 800, transition: 'all 0.3s ease' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,243,255,0.1)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-panel)'}
+                            >
+                              Cancelar
+                            </button>
+                            <button 
+                              onClick={handleVerifyMfa} 
+                              disabled={mfaLoading || verifyCode.length !== 6}
+                              style={{ 
+                                padding: '12px 20px', 
+                                background: verifyCode.length === 6 ? 'linear-gradient(135deg, var(--accent-primary) 0%, rgba(0, 243, 255, 0.7) 100%)' : 'rgba(0,243,255,0.2)',
+                                color: '#000', 
+                                border: 'none', 
+                                borderRadius: '8px', 
+                                cursor: verifyCode.length === 6 && !mfaLoading ? 'pointer' : 'not-allowed', 
+                                flex: 1, 
+                                fontWeight: 900, 
+                                transition: 'all 0.3s ease',
+                                opacity: verifyCode.length === 6 && !mfaLoading ? 1 : 0.6,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                fontSize: '0.85rem'
+                              }}
+                              onMouseEnter={(e) => verifyCode.length === 6 && !mfaLoading && (e.currentTarget.style.transform = 'scale(1.05)')}
+                              onMouseLeave={(e) => verifyCode.length === 6 && !mfaLoading && (e.currentTarget.style.transform = 'scale(1)')}
+                            >
+                              {mfaLoading ? '⏳ VERIFICANDO...' : '✔️ VERIFICAR Y ACTIVAR'}
+                            </button>
+                          </div>
+
+                          {/* SECURITY NOTE */}
+                          <div style={{ padding: '12px', background: 'rgba(255, 193, 7, 0.05)', borderRadius: '8px', border: '1px dashed rgba(255, 193, 7, 0.3)', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                            <AlertCircle size={14} color="#ffc107" style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 600, lineHeight: '1.4' }}>
+                              Guarda tus códigos de recuperación en un lugar seguro. Los necesitarás si pierdes acceso a tu app de autenticación.
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    )}
+
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-glass-top)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-lime)', boxShadow: '0 0 10px var(--accent-lime)' }}></div>
-                      <p style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 800 }}>CÓDIGO DE APP (GOOGLE AUTHENTICATOR)</p>
-                    </div>
-                    <button onClick={() => setIsDisablingMfa(true)} style={{ padding: '8px 14px', background: 'transparent', border: '1px solid #ef4444', borderRadius: '6px', color: '#ef4444', fontWeight: 800, cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}>
-                      <X size={14} />
-                      <span>DESACTIVAR</span>
-                    </button>
-                  </div>
-                )
-              ) : (
-                <>
-                  {!mfaData ? (
-                    <button onClick={handleEnrollMfa} disabled={mfaLoading} style={{ padding: '12px 24px', background: 'var(--accent-primary)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 900, cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#00d4ff'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.transform = 'scale(1)'; }}>
-                      {mfaLoading ? 'PROCESANDO...' : 'ACTIVAR 2FA'}
-                    </button>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '300px' }}>
-                      <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', width: 'fit-content' }}>
-                        <img src={mfaData.totp.qr_code} alt="QR Code" style={{ width: '150px', height: '150px' }} />
-                      </div>
-                      <input type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value)} placeholder="Código 6 dígitos" style={{ padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px', transition: 'all 0.3s ease' }} onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'} onBlur={(e) => e.target.style.borderColor = 'var(--border-glass-top)'} />
-                      {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>{mfaError}</p>}
-                      <button onClick={handleVerifyMfa} disabled={mfaLoading} style={{ padding: '12px', background: 'var(--accent-lime)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 900, cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                        {mfaLoading ? 'VERIFICANDO...' : 'VERIFICAR Y ACTIVAR'}
-                      </button>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
-            </div>
-          </AccordionSection>
-        </div>
 
-      </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </>
   );

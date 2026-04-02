@@ -103,16 +103,17 @@ export function SettingsProvider({ children }) {
     sidebarPosition: 'left', 
     fontSize: Number(localStorage.getItem('campusflow_font_size')) || 16,
     avatarUrl: null, 
-    customWallpaper: null
+    customWallpaper: null,
+    two_factor_enabled: false
   });
   const [recentXPGains, setRecentXPGains] = useState([]);
 
   const fetchProfile = useCallback(async (uid) => {
     try {
-      // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id Y theme
+      // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme Y two_factor_enabled
       let { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled')
         .eq('id', uid)
         .maybeSingle();
 
@@ -142,7 +143,8 @@ export function SettingsProvider({ children }) {
           level: data.level || 1,
           wallpaper: data.custom_wallpaper ? 'custom' : (data.wallpaper_id || 'cyber'),
           customWallpaper: data.custom_wallpaper || null,
-          avatarUrl: fullAvatarUrl
+          avatarUrl: fullAvatarUrl,
+          two_factor_enabled: data.two_factor_enabled || false
         }));
       }
     } catch (err) {
@@ -177,6 +179,7 @@ export function SettingsProvider({ children }) {
       if (processedUpdates.language) cloudMapping.language = processedUpdates.language;
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
       if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
+      if (processedUpdates.two_factor_enabled !== undefined) cloudMapping.two_factor_enabled = processedUpdates.two_factor_enabled;
       
       if (updates.wallpaper !== undefined) {
         if (updates.wallpaper === 'custom') {

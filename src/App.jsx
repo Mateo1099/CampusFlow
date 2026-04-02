@@ -9,16 +9,25 @@ import Pomodoro from './pages/Pomodoro';
 import Profile from './pages/Profile';
 import Stats from './pages/Stats';
 import Login from './pages/Login';
+import MFAChallenge from './pages/MFAChallenge';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { TaskProvider, useTasksContext } from './context/TaskContext';
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, aal, mfaRequired } = useAuth();
+  
+  // Si no está autenticado, ir a login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+  
+  // Si está en AAL1 y tiene MFA requerido, ir a MFA challenge
+  if (aal === 'aal1' && mfaRequired) {
+    return <Navigate to="/mfa-challenge" replace />;
+  }
+  
   return children;
 };
 
@@ -36,6 +45,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/mfa-challenge" element={<MFAChallenge />} />
 
       <Route path="/" element={
         <ProtectedRoute>
