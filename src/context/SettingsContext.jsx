@@ -167,7 +167,10 @@ export function SettingsProvider({ children }) {
     if (user) {
       if (processedUpdates.fontSize) {
         localStorage.setItem('campusflow_font_size', processedUpdates.fontSize);
-        document.documentElement.style.fontSize = processedUpdates.fontSize + 'px';
+        const safeFsUpdate = (Number(processedUpdates.fontSize) > 0 && Number(processedUpdates.fontSize) <= 2)
+          ? Math.round(Number(processedUpdates.fontSize) * 16)
+          : (Number(processedUpdates.fontSize) || 16);
+        document.documentElement.style.fontSize = safeFsUpdate + 'px';
       }
 
       const cloudMapping = {};
@@ -216,7 +219,11 @@ export function SettingsProvider({ children }) {
       document.documentElement.style.setProperty('--font-display', fontObj.css);
       document.documentElement.style.setProperty('--font-body', fontObj.css);
     }
-    document.documentElement.style.fontSize = settings.fontSize + 'px';
+    // Normalize fontSize: values <= 2 are legacy decimal multipliers, convert to px
+    const safeFontSize = (Number(settings.fontSize) > 0 && Number(settings.fontSize) <= 2)
+      ? Math.round(Number(settings.fontSize) * 16)
+      : (Number(settings.fontSize) || 16);
+    document.documentElement.style.fontSize = safeFontSize + 'px';
   }, [settings]);
 
   const addXP = useCallback((amount) => {
