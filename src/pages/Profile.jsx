@@ -985,7 +985,7 @@ const Profile = () => {
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Header Abierto (Cápsula + Título/Sub + Status + Chevron) */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                    <div onClick={() => setOpenSection(null)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', cursor: 'pointer' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{
                           width: '40px', height: '40px', borderRadius: '12px',
@@ -1074,11 +1074,29 @@ const Profile = () => {
                             </div>
                           </div>
 
-                          <div style={{ marginTop: 'auto', paddingTop: '10px' }}>
+                          <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', justifyContent: 'center' }}>
                             {settings.two_factor_enabled ? (
-                              <button onClick={() => setIsDisablingMfa(true)} style={{ width: '100%', padding: '14px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '14px', color: '#ef4444', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}>
+                              <motion.button
+                                onClick={() => setIsDisablingMfa(true)}
+                                whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(220, 20, 60, 0.7)' }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{ duration: 0.2, ease: 'circOut' }}
+                                style={{
+                                  background: 'linear-gradient(145deg, #a3142d, #dc143c)',
+                                  border: 'none',
+                                  borderRadius: '50px',
+                                  color: '#fff',
+                                  fontWeight: 900,
+                                  fontSize: '0.8rem',
+                                  letterSpacing: '0.08em',
+                                  cursor: 'pointer',
+                                  padding: '10px 28px',
+                                  boxShadow: '0 8px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)',
+                                  textTransform: 'uppercase'
+                                }}
+                              >
                                 DESACTIVAR
-                              </button>
+                              </motion.button>
                             ) : (
                               <button onClick={handleEnrollMfa} disabled={mfaLoading} style={{ width: '100%', padding: '14px', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '14px', color: '#22c55e', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.3s ease', opacity: mfaLoading ? 0.6 : 1 }} onMouseEnter={(e) => !mfaLoading && (e.currentTarget.style.background = 'rgba(34, 197, 94, 0.25)')} onMouseLeave={(e) => !mfaLoading && (e.currentTarget.style.background = 'rgba(34, 197, 94, 0.15)')}>
                                 {mfaLoading ? <Loader2 size={16} className="animate-spin" /> : 'ACTIVAR'}
@@ -1099,9 +1117,19 @@ const Profile = () => {
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}
                   >
                     <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Shield size={16} color="var(--text-secondary)" />
-                        <h3 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 900, color: 'var(--text-secondary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ color: 'var(--accent-primary)' }}>
+                          <Shield size={20} />
+                        </div>
+                        <h3 style={{
+                          margin: 0,
+                          fontSize: '0.9rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.12em',
+                          fontWeight: 900,
+                          color: 'var(--text-primary)',
+                          textShadow: '0 0 15px rgba(0, 243, 255, 0.2)'
+                        }}>
                           SEGURIDAD
                         </h3>
                       </div>
