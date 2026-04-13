@@ -254,7 +254,7 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children }) => (
 
 const Profile = () => {
   const { settings, updateSettings, t } = useSettings();
-  const { user } = useAuth();
+  const { user, checkMFAStatus } = useAuth();
   const wallpaperInputRef = useRef(null);
   const profileInputRef = useRef(null);
 
@@ -285,6 +285,7 @@ const Profile = () => {
   const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [manualSecret, setManualSecret] = useState('');
+  const [securityScreen, setSecurityScreen] = useState('overview');
 
   const downloadAvatar = useCallback(async (path) => {
     try {
@@ -358,10 +359,35 @@ const Profile = () => {
         return;
       }
 
-      // Direct enroll - no cleanup of existing factors
+      // Limpiar TODOS los factores TOTP existentes (verificados o no) para evitar conflicto 422
+      // Supabase puede devolver 422 si ya existe un factor del mismo tipo
+      const { data: existingFactors, error: listError } = await supabase.auth.mfa.listFactors();
+      if (!listError && existingFactors) {
+        const allTotpFactors = [...(existingFactors.totp || [])];
+        for (const factor of allTotpFactors) {
+          try {
+            await supabase.auth.mfa.unenroll({ factorId: factor.id });
+            console.log(`[MFA] Factor eliminado: ${factor.id} (${factor.status})`);
+          } catch (unenrollErr) {
+            console.warn(`[MFA] No se pudo eliminar factor ${factor.id}:`, unenrollErr.message);
+          }
+        }
+      }
+
+      // Pequeño delay tras cleanup para que Supabase procese los cambios
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Refrescar sesión nuevamente después del cleanup
+      await supabase.auth.refreshSession();
+
+      // Usar friendlyName único con timestamp para evitar conflicto "mfa_factor_name_conflict" (422)
+      // Supabase cachea los nombres de factores incluso después de eliminarlos
+      const uniqueFriendlyName = `CampusFlow MFA - ${Date.now()}`;
+
+      // Direct enroll
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'CampusFlow MFA'
+        friendlyName: uniqueFriendlyName
       });
 
       if (error) {
@@ -379,9 +405,10 @@ const Profile = () => {
       // Store QR code and data
       if (data?.totp) {
         setMfaData(data);
-        // Store SVG QR code
+        // Store QR code - Supabase devuelve data URL (data:image/svg+xml;utf-8,...)
         if (data.totp.qr_code) {
           setQrCodeSvg(data.totp.qr_code);
+          console.log('QR code type:', data.totp.qr_code.substring(0, 50));
         }
         // Store secret for manual entry
         if (data.totp.secret) {
@@ -424,10 +451,22 @@ const Profile = () => {
       });
       if (verifyError) throw verifyError;
 
-      // Sync to database
+      // Refrescar sesión para actualizar AAL
+      await supabase.auth.refreshSession();
+
+      // Sincronizar las 3 fuentes de verdad
+      // 1. profiles.two_factor_enabled
       await updateSettings({ two_factor_enabled: true });
       if (user) {
         await supabase.from('profiles').update({ two_factor_enabled: true }).eq('id', user.id);
+      }
+
+      // 2. user_security (lo que lee AuthContext)
+      if (user) {
+        await supabase
+          .from('user_security')
+          .update({ mfa_enabled: true, mfa_status: 'PROTEGIDA' })
+          .eq('user_id', user.id);
       }
 
       setMfaSuccessMessage('✅ 2FA activado exitosamente');
@@ -454,12 +493,16 @@ const Profile = () => {
     setDisableMfaLoading(true);
     setDisableMfaError('');
     try {
+      // 1. Listar factores MFA - Supabase devuelve { totp: [], phone: [] }
       const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
       if (factorsError) throw factorsError;
 
-      const totpFactor = factorsData.all.find(f => f.status === 'verified' && f.factorType === 'totp');
+      // 2. Buscar factor TOTP verificado - usar factors.totp[] que es la estructura real
+      const totpFactors = factorsData?.totp || [];
+      const totpFactor = totpFactors.find(f => f.status === 'verified');
       if (!totpFactor) throw new Error("No se encontró 2FA activo.");
 
+      // 3. Verificar código TOTP (challenge + verify)
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
       if (challengeError) throw challengeError;
 
@@ -470,17 +513,44 @@ const Profile = () => {
       });
       if (verifyError) throw verifyError;
 
+      // 4. Desinscribir el factor MFA
       const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id });
       if (unenrollError) throw unenrollError;
 
-      // Sync to database
+      // 5. Sincronizar las 3 fuentes de verdad
+      // 5a. profiles.two_factor_enabled
       await updateSettings({ two_factor_enabled: false });
       if (user) {
         await supabase.from('profiles').update({ two_factor_enabled: false }).eq('id', user.id);
       }
 
+      // 5b. user_security (lo que lee AuthContext)
+      if (user) {
+        await supabase
+          .from('user_security')
+          .update({ mfa_enabled: false, mfa_status: 'DESPROTEGIDA' })
+          .eq('user_id', user.id);
+      }
+
+      // 6. Refrescar sesión para actualizar AAL
+      await supabase.auth.refreshSession();
+
+      // 7. Forzar re-evaluación inmediata del estado MFA en AuthContext
+      // Esto evita que ProtectedRoute redirija a /mfa-challenge con estado stale
+      if (user) {
+        await checkMFAStatus(user.id);
+      }
+
+      // 8. Pequeño delay para asegurar que React propague el nuevo estado de mfaRequired
+      // antes de que ProtectedRoute pueda hacer un redirect incorrecto
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 9. Actualizar estado local de settings inmediatamente para que la UI responda
+      setSettings(prev => ({ ...prev, two_factor_enabled: false }));
+
       setIsDisablingMfa(false);
       setDisableVerifyCode('');
+      setDisableMfaError('');
     } catch (err) {
       setDisableMfaError(err.message || 'Error desactivando 2FA');
     } finally {
@@ -717,6 +787,64 @@ const Profile = () => {
         @keyframes shieldBreath {
           0%, 100% { opacity: 0.6; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.08); }
+        }
+
+        @keyframes shieldBreathe {
+          0%, 100% {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.08);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.25), inset 0 0 12px rgba(239, 68, 68, 0.08);
+            transform: scale(1.04);
+          }
+        }
+
+        @keyframes crystalShimmer {
+          0% {
+            left: -100%;
+          }
+          100% {
+            left: 200%;
+          }
+        }
+
+        @keyframes crystalPulse {
+          0%, 100% {
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2), 0 0 0px rgba(96, 165, 250, 0);
+          }
+          50% {
+            box-shadow: 0 4px 30px rgba(59, 130, 246, 0.35), 0 0 20px rgba(96, 165, 250, 0.1);
+          }
+        }
+
+        .crystal-btn {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .crystal-btn::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 60%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+          animation: crystalShimmer 3s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        .crystal-btn:hover::before {
+          animation-duration: 1.2s;
+        }
+
+        .crystal-btn:hover {
+          animation: crystalPulse 2s ease-in-out infinite;
+        }
+
+        .crystal-btn:active {
+          transform: scale(0.97) translateY(1px);
         }
       `}</style>
 
@@ -958,48 +1086,84 @@ const Profile = () => {
 
             <motion.div
               layout
-              onClick={() => !mfaData && setOpenSection(openSection === 'security' ? null : 'security')}
               className="glass-panel"
               style={{
                 padding: '24px',
                 border: '1px solid var(--border-glass-top)',
                 display: 'flex',
                 flexDirection: 'column',
-                cursor: 'pointer',
                 minHeight: '235px',
-                justifyContent: openSection === 'security' ? 'flex-start' : 'space-between',
                 overflow: 'hidden',
-                position: 'relative'
+                position: 'relative',
+                cursor: securityScreen === 'overview' ? 'pointer' : 'default'
               }}
               transition={{ layout: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] } }}
+              onClick={() => securityScreen === 'overview' && setSecurityScreen('detail')}
             >
               <AnimatePresence mode="wait">
-                {openSection === 'security' ? (
+                {/* PANTALLA 1: OVERVIEW */}
+                {securityScreen === 'overview' && (
                   <motion.div
-                    key="security-open"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    key="security-overview"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}
+                  >
+                    <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ color: 'var(--accent-primary)' }}>
+                          <Shield size={20} />
+                        </div>
+                        <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 900, color: 'var(--text-primary)', textShadow: '0 0 15px rgba(0, 243, 255, 0.2)' }}>
+                          SEGURIDAD
+                        </h3>
+                      </div>
+                      <ChevronDown size={18} style={{ color: 'var(--text-secondary)', transition: 'transform 0.3s', transform: 'rotate(-90deg)' }} />
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px' }}>
+                      <div style={{
+                        width: '80px', height: '80px', borderRadius: '50%',
+                        background: settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.03)',
+                        border: settings.two_factor_enabled ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(239, 68, 68, 0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: settings.two_factor_enabled ? '0 0 25px rgba(34, 197, 94, 0.15)' : '0 0 20px rgba(239, 68, 68, 0.1)',
+                        animation: settings.two_factor_enabled ? 'none' : 'shieldBreathe 2s ease-in-out infinite'
+                      }}>
+                        <Shield size={42} strokeWidth={1.5} style={{ color: settings.two_factor_enabled ? '#22c55e' : '#ef4444', transition: 'all 0.3s ease', filter: settings.two_factor_enabled ? 'none' : 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.4))' }} />
+                      </div>
+                      <div className={`status-pill ${settings.two_factor_enabled ? 'status-pill-active' : 'status-pill-inactive'}`}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />
+                        {settings.two_factor_enabled ? 'PROTEGIDA' : 'DESPROTEGIDA'}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.35 }}>
+                        TOCA EL ESCUDO PARA CONFIGURAR
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* PANTALLA 2: DETALLE */}
+                {securityScreen === 'detail' && (
+                  <motion.div
+                    key="security-detail"
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 30 }}
+                    transition={{ duration: 0.3 }}
                     style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Header Abierto (Cápsula + Título/Sub + Status + Chevron) */}
-                    <div onClick={() => setOpenSection(null)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', cursor: 'pointer' }}>
+                    <div onClick={() => setSecurityScreen('overview')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', cursor: 'pointer' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{
-                          width: '40px', height: '40px', borderRadius: '12px',
-                          background: settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                          border: `1px solid ${settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Shield size={20} color={settings.two_factor_enabled ? '#22c55e' : '#ef4444'} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 900, color: 'var(--text-primary)' }}>
-                            SEGURIDAD
-                          </h3>
-                          <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Protección de acceso en dos pasos</p>
+                          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 900, color: 'var(--text-primary)' }}>ESTADO DE PROTECCIÓN</h3>
+                          <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Tu cuenta {settings.two_factor_enabled ? 'tiene' : 'aún no tiene'} 2FA configurada.</p>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1011,36 +1175,22 @@ const Profile = () => {
                       </div>
                     </div>
 
-                    {/* Cuerpo Abierto */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {settings.two_factor_enabled && isDisablingMfa ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
                           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Ingresa tu código para confirmar la desactivación.</p>
-                          <input
-                            type="text"
-                            maxLength="6"
-                            value={disableVerifyCode}
-                            onChange={e => setDisableVerifyCode(e.target.value.replace(/\D/g, ''))}
-                            placeholder="000000"
-                            className="mfa-input"
-                            style={{ padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--text-primary)', borderRadius: '12px', width: '100%' }}
-                          />
+                          <input type="text" maxLength="6" value={disableVerifyCode} onChange={e => setDisableVerifyCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" className="mfa-input" style={{ padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--text-primary)', borderRadius: '12px', width: '100%' }} />
                           {disableMfaError && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '0', textAlign: 'center' }}>{disableMfaError}</p>}
                           <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                             <button onClick={() => setIsDisablingMfa(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>CANCELAR</button>
-                            <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ flex: 1, padding: '12px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', borderRadius: '12px', color: '#ef4444', cursor: 'pointer', opacity: disableMfaLoading ? 0.6 : 1, fontWeight: 900 }}>
-                              {disableMfaLoading ? <Loader2 size={16} className="animate-spin" /> : 'DESACTIVAR'}
-                            </button>
+                            <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ flex: 1, padding: '12px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', borderRadius: '12px', color: '#ef4444', cursor: 'pointer', opacity: disableMfaLoading ? 0.6 : 1, fontWeight: 900 }}>{disableMfaLoading ? <Loader2 size={16} className="animate-spin" /> : 'DESACTIVAR'}</button>
                           </div>
                         </div>
                       ) : (
                         <>
-                          {/* Bloque 1: Autenticación de dos pasos */}
                           <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                              <div style={{ color: 'var(--text-secondary)', opacity: 0.8 }}>
-                                <Smartphone size={22} />
-                              </div>
+                              <div style={{ color: 'var(--text-secondary)', opacity: 0.8 }}><Smartphone size={22} /></div>
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>Autenticación de dos pasos</p>
                                 <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Capa extra de seguridad para iniciar sesión.</p>
@@ -1052,113 +1202,63 @@ const Profile = () => {
                             </div>
                           </div>
 
-                          {/* Bloque 2: Aplicación autenticadora */}
                           <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <Lock size={16} color={settings.two_factor_enabled ? '#22c55e' : '#ef4444'} />
                               <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Aplicación autenticadora</p>
                             </div>
-
                             <div style={{ padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: '16px' }}>
                               <ScanLine size={24} color="var(--text-secondary)" style={{ opacity: 0.4 }} />
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                                  {settings.two_factor_enabled ? 'Aplicación vinculada' : 'Sin aplicación vinculada'}
-                                </p>
-                                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4', fontWeight: 500 }}>
-                                  {settings.two_factor_enabled
-                                    ? 'Operativa para el siguiente inicio de sesión.'
-                                    : 'No hay una app vinculada en este momento.'}
-                                </p>
+                                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>{settings.two_factor_enabled ? 'Aplicación vinculada' : 'Sin aplicación vinculada'}</p>
+                                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4', fontWeight: 500 }}>{settings.two_factor_enabled ? 'Operativa para el siguiente inicio de sesión.' : 'No hay una app vinculada en este momento.'}</p>
                               </div>
                             </div>
                           </div>
 
                           <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', justifyContent: 'center' }}>
                             {settings.two_factor_enabled ? (
+                              <motion.button onClick={(e) => { e.stopPropagation(); setIsDisablingMfa(true); }} whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(220, 20, 60, 0.7)' }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2, ease: 'circOut' }} style={{ background: 'linear-gradient(145deg, #a3142d, #dc143c)', border: 'none', borderRadius: '50px', color: '#fff', fontWeight: 900, fontSize: '0.8rem', letterSpacing: '0.08em', cursor: 'pointer', padding: '10px 28px', boxShadow: '0 8px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)', textTransform: 'uppercase' }}>DESACTIVAR</motion.button>
+                            ) : (
                               <motion.button
-                                onClick={() => setIsDisablingMfa(true)}
-                                whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(220, 20, 60, 0.7)' }}
+                                onClick={(e) => { e.stopPropagation(); handleEnrollMfa(); }}
+                                disabled={mfaLoading}
+                                whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(34, 197, 94, 0.5), inset 0 0 15px rgba(34, 197, 94, 0.15)' }}
                                 whileTap={{ scale: 0.95 }}
                                 transition={{ duration: 0.2, ease: 'circOut' }}
+                                animate={!mfaLoading ? { boxShadow: ['0 0 12px rgba(34, 197, 94, 0.15)', '0 0 22px rgba(34, 197, 94, 0.35)', '0 0 12px rgba(34, 197, 94, 0.15)'] } : {}}
                                 style={{
-                                  background: 'linear-gradient(145deg, #a3142d, #dc143c)',
-                                  border: 'none',
+                                  width: '170px',
+                                  padding: '12px 28px',
+                                  background: 'linear-gradient(145deg, rgba(22, 101, 52, 0.6), rgba(34, 197, 94, 0.25))',
+                                  border: '1.5px solid rgba(34, 197, 94, 0.5)',
                                   borderRadius: '50px',
-                                  color: '#fff',
+                                  color: '#22c55e',
                                   fontWeight: 900,
                                   fontSize: '0.8rem',
-                                  letterSpacing: '0.08em',
-                                  cursor: 'pointer',
-                                  padding: '10px 28px',
-                                  boxShadow: '0 8px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)',
-                                  textTransform: 'uppercase'
+                                  letterSpacing: '0.1em',
+                                  textTransform: 'uppercase',
+                                  cursor: mfaLoading ? 'not-allowed' : 'pointer',
+                                  opacity: mfaLoading ? 0.5 : 1,
+                                  boxShadow: '0 0 12px rgba(34, 197, 94, 0.15)'
                                 }}
                               >
-                                DESACTIVAR
+                                {mfaLoading ? <Loader2 size={15} className="animate-spin" /> : 'ACTIVAR'}
                               </motion.button>
-                            ) : (
-                              <button onClick={handleEnrollMfa} disabled={mfaLoading} style={{ width: '100%', padding: '14px', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '14px', color: '#22c55e', fontWeight: 900, fontSize: '0.85rem', letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.3s ease', opacity: mfaLoading ? 0.6 : 1 }} onMouseEnter={(e) => !mfaLoading && (e.currentTarget.style.background = 'rgba(34, 197, 94, 0.25)')} onMouseLeave={(e) => !mfaLoading && (e.currentTarget.style.background = 'rgba(34, 197, 94, 0.15)')}>
-                                {mfaLoading ? <Loader2 size={16} className="animate-spin" /> : 'ACTIVAR'}
-                              </button>
                             )}
                           </div>
                         </>
                       )}
                     </div>
                   </motion.div>
-                ) : (
-                  <motion.div
-                    key="security-closed"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}
-                  >
-                    <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ color: 'var(--accent-primary)' }}>
-                          <Shield size={20} />
-                        </div>
-                        <h3 style={{
-                          margin: 0,
-                          fontSize: '0.9rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.12em',
-                          fontWeight: 900,
-                          color: 'var(--text-primary)',
-                          textShadow: '0 0 15px rgba(0, 243, 255, 0.2)'
-                        }}>
-                          SEGURIDAD
-                        </h3>
-                      </div>
-                      <ChevronDown size={18} style={{ color: 'var(--text-secondary)', transition: 'transform 0.3s', transform: 'rotate(-90deg)' }} />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px', position: 'relative' }}>
-                      <div style={{
-                        width: '80px', height: '80px', borderRadius: '50%',
-                        background: settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: settings.two_factor_enabled ? '0 0 25px rgba(34, 197, 94, 0.15)' : 'none'
-                      }}>
-                        <Shield
-                          size={42}
-                          strokeWidth={1.5}
-                          style={{ color: settings.two_factor_enabled ? '#22c55e' : 'rgba(255,255,255,0.15)', transition: 'all 0.3s ease' }}
-                        />
-                      </div>
-                      <div className={`status-pill ${settings.two_factor_enabled ? 'status-pill-active' : 'status-pill-inactive'}`}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />
-                        {settings.two_factor_enabled ? 'PROTEGIDA' : 'DESPROTEGIDA'}
-                      </div>
-                    </div>
-                  </motion.div>
                 )}
               </AnimatePresence>
+            </motion.div>
 
-              {/* Modal para QR */}
+              {/* ═══════════════════════════════════════════════════
+                  MFA ACTIVATION MODAL
+                  Flex layout: header fijo | body flexible | footer fijo
+                  ═══════════════════════════════════════════════════ */}
               <AnimatePresence>
                 {mfaData && (
                   <motion.div
@@ -1167,66 +1267,303 @@ const Profile = () => {
                     exit={{ opacity: 0 }}
                     style={{
                       position: 'fixed',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background: 'rgba(0, 0, 0, 0.7)',
+                      inset: 0,
+                      background: 'rgba(0, 0, 0, 0.72)',
                       backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
                       zIndex: 100,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      padding: '20px'
                     }}
-                    onClick={() => { setMfaData(null); setQrCodeSvg(null); }}
+                    onClick={() => {
+                      setMfaData(null);
+                      setQrCodeSvg(null);
+                      setVerifyCode('');
+                      setMfaError('');
+                      setMfaSuccessMessage('');
+                      setManualSecret('');
+                    }}
                   >
+                    {/* ── ModalShell: flex column, 3 regiones ── */}
                     <motion.div
-                      initial={{ scale: 0.9, opacity: 0 }}
+                      initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="glass-panel"
-                      style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', maxWidth: '320px', width: '90%' }}
+                      exit={{ scale: 0.95, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        maxWidth: '480px',
+                        maxHeight: '92vh',
+                        background: 'var(--bg-glass, rgba(15, 23, 42, 0.85))',
+                        backdropFilter: 'blur(25px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(25px) saturate(180%)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '20px',
+                        boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 0 1px rgba(255,255,255,0.1)',
+                        overflow: 'hidden'
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <h4 style={{ margin: 0, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Activar 2FA</h4>
-                      <p style={{ margin: 0, textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        1. Escanea el QR con tu app de autenticación.
-                      </p>
-                      <div className="mfa-qr-container">
-                        {qrCodeSvg && <div style={{ width: '150px', height: '150px' }} dangerouslySetInnerHTML={{ __html: qrCodeSvg }} />}
+
+                      {/* ── Header: fijo, nunca se mueve ── */}
+                      <div style={{
+                        flexShrink: 0,
+                        padding: '28px 32px 20px 32px',
+                        textAlign: 'center',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)'
+                      }}>
+                        <h4 style={{
+                          margin: 0,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.2em',
+                          fontSize: '0.95rem',
+                          fontWeight: 900,
+                          background: 'linear-gradient(135deg, #00f3ff 0%, #60a5fa 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text'
+                        }}>
+                          ACTIVAR 2FA
+                        </h4>
+                        <p style={{
+                          margin: '6px 0 0',
+                          fontSize: '0.75rem',
+                          color: 'var(--text-secondary)',
+                          fontWeight: 500,
+                          lineHeight: 1.4
+                        }}>
+                          Protección de acceso en dos pasos
+                        </p>
                       </div>
-                      {manualSecret && (
-                        <div style={{ width: '100%' }}>
-                          <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>O usa esta clave:</p>
-                          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem', justifyContent: 'space-between' }}>
-                            <span style={{ fontFamily: 'monospace', letterSpacing: '1px' }}>{manualSecret}</span>
-                            <button onClick={() => copyToClipboard(manualSecret)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer' }}><Copy size={16} /></button>
+
+                      {/* ── Body: flexible, único scrollable ── */}
+                      <div style={{
+                        flex: 1,
+                        minHeight: 0,
+                        overflowY: 'auto',
+                        padding: '24px 32px 20px 32px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '20px',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'rgba(255,255,255,0.12) transparent'
+                      }}>
+                        {/* Paso 1 */}
+                        <p style={{
+                          margin: 0,
+                          textAlign: 'center',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          lineHeight: 1.5,
+                          fontWeight: 700
+                        }}>
+                          1. Escanea el QR con tu app de autenticación.
+                        </p>
+
+                        {/* QR Code */}
+                        {qrCodeSvg && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#ffffff',
+                            padding: '14px',
+                            borderRadius: '14px',
+                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 243, 255, 0.06)',
+                            width: '170px',
+                            height: '170px',
+                            flexShrink: 0
+                          }}>
+                            <img
+                              src={qrCodeSvg}
+                              alt="QR Code para autenticación 2FA"
+                              style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }}
+                            />
                           </div>
-                        </div>
-                      )}
-                      <p style={{ margin: 0, textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        2. Ingresa el código de 6 dígitos.
-                      </p>
-                      <input
-                        type="text"
-                        maxLength="6"
-                        value={verifyCode}
-                        onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
-                        placeholder="000000"
-                        className="mfa-input"
-                        style={{ padding: '12px', background: 'var(--bg-primary)', border: '2px solid var(--border-glass-top)', color: 'var(--text-primary)', borderRadius: '8px', width: '100%' }}
-                      />
-                      {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', margin: 0 }}>{mfaError}</p>}
-                      {mfaSuccessMessage && <p style={{ color: '#22c55e', fontSize: '0.8rem', margin: 0 }}>{mfaSuccessMessage}</p>}
-                      <button onClick={handleVerifyMfa} disabled={mfaLoading} style={{ width: '100%', padding: '12px', background: 'var(--accent-primary)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: 900, cursor: 'pointer', opacity: mfaLoading ? 0.6 : 1 }}>
-                        {mfaLoading ? <Loader2 size={16} className="animate-spin" /> : 'Verificar y Activar'}
-                      </button>
+                        )}
+
+                        {/* Clave manual */}
+                        {manualSecret && (
+                          <div style={{ width: '100%' }}>
+                            <p style={{
+                              margin: '0 0 8px',
+                              fontSize: '0.72rem',
+                              color: 'var(--text-secondary)',
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.08em'
+                            }}>
+                              O usa esta clave:
+                            </p>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              background: 'rgba(0,0,0,0.3)',
+                              padding: '10px 14px',
+                              borderRadius: '10px',
+                              border: '1px solid rgba(255,255,255,0.06)'
+                            }}>
+                              <span style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                letterSpacing: '0.4px',
+                                wordBreak: 'break-all',
+                                fontSize: '0.7rem',
+                                color: 'var(--text-primary)',
+                                flex: 1,
+                                fontWeight: 600
+                              }}>
+                                {manualSecret}
+                              </span>
+                              <button
+                                onClick={() => copyToClipboard(manualSecret)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'var(--accent-primary)',
+                                  cursor: 'pointer',
+                                  flexShrink: 0,
+                                  padding: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  opacity: 0.7,
+                                  transition: 'opacity 0.2s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+                              >
+                                <Copy size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Paso 2 */}
+                        <p style={{
+                          margin: '4px 0 0',
+                          textAlign: 'center',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          lineHeight: 1.5,
+                          fontWeight: 700
+                        }}>
+                          2. Ingresa el código de 6 dígitos.
+                        </p>
+
+                        {/* Input de 6 dígitos */}
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          maxLength="6"
+                          value={verifyCode}
+                          onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="000000"
+                          style={{
+                            padding: '14px 10px',
+                            background: 'rgba(0,0,0,0.3)',
+                            border: '1.5px solid rgba(255,255,255,0.1)',
+                            color: 'var(--text-primary)',
+                            borderRadius: '12px',
+                            width: '100%',
+                            textAlign: 'center',
+                            letterSpacing: '12px',
+                            fontSize: '1.5rem',
+                            fontWeight: 700,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            boxSizing: 'border-box',
+                            outline: 'none',
+                            transition: 'border-color 0.2s, box-shadow 0.2s'
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.4)';
+                            e.currentTarget.style.boxShadow = '0 0 15px rgba(0, 243, 255, 0.1)';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        />
+
+                        {/* Mensajes de error / éxito */}
+                        {mfaError && (
+                          <p style={{
+                            color: '#ef4444',
+                            fontSize: '0.75rem',
+                            margin: 0,
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            lineHeight: 1.4
+                          }}>
+                            {mfaError}
+                          </p>
+                        )}
+                        {mfaSuccessMessage && (
+                          <p style={{
+                            color: '#22c55e',
+                            fontSize: '0.75rem',
+                            margin: 0,
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            lineHeight: 1.4
+                          }}>
+                            {mfaSuccessMessage}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* ── Footer: fijo, CTA siempre visible ── */}
+                      <div style={{
+                        flexShrink: 0,
+                        padding: '16px 32px 28px 32px',
+                        borderTop: '1px solid rgba(255,255,255,0.06)',
+                        display: 'flex',
+                        justifyContent: 'center'
+                      }}>
+                        <motion.button
+                          onClick={handleVerifyMfa}
+                          disabled={mfaLoading}
+                          className="crystal-btn"
+                          whileHover={{
+                            scale: 1.03,
+                            boxShadow: '0 8px 40px rgba(59, 130, 246, 0.4), 0 0 60px rgba(96, 165, 250, 0.15), inset 0 1px 2px rgba(255,255,255,0.2)'
+                          }}
+                          whileTap={{ scale: 0.96 }}
+                          transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+                          style={{
+                            position: 'relative',
+                            padding: '14px 48px',
+                            background: 'linear-gradient(135deg, rgba(30, 58, 95, 0.8) 0%, rgba(37, 99, 235, 0.6) 50%, rgba(59, 130, 246, 0.7) 100%)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(96, 165, 250, 0.3)',
+                            borderRadius: '50px',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            letterSpacing: '0.2em',
+                            textTransform: 'uppercase',
+                            cursor: mfaLoading ? 'not-allowed' : 'pointer',
+                            opacity: mfaLoading ? 0.5 : 1,
+                            boxShadow: '0 4px 20px rgba(59, 130, 246, 0.2), inset 0 1px 2px rgba(255,255,255,0.15)',
+                            minWidth: '180px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <span style={{ position: 'relative', zIndex: 2 }}>
+                            {mfaLoading ? <Loader2 size={15} className="animate-spin" /> : 'CONFIRMAR'}
+                          </span>
+                        </motion.button>
+                      </div>
+
                     </motion.div>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
           </div>
 
           {/* BOTTOM ROW: Language, Font, Font Size */}

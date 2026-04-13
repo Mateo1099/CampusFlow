@@ -1,0 +1,507 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                    MFA MODAL — ANALYSIS MODAL BLOCK                  ║
+║                    File: MFA_MODAL_DEBUG.amb                         ║
+║                    Project: CampusFlow                               ║
+║                    Source: src/pages/Profile.jsx                     ║
+║                    Date: 2026-04-10                                  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+══════════════════════════════════════════════════════════════════════
+  SECTION 1 — JSX COMPLETO
+══════════════════════════════════════════════════════════════════════
+
+  Componente: Profile (src/pages/Profile.jsx)
+  Líneas: ~1249–1539
+  Render condicional: {mfaData && ( ... )}
+  Wrapper externo: <AnimatePresence>
+
+────────────────────────────────────────────────────────────────────
+  NIVEL 0 — Overlay (backdrop)
+  motion.div (framer-motion)
+  Props:
+    - initial={{ opacity: 0 }}
+    - animate={{ opacity: 1 }}
+    - exit={{ opacity: 0 }}
+    - onClick: cierra modal y limpia estados
+  Inline style:
+    position: 'fixed'
+    inset: 0
+    background: 'rgba(0, 0, 0, 0.72)'
+    backdropFilter: 'blur(10px)'
+    WebkitBackdropFilter: 'blur(10px)'
+    zIndex: 100
+    display: 'flex'
+    alignItems: 'flex-start'
+    justifyContent: 'center'
+    paddingTop: '6vh'
+────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────
+  NIVEL 1 — ModalShell
+  motion.div (framer-motion)
+  Props:
+    - initial={{ y: -20, opacity: 0 }}
+    - animate={{ y: 0, opacity: 1 }}
+    - exit={{ y: 20, opacity: 0 }}
+    - transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+    - onClick: e.stopPropagation()
+  NO usa className (no "glass-panel")
+  Inline style:
+    display: 'grid'
+    gridTemplateRows: 'auto minmax(0, 1fr) auto'
+    height: 'auto'
+    minHeight: '560px'
+    maxHeight: 'calc(100vh - 12vh)'
+    maxWidth: '460px'
+    width: '94%'
+    background: 'var(--bg-glass, rgba(15, 23, 42, 0.85))'
+    backdropFilter: 'blur(25px) saturate(180%)'
+    WebkitBackdropFilter: 'blur(25px) saturate(180%)'
+    border: '1px solid rgba(255,255,255,0.08)'
+    borderRadius: '20px'
+    boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 0 1px rgba(255,255,255,0.1)'
+    overflow: 'hidden'
+────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────
+  NIVEL 2a — ModalHeader (fila 1 del grid)
+  div
+  Inline style:
+    padding: '28px 36px 18px 36px'
+    textAlign: 'center'
+    borderBottom: '1px solid rgba(255,255,255,0.06)'
+
+  Contenido:
+    <h4 style={{
+      margin: 0
+      textTransform: 'uppercase'
+      letterSpacing: '0.2em'
+      fontSize: '0.9rem'
+      fontWeight: 900
+      background: 'linear-gradient(135deg, #00f3ff 0%, #60a5fa 100%)'
+      WebkitBackgroundClip: 'text'
+      WebkitTextFillColor: 'transparent'
+      backgroundClip: 'text'
+    }}>
+      ACTIVAR 2FA
+    </h4>
+────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────
+  NIVEL 2b — ModalBody (fila 2 del grid)
+  div
+  Inline style:
+    overflowY: 'auto'
+    padding: '24px 36px 24px 36px'
+    display: 'flex'
+    flexDirection: 'column'
+    alignItems: 'center'
+    gap: '18px'
+    scrollbarWidth: 'thin'
+    scrollbarColor: 'rgba(255,255,255,0.12) transparent'
+
+  ├── [Hijo 1] Paso 1 — <p>
+  │   Inline style:
+  │     margin: 0
+  │     textAlign: 'center'
+  │     fontSize: '0.85rem'
+  │     color: 'var(--text-primary)'
+  │     lineHeight: 1.5
+  │     fontWeight: 700
+  │   Text: "1. Escanea el QR con tu app de autenticación."
+
+  ├── [Hijo 2] QR Container — <div> (condicional: qrCodeSvg &&)
+  │   Inline style:
+  │     display: 'flex'
+  │     alignItems: 'center'
+  │     justifyContent: 'center'
+  │     background: '#ffffff'
+  │     padding: '14px'
+  │     borderRadius: '14px'
+  │     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 243, 255, 0.06)'
+  │     width: '170px'
+  │     height: '170px'
+  │     flexShrink: 0
+  │   Contenido: <img src={qrCodeSvg} ... imageRendering: 'pixelated' />
+
+  ├── [Hijo 3] Manual Key Container — <div> (condicional: manualSecret &&)
+  │   Inline style (wrapper): width: '100%'
+  │   ├── Label <p>:
+  │   │   margin: '0 0 8px'
+  │   │   fontSize: '0.72rem'
+  │   │   color: 'var(--text-secondary)'
+  │   │   fontWeight: 600
+  │   │   textTransform: 'uppercase'
+  │   │   letterSpacing: '0.08em'
+  │   │   Text: "O usa esta clave:"
+  │   │
+  │   └── Key Box <div>:
+  │       display: 'flex'
+  │       alignItems: 'center'
+  │       background: 'rgba(0,0,0,0.3)'
+  │       padding: '10px 14px'
+  │       borderRadius: '10px'
+  │       border: '1px solid rgba(255,255,255,0.06)'
+  │       ├── Secret <span>:
+  │       │   fontFamily: "'JetBrains Mono', monospace"
+  │       │   letterSpacing: '0.4px'
+  │       │   wordBreak: 'break-all'
+  │       │   fontSize: '0.7rem'
+  │       │   color: 'var(--text-primary)'
+  │       │   flex: 1
+  │       │   fontWeight: 600
+  │       │   Text: {manualSecret}
+  │       │
+  │       └── Copy Button <button>:
+  │           background: 'transparent'
+  │           border: 'none'
+  │           color: 'var(--accent-primary)'
+  │           cursor: 'pointer'
+  │           flexShrink: 0
+  │           padding: '4px'
+  │           display: 'flex'
+  │           alignItems: 'center'
+  │           opacity: 0.7 (hover: 1)
+  │           transition: 'opacity 0.2s'
+  │           onClick: copyToClipboard(manualSecret)
+  │           Icon: <Copy size={14} />
+
+  ├── [Hijo 4] Paso 2 — <p>
+  │   Inline style:
+  │     margin: '6px 0 0'
+  │     textAlign: 'center'
+  │     fontSize: '0.85rem'
+  │     color: 'var(--text-primary)'
+  │     lineHeight: 1.5
+  │     fontWeight: 700
+  │   Text: "2. Ingresa el código de 6 dígitos."
+
+  ├── [Hijo 5] Input 6 dígitos — <input>
+  │   Props:
+  │     type: "text"
+  │     maxLength: 6
+  │     value: {verifyCode}
+  │     onChange: setVerifyCode(e.target.value.replace(/\D/g, ''))
+  │     placeholder: "000000"
+  │     NO tiene className (mfa-input eliminada)
+  │     onFocus / onBlur handlers inline
+  │   Inline style:
+  │     padding: '14px 10px'
+  │     background: 'rgba(0,0,0,0.3)'
+  │     border: '1.5px solid rgba(255,255,255,0.1)'
+  │     color: 'var(--text-primary)'
+  │     borderRadius: '12px'
+  │     width: '100%'
+  │     textAlign: 'center'
+  │     letterSpacing: '12px'
+  │     fontSize: '1.5rem'
+  │     fontWeight: 700
+  │     fontFamily: "'JetBrains Mono', monospace"
+  │     boxSizing: 'border-box'
+  │     outline: 'none'
+  │     transition: 'border-color 0.2s, box-shadow 0.2s'
+  │   Focus state: borderColor = 'rgba(0, 243, 255, 0.4)', boxShadow glow
+  │   Blur state: borderColor = 'rgba(255,255,255,0.1)', boxShadow: 'none'
+
+  ├── [Hijo 6] Error Message — <p> (condicional: mfaError &&)
+  │   color: '#ef4444'
+  │   fontSize: '0.75rem'
+  │   fontWeight: 600
+
+  └── [Hijo 7] Success Message — <p> (condicional: mfaSuccessMessage &&)
+      color: '#22c55e'
+      fontSize: '0.75rem'
+      fontWeight: 600
+────────────────────────────────────────────────────────────────────
+
+────────────────────────────────────────────────────────────────────
+  NIVEL 2c — ModalFooter (fila 3 del grid)
+  div
+  Inline style:
+    padding: '16px 36px 28px 36px'
+    borderTop: '1px solid rgba(255,255,255,0.06)'
+    display: 'flex'
+    justifyContent: 'center'
+
+  Contenido: CTA Button <button>
+    Props:
+      onClick: handleVerifyMfa
+      disabled: mfaLoading
+      onMouseEnter / onMouseLeave: hover effects
+    Inline style:
+      padding: '13px 44px'
+      background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%)'
+      border: '1px solid rgba(96, 165, 250, 0.2)'
+      borderRadius: '50px'
+      color: '#ffffff'
+      fontWeight: 800
+      fontSize: '0.78rem'
+      letterSpacing: '0.18em'
+      textTransform: 'uppercase'
+      cursor: mfaLoading ? 'not-allowed' : 'pointer'
+      opacity: mfaLoading ? 0.5 : 1
+      transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+      boxShadow: '0 4px 18px rgba(37, 99, 235, 0.3), inset 0 1px 1px rgba(255,255,255,0.1)'
+      minWidth: '180px'
+    Hover: translateY(-1px), shadow boost
+    Label: {mfaLoading ? <Loader2 /> : 'CONFIRMAR'}
+────────────────────────────────────────────────────────────────────
+
+══════════════════════════════════════════════════════════════════════
+  SECTION 2 — CSS GLOBALS RELEVANTES
+══════════════════════════════════════════════════════════════════════
+
+  Archivo: src/pages/Profile.jsx (bloque <style>{`...`})
+
+  .glass-panel {
+    /* Clase que ANTES usaba el ModalShell, ahora NO se usa */
+    /* Definida globalmente en el proyecto — puede variar según theme */
+    /* Típicamente: background glassmorphism, border, border-radius */
+  }
+
+  .mfa-input {
+    /* Clase que ANTES usaba el input, ahora NO se usa */
+    letter-spacing: 8px;
+    font-size: 1.8rem;
+    font-weight: 900;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  @keyframes popIn { ... }
+  @keyframes shieldPulse { ... }
+  @keyframes iconPop { ... }
+  /* Animaciones definidas en el bloque <style>, no usadas por el modal */
+
+  CSS Variables (dependen del theme activo):
+    --bg-glass       → fondo glass del panel
+    --bg-glass-hover → fondo hover
+    --text-primary   → color texto principal
+    --text-secondary → color texto secundario
+    --accent-primary → color de acento (cyan #00f3ff)
+    --border-glass-top, --border-glass-side → bordes glass
+    --radius-lg      → radio de borde
+    --shadow-glass   → sombra glass
+    --transition-med → duración transición media
+
+  Nota: El ModalShell NO usa className="glass-panel" desde la
+  reestructuración. Define sus propios estilos inline, incluyendo
+  background con fallback: 'var(--bg-glass, rgba(15, 23, 42, 0.85))'
+
+══════════════════════════════════════════════════════════════════════
+  SECTION 3 — ESTRUCTURA JERÁRQUICA
+══════════════════════════════════════════════════════════════════════
+
+  Profile (component)
+    └─ AnimatePresence
+         └─ {mfaData && (
+              └─ motion.div  ← Overlay
+                   └─ motion.div  ← ModalShell (grid 3 filas)
+                        ├─ div  ← ModalHeader (fila 1: auto)
+                        │    └─ h4 "ACTIVAR 2FA"
+                        ├─ div  ← ModalBody (fila 2: minmax(0,1fr))
+                        │    ├─ p  ← Paso 1
+                        │    ├─ div  ← QR Container
+                        │    │    └─ img ← QR Code
+                        │    ├─ div  ← Manual Key Container
+                        │    │    ├─ p  ← Label "O usa esta clave:"
+                        │    │    └─ div  ← Key Box
+                        │    │         ├─ span  ← Secret text
+                        │    │         └─ button  ← Copy
+                        │    ├─ p  ← Paso 2
+                        │    ├─ input  ← 6-digit code
+                        │    ├─ p  ← Error (condicional)
+                        │    └─ p  ← Success (condicional)
+                        └─ div  ← ModalFooter (fila 3: auto)
+                             └─ button  ← CTA "CONFIRMAR"
+            )}
+
+══════════════════════════════════════════════════════════════════════
+  SECTION 4 — PROPS, ESTADOS Y HANDLERS
+══════════════════════════════════════════════════════════════════════
+
+  ── Estados del componente (useState) relacionados con el modal ──
+
+  const [mfaData, setMfaData] = useState(null);
+    → Objeto Devuelto por supabase.auth.mfa.enroll()
+    → Contiene: { id, totp: { qr_code, secret } }
+    → Controla la visibilidad del modal (condicional: mfaData &&)
+
+  const [qrCodeSvg, setQrCodeSvg] = useState(null);
+    → Data URL del QR (formato: data:image/svg+xml;utf-8,...)
+    → Renderizado en <img src={qrCodeSvg} />
+
+  const [verifyCode, setVerifyCode] = useState('');
+    → Valor del input de 6 dígitos
+    → Solo dígitos: .replace(/\D/g, '')
+
+  const [mfaLoading, setMfaLoading] = useState(false);
+    → Loading state para CTA button
+    → Deshabilita botón y muestra spinner
+
+  const [mfaError, setMfaError] = useState('');
+    → Mensaje de error mostrado debajo del input
+
+  const [mfaSuccessMessage, setMfaSuccessMessage] = useState('');
+    → Mensaje de éxito (auto-clear en 2s)
+
+  const [manualSecret, setManualSecret] = useState('');
+    → Clave TOTP manual (string base32)
+    → Renderizado en el bloque "O usa esta clave"
+
+  ── Context / Props del componente Profile ──
+
+  const { settings, updateSettings, t } = useSettings();
+  const { user, checkMFAStatus } = useAuth();
+
+  ── Handlers ──
+
+  handleEnrollMfa()  → Inicia el flujo MFA
+    1. Refresh sesión
+    2. Verifica email confirmado
+    3. Limpia factores TOTP existentes (unenroll)
+    4. Delay 500ms
+    5. Refresh sesión
+    6. enroll({ factorType: 'totp', friendlyName })
+    7. setMfaData, setQrCodeSvg, setManualSecret
+
+  handleVerifyMfa()  → Verifica el código de 6 dígitos
+    1. Valida longitud === 6
+    2. challenge({ factorId: mfaData.id })
+    3. verify({ factorId, challengeId, code })
+    4. refreshSession()
+    5. Actualiza profiles.two_factor_enabled = true
+    6. Actualiza user_security.mfa_enabled = true
+    7. setMfaSuccessMessage → auto-close en 2s
+
+  handleDisableMfa()  → Desactiva MFA (no parte del modal de activación)
+
+  copyToClipboard(text)  → Copia clave manual al portapapeles
+
+══════════════════════════════════════════════════════════════════════
+  SECTION 5 — OBSERVACIONES Y ANÁLISIS DE PROBLEMAS POTENCIALES
+══════════════════════════════════════════════════════════════════════
+
+  ── LAYOUT ──
+
+  [OBS-1] gridTemplateRows con height auto
+    El ModalShell usa gridTemplateRows: 'auto minmax(0, 1fr) auto'
+    combinado con height: 'auto'. En CSS Grid, cuando el contenedor
+    tiene height: auto, las filas con 1fr se comportan como si
+    tuvieran altura mínima igual al contenido. Esto significa que el
+    body (fila 2) NO se comprime — crece con su contenido.
+    El maxHeight: calc(100vh - 12vh) actúa como tope.
+    ⚠️ Si el contenido total del modal excede calc(100vh - 12vh),
+       el overflow: hidden del shell corta el contenido del body
+       sin que el scroll funcione correctamente, porque el grid
+       row no tiene un contenedor con altura fija para forzar el
+       overflowY: auto.
+
+  [OBS-2] Sin contenedor con altura explícita
+    Para que overflowY: auto funcione en un hijo de grid, el grid
+    necesita una altura definida (no auto). Con height: 'auto', el
+    grid se expande al contenido, y overflowY en el body no tiene
+    efecto porque el body siempre tiene espacio para crecer.
+    ⚠️ Este es el problema central: el scroll del body nunca se
+       activa porque el grid no fuerza un límite de altura interno.
+
+  [OBS-3] ModalShell sin className="glass-panel"
+    El modal definió sus propios estilos inline, lo cual es correcto
+    para control total. Sin embargo, las CSS variables (--bg-glass)
+    dependen del theme activo. Si --bg-glass no está definido, el
+    fallback rgba(15, 23, 42, 0.85) aplica, lo cual es consistente
+    con dark mode pero puede verse mal en light mode.
+
+  [OBS-4] padding del Body es grande (24px 36px)
+    El padding lateral de 36px reduce el ancho útil del body.
+    Con maxWidth 460px y width 94%, el ancho efectivo del body
+    es aprox: min(460*0.94, viewport) - 72px = ~360px en pantallas
+    normales. Esto es suficiente para el contenido actual.
+
+  ── OVERFLOW / SCROLL ──
+
+  [OBS-5] scrollbarWidth + scrollbarColor
+    El body tiene scrollbarWidth: 'thin' y scrollbarColor definidos,
+    lo cual funciona en Firefox y Chromium. En Safari, estos
+    properties no tienen efecto — se necesita ::-webkit-scrollbar
+    CSS global para controlar el scroll en Safari.
+
+  [OBS-6] El footer NO tiene flexShrink explícito
+    En grid layout, flexShrink no aplica. Las filas del grid tienen
+    tamaño determinado por gridTemplateRows. La fila 3 ('auto')
+    siempre tendrá el tamaño de su contenido, lo cual es correcto.
+    ✅ Esto garantiza que el footer nunca se comprima.
+
+  ── INPUT / INTERACCIÓN ──
+
+  [OBS-7] Input sin position/zIndex
+    El input NO tiene position: relative ni zIndex. Esto es correcto
+    porque ya no está dentro de un contenedor con overflow que pueda
+    crear un stacking context problemático. Sin embargo, si el body
+    hace scroll, el input podría quedar fuera del viewport del
+    scroll si hay demasiado contenido arriba.
+
+  [OBS-8] Input type="text" con maxLength=6
+    El input usa type="text" (no "tel" o "number"). En móviles,
+    esto abre el teclado QWERTY en lugar del teclado numérico.
+    ⚠️ Para mejor UX en móviles, usar inputMode="numeric" pattern="[0-9]*"
+
+  [OBS-9] Input value controlado por state
+    El input es completamente controlado: value={verifyCode}.
+    El onChange hace replace(/\D/g, '') que filtra no-dígitos.
+    Esto debería funcionar sin problemas. No hay debounce ni delay
+    que pueda causar lag de escritura.
+
+  ── THEME / VISUAL ──
+
+  [OBS-10] background fallback
+    background: 'var(--bg-glass, rgba(15, 23, 42, 0.85))'
+    El fallback es un color oscuro. En light mode, esto puede crear
+    un contraste incorrecto. El theme light mode probablemente
+    define --bg-glass como un color claro, pero si la variable
+    no se resuelve correctamente, el modal queda oscuro sobre
+    fondo claro.
+
+  [OBS-11] Gradiente del título
+    El título usa background-clip: text con gradiente cyan→azul.
+    En light mode, si --text-primary es oscuro, el gradiente puede
+    no contrastar bien con el fondo del header.
+    ⚠️ Verificar visibilidad del título en light mode.
+
+  ── ANIMACIONES ──
+
+  [OBS-12] Animación de entrada
+    initial={{ y: -20, opacity: 0 }} → animate={{ y: 0, opacity: 1 }}
+    El modal entra desde arriba (slide down). Esto es coherente
+    con el overlay que tiene alignItems: 'flex-start' y paddingTop: 6vh.
+    ✅ La animación refuerza la dirección de entrada.
+
+  [OBS-13] Animación de salida
+    exit={{ y: 20, opacity: 0 }}
+    El modal sale hacia abajo. Coherente con la entrada.
+
+  ── PRIORIDADES DE FIX ──
+
+  🔴 CRÍTICO: [OBS-2] — El body scroll no funciona porque el grid
+     tiene height: auto. Solución: dar al ModalShell una altura
+     explícita (ej: height con valor fijo o dvh) para que el grid
+     pueda distribuir espacio y el body tenga un overflow real.
+
+  🟡 IMPORTANTE: [OBS-10] — El fallback de background puede ser
+     incorrecto en light mode. Solución: definir un fallback
+     theme-aware o usar un color neutro.
+
+  🟡 IMPORTANTE: [OBS-8] — El input en móviles abre teclado
+     QWERTY. Solución: inputMode="numeric" pattern="[0-9]*".
+
+  🟢 MENOR: [OBS-5] — Scrollbar no estilizado en Safari.
+     Solución: agregar ::-webkit-scrollbar CSS.
+
+  🟢 MENOR: [OBS-11] — Título puede no contrastar en light mode.
+     Solución: ajustar colores del gradiente para light mode.
+
+══════════════════════════════════════════════════════════════════════
+  END OF FILE
+  Generated: 2026-04-10
+  Source: src/pages/Profile.jsx (Profile component)
+══════════════════════════════════════════════════════════════════════

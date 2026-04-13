@@ -14,25 +14,60 @@ import MFAChallenge from './pages/MFAChallenge';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { TaskProvider, useTasksContext } from './context/TaskContext';
+import { supabase } from './lib/supabaseClient';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, aal, mfaRequired, loading } = useAuth();
-  
+
   console.log('[ROUTE-PROTECTED] Check Protegido:', { isAuthenticated, aal, mfaRequired, loading, 'needsMFA': mfaRequired && aal !== 'aal2' });
-  
+
   // Si no está autenticado, ir a login
   if (!isAuthenticated) {
     console.log('[ROUTE-PROTECTED] Redirigiendo a /login - no autenticado');
     return <Navigate to="/login" replace />;
   }
-  
-  // 💡 MÁS TOLERANTE: Solo bloquear si está seguro de que MFA es requerido y NO está en AAL2
-  // Si loading es true, permitir acceso (evita rebote instantáneo mientras se valida)
+
+  // 💡 VERIFICACIÓN DIRECTA: Si MFA parece requerido pero no está en AAL2,
+  // verificar factores reales de Supabase antes de redirigir
+  // Esto evita redirects incorrectos cuando mfaRequired está stale
+  const [directCheck, setDirectCheck] = React.useState({ status: 'pending', hasTotp: null });
+
+  React.useEffect(() => {
+    if (mfaRequired && aal !== 'aal2' && !loading) {
+      // Verificación directa de factores MFA en Supabase Auth
+      supabase.auth.mfa.listFactors().then(({ data: factorsData, error: factorsError }) => {
+        if (!factorsError && factorsData) {
+          const totpFactors = factorsData.totp || [];
+          const hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
+          console.log(`[ROUTE-PROTECTED] Direct check: ${totpFactors.length} TOTP factors, hasVerified=${hasVerifiedTotp}`);
+          setDirectCheck({ status: 'done', hasTotp: hasVerifiedTotp });
+        } else {
+          console.warn('[ROUTE-PROTECTED] Error listing factors:', factorsError?.message);
+          setDirectCheck({ status: 'error', hasTotp: null });
+        }
+      }).catch((err) => {
+        console.error('[ROUTE-PROTECTED] Exception listing factors:', err);
+        setDirectCheck({ status: 'error', hasTotp: null });
+      });
+    }
+  }, [mfaRequired, aal, loading]);
+
+  // Si la verificación directa muestra que NO hay TOTP, permitir acceso
   if (mfaRequired && aal !== 'aal2' && !loading) {
-    console.log('[ROUTE-PROTECTED] Redirigiendo a /mfa-challenge - MFA requerido (aal:', aal, ')');
-    return <Navigate to="/mfa-challenge" replace />;
+    if (directCheck.status === 'done') {
+      if (!directCheck.hasTotp) {
+        console.log('[ROUTE-PROTECTED] ✅ Direct check: no TOTP factors, allowing access');
+        return children;
+      } else {
+        console.log('[ROUTE-PROTECTED] Direct check: TOTP factors found, redirecting to /mfa-challenge');
+        return <Navigate to="/mfa-challenge" replace />;
+      }
+    }
+    // Mientras se verifica, permitir acceso temporalmente
+    console.log('[ROUTE-PROTECTED] Verifying factors, allowing temporary access');
+    return children;
   }
-  
+
   // Si está autenticado (con o sin MFA), permitir acceso
   console.log('[ROUTE-PROTECTED] ✅ Permitiendo acceso al usuario (aal:', aal, ', loading:', loading, ')');
   return children;
@@ -54,24 +89,51 @@ const LoginRoute = ({ children }) => {
   return children;
 };
 
-// Componente para proteger /mfa-challenge: redirige a / si ya completó MFA con AAL2
+// Componente para proteger /mfa-challenge: redirige a / si ya completó MFA o si no hay MFA activo
 const MFARoute = ({ children }) => {
-  const { isAuthenticated, aal } = useAuth();
-  
-  console.log('[ROUTE-MFA]', { isAuthenticated, aal });
-  
+  const { isAuthenticated, aal, mfaRequired } = useAuth();
+  const [directCheck, setDirectCheck] = React.useState({ status: 'pending', hasTotp: null });
+
+  console.log('[ROUTE-MFA]', { isAuthenticated, aal, mfaRequired });
+
+  // Verificación directa de factores MFA reales
+  React.useEffect(() => {
+    if (isAuthenticated && aal !== 'aal2') {
+      supabase.auth.mfa.listFactors().then(({ data: factorsData, error: factorsError }) => {
+        if (!factorsError && factorsData) {
+          const totpFactors = factorsData.totp || [];
+          const hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
+          console.log(`[ROUTE-MFA] Direct check: ${totpFactors.length} TOTP factors, hasVerified=${hasVerifiedTotp}`);
+          setDirectCheck({ status: 'done', hasTotp: hasVerifiedTotp });
+        } else {
+          console.warn('[ROUTE-MFA] Error listing factors:', factorsError?.message);
+          setDirectCheck({ status: 'error', hasTotp: false });
+        }
+      }).catch((err) => {
+        console.error('[ROUTE-MFA] Exception listing factors:', err);
+        setDirectCheck({ status: 'error', hasTotp: false });
+      });
+    }
+  }, [isAuthenticated, aal]);
+
   // Si está autenticado con AAL2, ya completó MFA
   if (isAuthenticated && aal === 'aal2') {
-    console.log('[ROUTE-MFA] MFA ya completado, redirigiendo a /');
+    console.log('[ROUTE-MFA] MFA ya completado (AAL2), redirigiendo a /');
     return <Navigate to="/" replace />;
   }
-  
+
+  // Si la verificación directa muestra que NO hay TOTP activo, NO tiene sentido estar aquí
+  if (isAuthenticated && directCheck.status === 'done' && !directCheck.hasTotp) {
+    console.log('[ROUTE-MFA] No hay factores TOTP activos, redirigiendo a /');
+    return <Navigate to="/" replace />;
+  }
+
   // Si no está autenticado, ir a login
   if (!isAuthenticated) {
     console.log('[ROUTE-MFA] No autenticado, redirigiendo a /login');
     return <Navigate to="/login" replace />;
   }
-  
+
   console.log('[ROUTE-MFA] Permitiendo acceso al MFA challenge');
   return children;
 };

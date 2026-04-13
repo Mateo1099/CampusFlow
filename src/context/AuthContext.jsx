@@ -101,18 +101,33 @@ export function AuthProvider({ children }) {
   const checkMFAStatus = async (userId) => {
     try {
       console.log(`[AUTH] Verificando MFA status para user ${userId}...`);
-      
+
       // 🔑 PRIMERO: Obtener el AAL actual de Supabase
       const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      
+
       if (!aalError && aalData?.currentLevel) {
         console.log(`[AUTH] AAL actual de Supabase: ${aalData.currentLevel}`);
         setAal(aalData.currentLevel);
       } else if (aalError) {
         console.warn('[AUTH] Error obteniendo AAL de Supabase:', aalError);
       }
-      
-      // 🔒 SEGUNDO: Verificar tabla user_security para MFA requerido
+
+      // 🔒 SEGUNDO: Verificar factores MFA reales en Supabase Auth
+      let hasVerifiedTotp = false;
+      try {
+        const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+        if (!factorsError && factorsData) {
+          const totpFactors = factorsData.totp || [];
+          hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
+          console.log(`[AUTH] Factores MFA reales: ${totpFactors.length} TOTP, ${hasVerifiedTotp ? 'al menos 1 verificado' : 'ninguno verificado'}`);
+        } else if (factorsError) {
+          console.warn('[AUTH] Error listando factores MFA:', factorsError.message);
+        }
+      } catch (factorsErr) {
+        console.warn('[AUTH] Exception listando factores MFA:', factorsErr.message);
+      }
+
+      // TERCERO: Verificar tabla user_security como fuente secundaria
       const { data, error } = await supabase
         .from('user_security')
         .select('mfa_enabled, mfa_status')
@@ -121,23 +136,28 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.warn(`[AUTH] Error en consulta user_security:`, error.code, error.message);
-        // Si hay error (tabla no existe, sin datos, etc), asumir que MFA no está requerido
-        console.log('[AUTH] Asumiendo mfaRequired = false por error en consulta');
-        setMfaRequired(false);
-        return false;
+        // Si hay error en user_security, usar factores reales como fuente de verdad
+        const mfaFromFactors = hasVerifiedTotp;
+        console.log(`[AUTH] Usando factores reales como fuente: mfaRequired = ${mfaFromFactors}`);
+        setMfaRequired(mfaFromFactors);
+        return mfaFromFactors;
       }
 
       if (!data) {
-        console.log('[AUTH] Sin datos de seguridad, asumiendo mfaRequired = false');
-        setMfaRequired(false);
-        return false;
+        console.log('[AUTH] Sin datos de security, verificando factores reales');
+        // Sin registro en user_security, usar factores reales
+        setMfaRequired(hasVerifiedTotp);
+        return hasVerifiedTotp;
       }
 
-      // Determinar si MFA está realmente activo
-      const hasMFA = data?.mfa_enabled === true && data?.mfa_status === 'PROTEGIDA';
-      console.log(`[AUTH] MFA status para user ${userId}:`, { 
-        mfa_enabled: data?.mfa_enabled, 
-        mfa_status: data?.mfa_status, 
+      // Determinar si MFA está realmente activo - combinar ambas fuentes
+      const mfaFromDB = data?.mfa_enabled === true && data?.mfa_status === 'PROTEGIDA';
+      const hasMFA = hasVerifiedTotp || mfaFromDB;
+
+      console.log(`[AUTH] MFA status para user ${userId}:`, {
+        mfa_enabled_db: data?.mfa_enabled,
+        mfa_status_db: data?.mfa_status,
+        hasVerifiedTotp,
         resolved: hasMFA,
         currentLevel: aalData?.currentLevel
       });

@@ -19,11 +19,31 @@ const MFAChallenge = () => {
       navigate('/login');
       return;
     }
-    
+
     // Si ya pasó MFA (AAL2), ir a dashboard
     if (aal === 'aal2') {
       navigate('/');
+      return;
     }
+
+    // Verificar si siquiera hay factores TOTP activos
+    const checkFactors = async () => {
+      try {
+        const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+        if (!factorsError && factors) {
+          const totpFactors = factors.totp || [];
+          const hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
+          if (!hasVerifiedTotp) {
+            console.log('[MFAChallenge] No hay factores TOTP, redirigiendo a /');
+            navigate('/');
+          }
+        }
+      } catch (err) {
+        console.error('[MFAChallenge] Error verificando factores:', err);
+      }
+    };
+
+    checkFactors();
   }, [user, aal, navigate]);
 
   const handleVerify = async (e) => {
