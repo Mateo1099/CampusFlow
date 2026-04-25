@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
-import { parseISO, differenceInDays, startOfDay } from 'date-fns';
+import { startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,14 @@ const parseLocalDeadline = (dateStr) => {
   if (!datePart) return new Date();
   // Al anexar T00:00:00, al usar new Date(...) asume zona horaria local desde el formato ISO corto modificado.
   return new Date(`${datePart}T00:00:00`);
+};
+
+// Cálculo exácto por días calendario, contando todos los días intermedios (+ Math.ceil por margen de error)
+const calculateRemainingDays = (deadlineDate) => {
+  const startTarget = startOfDay(deadlineDate);
+  const startToday = startOfDay(new Date());
+  const diffTime = startTarget.getTime() - startToday.getTime();
+  return Math.ceil(diffTime / (1000 * 3600 * 24));
 };
 
 const Dashboard = () => {
@@ -62,7 +70,7 @@ const Dashboard = () => {
       if (!task.deadline && !task.due_date) return false;
       try {
         const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
-        const daysLeft = differenceInDays(deadlineDate, startOfDay(new Date()));
+        const daysLeft = calculateRemainingDays(deadlineDate);
         // Si no hay día seleccionado, mostramos el rango de 14 días habitual
         if (selectedDay === null) return daysLeft >= -1 && daysLeft <= 14;
         
@@ -82,12 +90,24 @@ const Dashboard = () => {
 
   // PRIORIDAD MÁXIMA: Tarea con deadline más próximo
   const { bigBossTask, bigBossColor } = useMemo(() => {
-    const task = upcomingTasks[0] || null;
+    // 1. Filtrar tareas no completadas y con fecha
+    const pendingWithDeadline = filteredTasks.filter(task => {
+      const status = (task.status || '').toLowerCase();
+      if (status === 'entregado' || status === 'completed' || status === 'submitted') return false;
+      if (!task.deadline && !task.due_date) return false;
+      return true;
+    });
+
+    // 2. Ordenar por deadline ascendente
+    pendingWithDeadline.sort((a, b) => parseLocalDeadline(a.deadline || a.due_date) - parseLocalDeadline(b.deadline || b.due_date));
+
+    // 3. Tomar la primera
+    const task = pendingWithDeadline[0] || null;
     let color = '#00ff66';
     if (task) {
       try {
         const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
-        const days = differenceInDays(deadlineDate, startOfDay(new Date()));
+        const days = calculateRemainingDays(deadlineDate);
         const hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
 
         if (hoursLeft < 6) color = '#ff0033';
@@ -96,7 +116,7 @@ const Dashboard = () => {
       } catch {}
     }
     return { bigBossTask: task, bigBossColor: color };
-  }, [upcomingTasks, courses]);
+  }, [filteredTasks, courses]);
 
   // MATRIZ DE ESFUERZO (Detalles de tareas por día para Células de Energía)
   const effortMatrixDetails = useMemo(() => {
@@ -322,7 +342,7 @@ const Dashboard = () => {
                 let hoursLeft;
                 try { 
                   const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
-                  days = differenceInDays(deadlineDate, new Date());
+                  days = calculateRemainingDays(deadlineDate);
                   hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
                 } catch { days = 99; hoursLeft = 999; }
                 
