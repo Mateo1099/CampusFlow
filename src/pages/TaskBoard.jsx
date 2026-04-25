@@ -82,20 +82,56 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <motion.button 
-            whileHover={{ scale: 1.15, color: '#ffffff' }}
-            className="btn-icon-alfa edit-hover" 
-            style={{ opacity: 1, cursor: 'pointer', color: '#00f3ff' }}
+            whileHover={{ 
+              scale: 1.08, 
+              backgroundColor: 'rgba(0, 243, 255, 0.15)', 
+              borderColor: 'rgba(0, 243, 255, 0.5)',
+              boxShadow: '0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 8px rgba(0, 243, 255, 0.2)'
+            }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-icon-alfa"
+            style={{ 
+              opacity: 1, 
+              cursor: 'pointer', 
+              color: '#00f3ff',
+              background: 'rgba(0, 243, 255, 0.02)',
+              border: '1px solid rgba(0, 243, 255, 0.1)',
+              padding: '6px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.3s var(--ease-out-quint)'
+            }}
             onClick={(e) => { e.stopPropagation(); onEdit(task); }}
           >
-            <Edit2 size={16} />
+            <Edit2 size={15} style={{ filter: 'drop-shadow(0 0 4px rgba(0, 243, 255, 0.5))' }} />
           </motion.button>
           <motion.button 
-            whileHover={{ scale: 1.15, color: '#00f3ff' }}
-            className="btn-icon-alfa delete-hover" 
-            style={{ opacity: 1, cursor: 'pointer', color: '#ff4d4d' }}
+            whileHover={{ 
+              scale: 1.08, 
+              backgroundColor: 'rgba(255, 77, 77, 0.15)', 
+              borderColor: 'rgba(255, 77, 77, 0.5)',
+              boxShadow: '0 0 15px rgba(255, 77, 77, 0.4), inset 0 0 8px rgba(255, 77, 77, 0.2)'
+            }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-icon-alfa"
+            style={{ 
+              opacity: 1, 
+              cursor: 'pointer', 
+              color: '#ff4d4d',
+              background: 'rgba(255, 77, 77, 0.02)',
+              border: '1px solid rgba(255, 77, 77, 0.1)',
+              padding: '6px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.3s var(--ease-out-quint)'
+            }}
             onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} style={{ filter: 'drop-shadow(0 0 4px rgba(255, 77, 77, 0.5))' }} />
           </motion.button>
         </div>
       </div>
