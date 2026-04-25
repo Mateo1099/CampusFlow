@@ -53,7 +53,7 @@ const CourseCard = ({ course, onDelete, onEdit, t }) => {
           >
             <Pencil size={15} />
           </button>
-          <button className="btn-icon" title={t.delete} onClick={() => { playClick(600); onDelete(course.id); }}>
+          <button className="btn-icon-danger" title={t.delete} onClick={() => { playClick(600); onDelete(course.id); }}>
             <Trash2 size={15} />
           </button>
         </div>
