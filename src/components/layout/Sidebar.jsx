@@ -24,22 +24,22 @@ const Sidebar = () => {
     navigate('/login');
   };
 
-  // Trigger animations on route change
-  React.useEffect(() => {
-    const activePath = navItems.find(item => item.path === location.pathname);
-    if (activePath) {
-      setTriggerAnimation({ key: activePath.path, timestamp: Date.now() });
-    }
-  }, [location.pathname]);
-
-  const navItems = [
+  const navItems = React.useMemo(() => [
     { name: t.dashboard, path: '/', icon: <LayoutDashboard size={isHorizontal ? 20 : 18} /> },
     { name: t.subjects, path: '/agenda', icon: <Cpu size={isHorizontal ? 20 : 18} /> },
     { name: t.tasks, path: '/tasks', icon: <CheckSquare size={isHorizontal ? 20 : 18} /> },
     { name: t.planner, path: '/planner', icon: <CalendarDays size={isHorizontal ? 20 : 18} /> },
     { name: t.analytics, path: '/stats', icon: <PieChart size={isHorizontal ? 20 : 18} /> },
     { name: t.pomodoro, path: '/pomodoro', icon: <Timer size={isHorizontal ? 20 : 18} /> },
-  ];
+  ], [t, isHorizontal]);
+
+  // Trigger animations on route change
+  React.useEffect(() => {
+    const activePath = navItems.find(item => item.path === location.pathname);
+    if (activePath) {
+      setTriggerAnimation({ key: activePath.path, timestamp: Date.now() });
+    }
+  }, [location.pathname, navItems]);
 
   const sidebarStyles = {
     width: isHorizontal ? '100%' : '260px',
@@ -267,13 +267,14 @@ const Sidebar = () => {
                 alignItems: 'center',
                 gap: '14px',
                 fontFamily: 'var(--font-display)',
-                fontWeight: 700,
+                fontWeight: isActive ? 800 : 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                color: isActive ? '#000' : 'var(--text-secondary)',
+                color: isActive ? '#fff' : 'var(--text-secondary)',
+                textShadow: isActive ? '0 0 10px rgba(0, 243, 255, 0.4)' : 'none',
                 overflow: 'hidden',
-                transition: 'color 0.3s var(--ease-out-quint)',
-                transform: 'translateZ(0)',
+                transition: 'all 0.3s var(--ease-out-quint)',
+                transform: isActive ? 'translateY(-1px) translateZ(0)' : 'translateZ(0)',
               }}
             >
               {/* GLASS BACKGROUND - Glassmorphism Base */}
@@ -284,10 +285,12 @@ const Sidebar = () => {
                   inset: 0,
                   borderRadius: 'var(--radius-md)',
                   background: isActive 
-                    ? 'linear-gradient(135deg, var(--accent-primary)ee 0%, var(--accent-secondary)dd 100%)'
+                    ? 'linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%)'
                     : 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.0) 100%)',
-                  opacity: isActive ? 1 : 0,
-                  transition: 'opacity 0.3s var(--ease-out-quint), background 0.3s var(--ease-out-quint)',
+                  border: isActive ? '1px solid rgba(0, 243, 255, 0.3)' : '1px solid transparent',
+                  boxShadow: isActive ? 'inset 0 0 20px rgba(0, 243, 255, 0.1)' : 'none',
+                  opacity: 1,
+                  transition: 'all 0.4s var(--ease-out-quint)',
                   pointerEvents: 'none',
                   zIndex: 0,
                   ...(isActive && { animation: 'barIn 0.4s var(--ease-out-expo) backwards' })
@@ -304,7 +307,7 @@ const Sidebar = () => {
                   right: 0,
                   height: '1px',
                   background: isActive 
-                    ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                    ? 'linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.5), transparent)'
                     : 'transparent',
                   transition: 'background 0.3s var(--ease-out-quint)',
                   zIndex: 2,
@@ -328,7 +331,7 @@ const Sidebar = () => {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.1) 60%, transparent 100%)',
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(0, 243, 255, 0.3) 40%, rgba(255,255,255,0.1) 60%, transparent 100%)',
                     animation: isActive && isTriggering ? 'shimmer 0.8s var(--ease-out-expo) ease-out' : 'none',
                     pointerEvents: 'none'
                   }}
@@ -344,10 +347,10 @@ const Sidebar = () => {
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    width: '3px',
-                    background: 'linear-gradient(180deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
+                    width: '4px',
+                    background: 'linear-gradient(180deg, #00f3ff 0%, var(--accent-secondary) 100%)',
                     borderRadius: 'var(--radius-md)',
-                    boxShadow: '0 0 15px var(--accent-primary), 0 0 8px var(--accent-secondary)',
+                    boxShadow: '0 0 15px rgba(0, 243, 255, 0.8), 0 0 5px rgba(188, 19, 254, 0.5)',
                     animation: 'barIn 0.4s var(--ease-out-expo) backwards, barPulse 2s ease-in-out 0.4s infinite',
                     zIndex: 3,
                     pointerEvents: 'none'
@@ -363,6 +366,9 @@ const Sidebar = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  color: isActive ? '#00f3ff' : 'inherit',
+                  filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 243, 255, 0.6))' : 'none',
+                  transition: 'all 0.3s var(--ease-out-quint)',
                   ...(isActive && isTriggering && { animation: 'iconPop 0.6s var(--ease-out-expo) ease-out' })
                 }}
               >
