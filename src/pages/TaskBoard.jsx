@@ -29,7 +29,9 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
     try {
-      const d = new Date(dateStr);
+      const datePart = typeof dateStr === 'string' ? dateStr.split(/[T ]/)[0] : '';
+      if (!datePart) return null;
+      const d = new Date(`${datePart}T00:00:00`);
       return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch { return dateStr; }
   };
@@ -269,11 +271,13 @@ const TaskBoard = () => {
     // Validación y formateo de fechas a ISO (YYYY-MM-DD)
     const formatDateToISO = (dateStr) => {
       if (!dateStr) return null;
-      const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+      const datePart = typeof dateStr === 'string' ? dateStr.split(/[T ]/)[0] : '';
+      if (!datePart) return null;
+      const d = new Date(`${datePart}T00:00:00`);
+      if (isNaN(d.getTime())) return null;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
-    // MAPEO EXPLÍCITO DE ID DE MATERIA (FRONT -> BACK)
     const taskData = { 
       title: formData.title, 
       course_id: formData.courseId, // ASEGURAR UUID DE MATERIA

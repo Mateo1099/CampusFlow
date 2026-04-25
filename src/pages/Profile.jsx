@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, X, Copy, AlertCircle, Smartphone, Lock, ScanLine
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, AlertCircle, Smartphone, Lock, ScanLine
 } from 'lucide-react';
 
 const THEMES = [
@@ -23,149 +23,85 @@ const WALLPAPERS = [
   { id: 'space', label: 'Deep Cyber', src: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop' },
 ];
 
-const NotificationRow = ({ checked, onChange, label, icon: IconComponent }) => {
-  const [hasAnimated, setHasAnimated] = React.useState(false);
-
-  const handleToggle = (newValue) => {
-    onChange(newValue);
-    if (newValue && !hasAnimated) {
-      setHasAnimated(false);
-      setTimeout(() => setHasAnimated(true), 10);
-    }
-  };
-
+const NotificationRow = ({ checked, onChange, label }) => {
   return (
-    <div style={{
-      position: 'relative',
-      width: '100%',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      cursor: 'pointer',
-      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-      transform: checked ? 'scale(1)' : 'scale(1)',
-      opacity: 1
-    }}>
-      <div className="glass-bg" style={{
-        position: 'absolute',
-        inset: 0,
-        background: checked
-          ? 'linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(0, 243, 255, 0.03) 100%)'
-          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        zIndex: 1
-      }} />
-
-      <div className="glass-border" style={{
-        position: 'absolute',
-        inset: 0,
-        border: `2px solid ${checked ? 'rgba(0, 243, 255, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
-        borderRadius: '12px',
-        boxShadow: checked
-          ? '0 0 30px rgba(0, 243, 255, 0.3), inset 0 0 20px rgba(0, 243, 255, 0.1)'
-          : '0 0 0px transparent',
-        transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        zIndex: 2,
-        pointerEvents: 'none'
-      }} />
-
-      {checked && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
-            animation: 'shimmer 1.5s ease-in-out',
-            zIndex: 3,
-            pointerEvents: 'none',
-            borderRadius: '12px'
-          }}
-        />
-      )}
-
-      <button
-        onClick={() => handleToggle(!checked)}
+    <motion.div
+      onClick={() => onChange(!checked)}
+      layout
+      style={{
+        width: '100%',
+        borderRadius: '14px',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        position: 'relative'
+      }}
+      transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+    >
+      {/* Background */}
+      <motion.div
+        layout
         style={{
-          position: 'relative',
-          zIndex: 4,
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          padding: '16px 20px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--text-primary)',
-          transition: 'all 0.3s ease'
+          position: 'absolute',
+          inset: 0,
+          background: checked
+            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%)'
+            : 'rgba(255, 255, 255, 0.02)',
+          borderRadius: '14px',
+          transition: 'background 0.4s ease'
         }}
-        onMouseEnter={(e) => {
-          if (!checked) {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent';
-        }}
-      >
-        <div style={{
-          position: 'relative',
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
-          background: checked ? 'var(--accent-primary)' : 'rgba(255,255,255,0.2)',
-          boxShadow: checked
-            ? '0 0 12px var(--accent-primary), inset 0 0 8px var(--accent-primary)'
-            : 'none',
-          transition: 'all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          flexShrink: 0
-        }} />
+      />
 
+      {/* Border */}
+      <motion.div
+        layout
+        style={{
+          position: 'absolute',
+          inset: 0,
+          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
+          borderRadius: '14px',
+          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : 'none',
+          transition: 'all 0.4s ease'
+        }}
+      />
+
+      {/* Content */}
+      <div style={{
+        position: 'relative',
+        zIndex: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 20px'
+      }}>
         <span style={{
-          fontSize: '0.9rem',
+          fontSize: '0.8rem',
           fontWeight: 700,
-          color: 'var(--text-primary)',
+          color: checked ? 'var(--text-primary)' : 'var(--text-secondary)',
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          flex: 1,
-          textAlign: 'left',
+          letterSpacing: '0.06em',
+          opacity: checked ? 1 : 0.5,
           transition: 'all 0.3s ease'
         }}>
           {label}
         </span>
 
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '24px',
-          height: '24px',
-          position: 'relative',
-          flexShrink: 0
-        }}>
-          {checked ? (
-            <Check
-              size={20}
-              color="var(--accent-primary)"
-              style={{
-                animation: 'iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                filter: 'drop-shadow(0 0 8px rgba(0, 243, 255, 0.5))'
-              }}
-            />
-          ) : (
-            <X
-              size={20}
-              color="rgba(255,255,255,0.3)"
-              style={{
-                animation: 'iconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                transition: 'all 0.3s ease'
-              }}
-            />
-          )}
-        </div>
-      </button>
-    </div>
+        {/* Status dot */}
+        <motion.div
+          animate={{
+            background: checked ? '#22c55e' : 'rgba(255,255,255,0.15)',
+            boxShadow: checked ? '0 0 10px rgba(34, 197, 94, 0.5)' : 'none',
+            scale: checked ? 1 : 0.8
+          }}
+          transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            flexShrink: 0
+          }}
+        />
+      </div>
+    </motion.div>
   );
 };
 
@@ -221,7 +157,7 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children }) => (
         if (!isOpen) e.currentTarget.style.background = 'transparent';
       }}
     >
-      <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
+      <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
         {icon}
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
@@ -846,14 +782,54 @@ const Profile = () => {
         .crystal-btn:active {
           transform: scale(0.97) translateY(1px);
         }
+
+        @keyframes titleShimmer {
+          0% {
+            left: -60%;
+          }
+          50% {
+            left: 120%;
+          }
+          100% {
+            left: 120%;
+          }
+        }
       `}</style>
 
       {showToast && <div className="cyber-toast-backdrop" onClick={() => setShowToast(false)} />}
       {showToast && <div className="cyber-toast">{toastMessage}</div>}
 
       <div className="animate-fade-in" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-        <header className="page-header" style={{ marginBottom: '40px' }}>
-          <h1 className="page-title title-gradient" style={{ fontSize: '3rem', fontWeight: 900, textTransform: 'uppercase' }}>AJUSTES</h1>
+        <header style={{ marginBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+          <h1 style={{
+            fontSize: '2.6rem',
+            fontWeight: 900,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--accent-primary)',
+            opacity: 0.85,
+            margin: 0,
+            lineHeight: 1
+          }}>AJUSTES</h1>
+          <div style={{
+            position: 'relative',
+            width: '260px',
+            height: '3px',
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: '2px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-60%',
+              width: '50%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, var(--accent-primary), transparent)',
+              animation: 'titleShimmer 3s ease-in-out infinite',
+              borderRadius: '2px'
+            }} />
+          </div>
         </header>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
@@ -977,9 +953,7 @@ const Profile = () => {
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.03) 0%, rgba(255, 255, 255, 0.02) 100%)'
+              alignItems: 'center'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
                 <div style={{
@@ -1007,13 +981,11 @@ const Profile = () => {
                   checked={emailNotif}
                   onChange={handleEmailNotifChange}
                   label="Correo Electrónico"
-                  icon={Bell}
                 />
                 <NotificationRow
                   checked={webNotif}
                   onChange={handleWebNotifChange}
                   label="Notificaciones Web"
-                  icon={Bell}
                 />
               </div>
             </div>

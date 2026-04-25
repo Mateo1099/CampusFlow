@@ -6,6 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const parseLocalDeadline = (dateStr) => {
+  if (!dateStr) return new Date();
+  const datePart = typeof dateStr === 'string' ? dateStr.split(/[T ]/)[0] : '';
+  if (!datePart) return new Date();
+  // Al anexar T00:00:00, al usar new Date(...) asume zona horaria local desde el formato ISO corto modificado.
+  return new Date(`${datePart}T00:00:00`);
+};
+
 const Dashboard = () => {
   const { tasks, courses, tasksLoading, coursesLoading } = useTasksContext();
   const { t, settings } = useSettings();
@@ -53,13 +61,16 @@ const Dashboard = () => {
       if (status === 'entregado' || status === 'submitted') return false;
       if (!task.deadline && !task.due_date) return false;
       try {
-        const deadlineDate = parseISO(task.deadline || task.due_date);
+        const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
         const daysLeft = differenceInDays(deadlineDate, startOfDay(new Date()));
         // Si no hay día seleccionado, mostramos el rango de 14 días habitual
         if (selectedDay === null) return daysLeft >= -1 && daysLeft <= 14;
-        return true; // Si hay día seleccionado, mostramos todas las de ese día
+        
+        let day = deadlineDate.getDay(); // 0 is Sunday
+        day = day === 0 ? 6 : day - 1; // Convert to 0-6 (L-D)
+        return day === selectedDay;
       } catch { return false; }
-    }).sort((a, b) => new Date(a.deadline || a.due_date) - new Date(b.deadline || b.due_date));
+    }).sort((a, b) => parseLocalDeadline(a.deadline || a.due_date) - parseLocalDeadline(b.deadline || b.due_date));
   }, [filteredTasks, selectedDay]);
 
   const pendingCount = useMemo(() => {
@@ -75,7 +86,7 @@ const Dashboard = () => {
     let color = '#00ff66';
     if (task) {
       try {
-        const deadlineDate = parseISO(task.deadline || task.due_date);
+        const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
         const days = differenceInDays(deadlineDate, startOfDay(new Date()));
         const hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
 
@@ -97,7 +108,7 @@ const Dashboard = () => {
 
       if (!task.deadline && !task.due_date) return;
       try {
-        const date = parseISO(task.deadline || task.due_date);
+        const date = parseLocalDeadline(task.deadline || task.due_date);
         let day = date.getDay(); // 0 is Sunday
         day = day === 0 ? 6 : day - 1; // Convert to 0-6 (L-D)
         if (day >= 0 && day <= 6) {
@@ -129,7 +140,7 @@ const Dashboard = () => {
   const formatDateLegible = (dateStr) => {
     if (!dateStr) return '';
     try {
-      const d = new Date(dateStr);
+      const d = parseLocalDeadline(dateStr);
       return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'long' });
     } catch { return dateStr; }
   };
@@ -310,7 +321,7 @@ const Dashboard = () => {
                 let days;
                 let hoursLeft;
                 try { 
-                  const deadlineDate = parseISO(task.deadline || task.due_date);
+                  const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
                   days = differenceInDays(deadlineDate, new Date());
                   hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
                 } catch { days = 99; hoursLeft = 999; }

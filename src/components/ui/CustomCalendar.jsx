@@ -8,8 +8,8 @@ const CustomCalendar = ({ selectedDate, onDateSelect, onClose }) => {
   const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
   const handleDayClick = (day) => {
-    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    onDateSelect(date.toISOString().split('T')[0]);
+    const localYMD = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    onDateSelect(localYMD);
     onClose();
   };
 
@@ -50,7 +50,7 @@ const CustomCalendar = ({ selectedDate, onDateSelect, onClose }) => {
           <span key={`${d}-${idx}`} style={{ fontSize: '0.7rem', color: '#a1a1aa', fontWeight: 700, paddingBottom: '8px' }}>{d}</span>
         ))}
         {days.map((d, i) => {
-          const isSelected = d && selectedDate === new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d).toISOString().split('T')[0];
+          const isSelected = d && selectedDate === `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           return (
             <div key={i} 
               onClick={() => d && handleDayClick(d)}
