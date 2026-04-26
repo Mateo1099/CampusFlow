@@ -65,7 +65,7 @@ function getStatusTone(status) {
 
 function PlannerField({ label, hint, children }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           {label}
@@ -102,7 +102,7 @@ function CustomSelect({ value, onChange, options, placeholder, accentColor = 'va
         onClick={() => setIsOpen(prev => !prev)}
         style={{
           width: '100%',
-          padding: '14px 16px',
+          padding: '10px 14px',
           borderRadius: '16px',
           background: isOpen ? 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06))' : 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
           border: `1px solid ${isOpen ? accentColor : 'rgba(255,255,255,0.10)'}`,
@@ -1207,19 +1207,19 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
   ];
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'radial-gradient(circle at top, rgba(0, 243, 255, 0.08), rgba(0,0,0,0.88) 46%)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '24px' }}>
-      <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '620px', padding: '34px', display: 'flex', flexDirection: 'column', gap: '24px', margin: 'auto', borderRadius: '30px', background: 'linear-gradient(155deg, rgba(10,12,22,0.96) 0%, rgba(18,22,34,0.92) 55%, rgba(0,243,255,0.06) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'radial-gradient(circle at top, rgba(0, 243, 255, 0.08), rgba(0,0,0,0.88) 46%)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '16px' }}>
+      <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '620px', padding: '24px 30px', display: 'flex', flexDirection: 'column', gap: '16px', margin: 'auto', borderRadius: '30px', background: 'linear-gradient(155deg, rgba(10,12,22,0.96) 0%, rgba(18,22,34,0.92) 55%, rgba(0,243,255,0.06) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06)', maxHeight: '95vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ margin: 0, fontWeight: 900, fontSize: '1.55rem', letterSpacing: '-0.02em', color: '#fff' }}>Agregar Bloque</h2>
-            <p style={{ margin: '8px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.6 }}>Define el día, el momento y el vínculo del bloque sin salir del estilo CampusFlow.</p>
+            <h2 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', color: '#fff' }}>Agregar Bloque</h2>
+            <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.4 }}>Define el día, el momento y el vínculo del bloque sin salir del estilo CampusFlow.</p>
           </div>
-          <div style={{ padding: '8px 12px', borderRadius: '999px', border: '1px solid rgba(0,243,255,0.26)', background: 'rgba(0,243,255,0.10)', color: '#7fefff', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <div style={{ padding: '6px 10px', borderRadius: '999px', border: '1px solid rgba(0,243,255,0.26)', background: 'rgba(0,243,255,0.10)', color: '#7fefff', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Modal Premium
           </div>
         </div>
         
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
             <PlannerField label="Día *" hint="Ubicación exacta dentro de la semana">
               <CustomSelect
@@ -1243,7 +1243,7 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
           </div>
 
           <PlannerField label="Título del bloque *" hint="Nombre corto y fácil de reconocer">
-            <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '15px 16px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.10)', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: 'border 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }} 
+            <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.10)', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: 'border 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }} 
             onFocus={(e) => { e.target.style.border = '1px solid rgba(0,243,255,0.45)'; e.target.style.boxShadow = '0 0 0 4px rgba(0,243,255,0.08)'; }}
             onBlur={(e) => { e.target.style.border = '1px solid rgba(255,255,255,0.10)'; e.target.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)'; }}
             placeholder="Ej. Ejercicio 1, revisión final, enfoque profundo..." />
@@ -1285,7 +1285,7 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
             <PlannerField label="Duración (min) - Opcional" hint="Entre 5 y 480 minutos">
-              <input type="number" min="5" max="480" value={formData.duration_minutes} onChange={e => setFormData({...formData, duration_minutes: e.target.value})} style={{ width: '100%', padding: '15px 16px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.10)', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: 'border 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
+              <input type="number" min="5" max="480" value={formData.duration_minutes} onChange={e => setFormData({...formData, duration_minutes: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.10)', color: '#fff', fontSize: '0.95rem', outline: 'none', transition: 'border 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
               onFocus={(e) => { e.target.style.border = '1px solid rgba(0,243,255,0.45)'; e.target.style.boxShadow = '0 0 0 4px rgba(0,243,255,0.08)'; }}
               onBlur={(e) => { e.target.style.border = '1px solid rgba(255,255,255,0.10)'; e.target.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)'; }}
               placeholder="60" />
@@ -1303,15 +1303,35 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
           </div>
 
           <PlannerField label="Nota (Opcional)" hint="Detalle breve para recordar el enfoque del bloque">
-            <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} style={{ width: '100%', padding: '15px 16px', borderRadius: '18px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.10)', color: '#fff', fontSize: '0.93rem', outline: 'none', transition: 'border 0.2s, box-shadow 0.2s', minHeight: '96px', fontFamily: 'inherit', resize: 'vertical', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
+            <textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} style={{ width: '100%', padding: '12px 14px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.10)', color: '#fff', fontSize: '0.93rem', outline: 'none', transition: 'border 0.2s, box-shadow 0.2s', minHeight: '64px', fontFamily: 'inherit', resize: 'vertical', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
             onFocus={(e) => { e.target.style.border = '1px solid rgba(0,243,255,0.45)'; e.target.style.boxShadow = '0 0 0 4px rgba(0,243,255,0.08)'; }}
             onBlur={(e) => { e.target.style.border = '1px solid rgba(255,255,255,0.10)'; e.target.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)'; }}
             placeholder="Ej. Revisar ejercicios, preparar entrega, dejar contexto para mañana..." />
           </PlannerField>
           
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '6px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
-            <button type="button" onClick={onClose} className="click-press" style={{ padding: '12px 24px', borderRadius: '999px', border: '1px solid rgba(255, 77, 77, 0.3)', background: 'linear-gradient(135deg, rgba(255, 77, 77, 0.12), rgba(255, 77, 77, 0.04))', color: '#ff7d7d', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', boxShadow: '0 18px 28px rgba(255,77,77,0.08), inset 0 1px 0 rgba(255,255,255,0.03)' }}>Cancelar</button>
-            <button type="submit" className="click-press" style={{ padding: '12px 28px', borderRadius: '999px', border: '1px solid rgba(0, 243, 255, 0.36)', background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.22), rgba(0, 243, 255, 0.08))', color: '#92f6ff', fontWeight: 900, cursor: 'pointer', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', boxShadow: '0 22px 34px rgba(0,243,255,0.14), inset 0 1px 0 rgba(255,255,255,0.04)' }}>Guardar Bloque</button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
+            <button type="button" onClick={onClose} className="click-press" style={{ padding: '12px 24px', borderRadius: '999px', border: '1px solid rgba(255, 77, 77, 0.3)', background: 'linear-gradient(135deg, rgba(255, 77, 77, 0.12), rgba(255, 77, 77, 0.04))', color: '#ff7d7d', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', boxShadow: '0 18px 28px rgba(255,77,77,0.08), inset 0 1px 0 rgba(255,255,255,0.03)', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 77, 77, 0.28), rgba(255, 77, 77, 0.1))';
+              e.currentTarget.style.borderColor = 'rgba(255, 77, 77, 0.5)';
+              e.currentTarget.style.boxShadow = '0 24px 38px rgba(255,77,77,0.18), inset 0 1px 0 rgba(255,255,255,0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 77, 77, 0.12), rgba(255, 77, 77, 0.04))';
+              e.currentTarget.style.borderColor = 'rgba(255, 77, 77, 0.3)';
+              e.currentTarget.style.boxShadow = '0 18px 28px rgba(255,77,77,0.08), inset 0 1px 0 rgba(255,255,255,0.03)';
+            }}>Cancelar</button>
+            <button type="submit" className="click-press" style={{ padding: '12px 28px', borderRadius: '999px', border: '1px solid rgba(0, 243, 255, 0.36)', background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.22), rgba(0, 243, 255, 0.08))', color: '#92f6ff', fontWeight: 900, cursor: 'pointer', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em', boxShadow: '0 22px 34px rgba(0,243,255,0.14), inset 0 1px 0 rgba(255,255,255,0.04)', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 243, 255, 0.45), rgba(0, 243, 255, 0.18))';
+              e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.6)';
+              e.currentTarget.style.boxShadow = '0 28px 46px rgba(0,243,255,0.28), inset 0 1px 0 rgba(255,255,255,0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 243, 255, 0.22), rgba(0, 243, 255, 0.08))';
+              e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.36)';
+              e.currentTarget.style.boxShadow = '0 22px 34px rgba(0,243,255,0.14), inset 0 1px 0 rgba(255,255,255,0.04)';
+            }}>Guardar Bloque</button>
           </div>
         </form>
       </div>
