@@ -707,6 +707,114 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
 .hover-lift { transition: transform 0.3s var(--ease-out-quint); }
 .hover-lift:hover { transform: translateY(-4px) scale(1.02); }
 
+.liquid-glass-hover {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  transition:
+    transform 220ms var(--ease-out-quint),
+    box-shadow 220ms var(--ease-out-quint),
+    border-color 220ms var(--ease-out-quint),
+    background 220ms var(--ease-out-quint),
+    color 220ms var(--ease-out-quint),
+    filter 220ms var(--ease-out-quint);
+  will-change: transform, box-shadow;
+}
+
+.liquid-glass-hover::before,
+.liquid-glass-hover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition:
+    opacity 220ms var(--ease-out-quint),
+    transform 220ms var(--ease-out-quint),
+    background 220ms var(--ease-out-quint);
+}
+
+.liquid-glass-hover::before {
+  opacity: 0;
+  transform: scale(0.96);
+  mix-blend-mode: screen;
+}
+
+.liquid-glass-hover::after {
+  opacity: 0;
+  background: linear-gradient(120deg, transparent 18%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.04) 55%, transparent 72%);
+  transform: translateX(-60%) skewX(-14deg);
+}
+
+.liquid-glass-hover:hover {
+  transform: translateY(-2px) scale(1.03);
+  filter: saturate(1.08);
+}
+
+.liquid-glass-hover:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.liquid-glass-hover:hover::after {
+  opacity: 1;
+  transform: translateX(65%) skewX(-14deg);
+}
+
+.liquid-glass-hover-cyan:hover {
+  background: linear-gradient(135deg, rgba(0, 243, 255, 0.26), rgba(0, 243, 255, 0.10)) !important;
+  border-color: rgba(0, 243, 255, 0.78) !important;
+  box-shadow: 0 0 24px rgba(0, 243, 255, 0.28), inset 0 0 18px rgba(0, 243, 255, 0.18) !important;
+  color: #c8fbff !important;
+}
+
+.liquid-glass-hover-cyan:hover::before {
+  background: radial-gradient(circle at 18% 18%, rgba(0, 243, 255, 0.42), transparent 46%), radial-gradient(circle at 82% 12%, rgba(130, 255, 248, 0.18), transparent 34%), linear-gradient(135deg, rgba(0, 243, 255, 0.18), transparent 68%);
+}
+
+.liquid-glass-hover-edit:hover {
+  background: linear-gradient(135deg, rgba(255, 208, 77, 0.24), rgba(0, 243, 255, 0.08)) !important;
+  border-color: rgba(255, 208, 77, 0.72) !important;
+  box-shadow: 0 0 22px rgba(255, 208, 77, 0.24), inset 0 0 18px rgba(255, 208, 77, 0.16) !important;
+  color: #ffe08a !important;
+}
+
+.liquid-glass-hover-edit:hover::before {
+  background: radial-gradient(circle at 18% 18%, rgba(255, 208, 77, 0.42), transparent 46%), radial-gradient(circle at 84% 12%, rgba(0, 243, 255, 0.14), transparent 34%), linear-gradient(135deg, rgba(255, 208, 77, 0.18), transparent 68%);
+}
+
+.liquid-glass-hover-danger:hover {
+  background: linear-gradient(135deg, rgba(255, 77, 77, 0.24), rgba(255, 77, 77, 0.10)) !important;
+  border-color: rgba(255, 77, 77, 0.76) !important;
+  box-shadow: 0 0 22px rgba(255, 77, 77, 0.24), inset 0 0 18px rgba(255, 77, 77, 0.16) !important;
+  color: #ffb4b4 !important;
+}
+
+.liquid-glass-hover-danger:hover::before {
+  background: radial-gradient(circle at 18% 18%, rgba(255, 77, 77, 0.44), transparent 46%), radial-gradient(circle at 84% 12%, rgba(255, 147, 147, 0.16), transparent 34%), linear-gradient(135deg, rgba(255, 77, 77, 0.20), transparent 68%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass-hover,
+  .liquid-glass-hover::before,
+  .liquid-glass-hover::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .liquid-glass-hover:hover {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .liquid-glass-hover:hover::before,
+  .liquid-glass-hover:hover::after {
+    opacity: 0 !important;
+    transform: none !important;
+  }
+}
+
 .click-press:active { transform: scale(0.96); transition: transform 0.1s ease; }
 
 .active-glow { animation: borderGlow 2s ease-in-out infinite; }

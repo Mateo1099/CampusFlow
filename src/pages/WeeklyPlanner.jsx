@@ -1,7 +1,8 @@
-﻿import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { usePlanners } from '../hooks/usePlanners';
-import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, ArrowLeft, Sun, Moon, Sunset, BarChart2 } from 'lucide-react';
+import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2 } from 'lucide-react';
 import { useCourses } from '../hooks/useCourses';
 import { useTasksContext } from '../context/TaskContext';
 import ColorPicker from '../components/ui/ColorPicker';
@@ -25,8 +26,7 @@ const TIME_OPTIONS = [
 const BLOCK_TYPE_OPTIONS = [
   { value: 'libre', label: 'Libre', description: 'Sin vínculo directo' },
   { value: 'materia', label: 'Materia', description: 'Conecta una materia' },
-  { value: 'trabajo', label: 'Trabajo', description: 'Conecta una tarea' },
-  { value: 'materia_trabajo', label: 'Materia + Trabajo', description: 'Vínculo doble' }
+  { value: 'trabajo', label: 'Trabajo', description: 'Conecta una tarea' }
 ];
 
 const STATUS_OPTIONS = [
@@ -239,9 +239,11 @@ function CustomSelect({ value, onChange, options, placeholder, accentColor = 'va
 // --- MAIN ENTRANCE ---
 export default function WeeklyPlanner() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const { planners, loading, addPlanner, addBlock, updateBlock, deleteBlock } = usePlanners(user?.id);
   const { courses } = useCourses(user?.id);
   const { tasks } = useTasksContext();
+  const isLightMode = settings?.theme === 'light';
 
   const [activePlannerId, setActivePlannerId] = useState(null);
   const [filter, setFilter] = useState('Todas');
@@ -251,6 +253,7 @@ export default function WeeklyPlanner() {
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [blockDayTarget, setBlockDayTarget] = useState(null);
   const [blockTimeTarget, setBlockTimeTarget] = useState(null);
+  const [editingBlock, setEditingBlock] = useState(null);
 
   const activePlanner = useMemo(() => planners.find(p => p.id === activePlannerId), [planners, activePlannerId]);
 
@@ -269,20 +272,31 @@ export default function WeeklyPlanner() {
           planners={planners} 
           filter={filter} 
           setFilter={setFilter}
+          isLightMode={isLightMode}
           onOpenPlanner={setActivePlannerId}
           onNewPlanner={() => setIsPlannerModalOpen(true)}
         />
       ) : (
         <PlannerDetail 
           planner={activePlanner} 
+          courses={courses}
+          tasks={tasks}
+          isLightMode={isLightMode}
           onBack={() => setActivePlannerId(null)}
           onAddBlock={(day, time) => {
             setBlockDayTarget(day);
             setBlockTimeTarget(time);
+            setEditingBlock(null);
             setIsBlockModalOpen(true);
           }}
           onUpdateBlock={(blockId, updates) => updateBlock(activePlanner.id, blockId, updates)}
           onDeleteBlock={(blockId) => deleteBlock(activePlanner.id, blockId)}
+          onEditBlock={(block) => {
+            setEditingBlock(block);
+            setBlockDayTarget(block.day);
+            setBlockTimeTarget(block.block_time);
+            setIsBlockModalOpen(true);
+          }}
         />
       )}
 
@@ -297,14 +311,22 @@ export default function WeeklyPlanner() {
         <BlockModal 
           initialDay={blockDayTarget}
           initialTime={blockTimeTarget}
+          initialBlock={editingBlock}
+          mode={editingBlock ? 'edit' : 'create'}
           courses={courses}
           tasks={tasks}
           onClose={() => {
             setIsBlockModalOpen(false);
             setBlockDayTarget(null);
             setBlockTimeTarget(null);
+            setEditingBlock(null);
           }}
-          onSave={(data) => addBlock(activePlanner.id, data)}
+          onSave={(data) => {
+            if (editingBlock) {
+              return updateBlock(activePlanner.id, editingBlock.id, data);
+            }
+            return addBlock(activePlanner?.id || activePlannerId, data);
+          }}
         />
       )}
     </div>
@@ -313,7 +335,7 @@ export default function WeeklyPlanner() {
 
 // --- VIEWS ---
 
-function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner }) {
+function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner, onNewPlanner }) {
   const filteredPlanners = useMemo(() => {
     if (filter === 'Todas') return planners;
     return planners.filter(p => p.category === filter);
@@ -348,16 +370,16 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
             padding: '10px 28px', 
             fontWeight: 700, 
             borderRadius: '50px', 
-            background: 'rgba(255, 255, 255, 0.05)', 
-            color: '#00f3ff', 
-            border: '1px solid rgba(0, 243, 255, 0.3)', 
+            background: isLightMode ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(236,244,255,0.96))' : 'rgba(255, 255, 255, 0.05)', 
+            color: isLightMode ? '#0f3f9c' : '#00f3ff', 
+            border: isLightMode ? '1px solid rgba(37, 99, 235, 0.45)' : '1px solid rgba(0, 243, 255, 0.3)', 
             backdropFilter: 'blur(10px)', 
             display: 'flex', 
             alignItems: 'center', 
             gap: '8px', 
             fontSize: '0.9rem', 
             cursor: 'pointer',
-            boxShadow: '0 0 20px rgba(0,243,255,0.15), inset 0 0 10px rgba(0,243,255,0.05)',
+            boxShadow: isLightMode ? '0 10px 24px rgba(37,99,235,0.18), inset 0 0 12px rgba(37,99,235,0.08)' : '0 0 20px rgba(0,243,255,0.15), inset 0 0 10px rgba(0,243,255,0.05)',
             textTransform: 'uppercase',
             letterSpacing: '1px',
             position: 'relative',
@@ -367,7 +389,7 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
           <div className="liquid-fill" style={{
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
             width: '150%', aspectRatio: '1/1', borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(0, 243, 255, 0.4) 0%, rgba(0, 243, 255, 0) 70%)',
+            background: isLightMode ? 'radial-gradient(circle, rgba(37,99,235,0.35) 0%, rgba(37,99,235,0) 70%)' : 'radial-gradient(circle, rgba(0, 243, 255, 0.4) 0%, rgba(0, 243, 255, 0) 70%)',
             opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
           }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -397,9 +419,9 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
               style={{
                 padding: '10px 24px',
                 borderRadius: '50px',
-                border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
-                background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
-                color: isActive ? neonColor : 'var(--text-muted)',
+                border: isActive ? `2px solid ${neonColor}` : (isLightMode ? '2px solid rgba(15, 23, 42, 0.16)' : '2px solid rgba(255,255,255,0.05)'),
+                background: isActive ? `${neonColor}${isLightMode ? '24' : '15'}` : (isLightMode ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.02)'),
+                color: isActive ? (isLightMode ? '#0f172a' : neonColor) : (isLightMode ? '#334155' : 'var(--text-muted)'),
                 fontSize: '0.8rem',
                 fontWeight: 900,
                 cursor: 'pointer',
@@ -407,7 +429,9 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
+                boxShadow: isActive
+                  ? (isLightMode ? `0 8px 18px ${neonColor}3d, inset 0 0 8px ${neonColor}2b` : `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11`)
+                  : (isLightMode ? '0 6px 14px rgba(15,23,42,0.08)' : 'none'),
                 textTransform: 'uppercase',
                 letterSpacing: '1px'
               }}
@@ -416,7 +440,7 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
                 width: '6px', 
                 height: '6px', 
                 borderRadius: '50%', 
-                background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
+                background: isActive ? neonColor : (isLightMode ? 'rgba(30,41,59,0.35)' : 'rgba(255,255,255,0.2)'),
                 boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
               }} />
               {f}
@@ -518,15 +542,21 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
                    overflow: 'hidden',
                    minHeight: '240px',
                    borderRadius: '30px',
-                   background: `linear-gradient(155deg, rgba(10, 14, 24, 0.96) 0%, rgba(20, 24, 38, 0.88) 52%, ${accentColor}14 100%)`,
-                   border: `1px solid ${accentColor}38`,
-                   boxShadow: `0 28px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px ${accentColor}10`
+                   background: isLightMode
+                     ? `linear-gradient(155deg, rgba(255,255,255,0.95) 0%, rgba(243,248,255,0.98) 58%, ${accentColor}1f 100%)`
+                     : `linear-gradient(155deg, rgba(10, 14, 24, 0.96) 0%, rgba(20, 24, 38, 0.88) 52%, ${accentColor}14 100%)`,
+                   border: isLightMode ? `1px solid ${accentColor}55` : `1px solid ${accentColor}38`,
+                   boxShadow: isLightMode
+                     ? `0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.92), inset 0 0 0 1px ${accentColor}22`
+                     : `0 28px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px ${accentColor}10`
                  }}
                >
                  <div style={{
                    position: 'absolute',
                    inset: 0,
-                   background: `radial-gradient(circle at top right, ${accentColor}24 0%, transparent 38%), linear-gradient(180deg, rgba(255,255,255,0.03), transparent 28%)`,
+                   background: isLightMode
+                     ? `radial-gradient(circle at top right, ${accentColor}2c 0%, transparent 42%), linear-gradient(180deg, rgba(255,255,255,0.65), transparent 34%)`
+                     : `radial-gradient(circle at top right, ${accentColor}24 0%, transparent 38%), linear-gradient(180deg, rgba(255,255,255,0.03), transparent 28%)`,
                    pointerEvents: 'none'
                  }} />
                  <div style={{
@@ -546,32 +576,32 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
                        <Folder size={22} />
                      </div>
                      <div style={{ minWidth: 0 }}>
-                       <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: '999px', border: `1px solid ${catColor}35`, background: `${catColor}14`, fontSize: '0.68rem', color: catColor, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>{planner.category}</span>
-                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: `0 0 24px ${accentColor}18` }}>{planner.title}</h3>
+                       <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: '999px', border: `1px solid ${catColor}55`, background: isLightMode ? `${catColor}22` : `${catColor}14`, fontSize: '0.68rem', color: isLightMode ? '#0f172a' : catColor, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>{planner.category}</span>
+                       <h3 style={{ margin: 0, fontSize: '1.2rem', color: isLightMode ? '#0f172a' : 'var(--text-primary)', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: isLightMode ? 'none' : `0 0 24px ${accentColor}18` }}>{planner.title}</h3>
                      </div>
                    </div>
-                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                   <div style={{ fontSize: '0.72rem', color: isLightMode ? '#334155' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                      {blocks.length} bloques
                    </div>
                  </div>
                  
                  {planner.weekly_goal && (
-                   <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.6, position: 'relative', zIndex: 1 }}>
+                   <p style={{ fontSize: '0.9rem', color: isLightMode ? '#334155' : 'var(--text-secondary)', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.6, position: 'relative', zIndex: 1 }}>
                      <span style={{ color: accentColor, fontWeight: 700 }}>Objetivo semanal:</span> {planner.weekly_goal}
                    </p>
                  )}
 
                  <div style={{ marginTop: 'auto', paddingTop: '18px', borderTop: `1px solid ${accentColor}22`, position: 'relative', zIndex: 1 }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                     <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                     <span style={{ fontSize: '0.76rem', color: isLightMode ? '#1e293b' : 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                        Progreso editorial
                      </span>
-                     <span style={{ fontSize: '0.95rem', color: accentColor, fontWeight: 900 }}>{progress}%</span>
+                     <span style={{ fontSize: '0.95rem', color: isLightMode ? '#0f172a' : accentColor, fontWeight: 900 }}>{progress}%</span>
                    </div>
-                   <div style={{ height: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
-                     <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${accentColor}, rgba(255,255,255,0.88))`, boxShadow: `0 0 18px ${accentColor}55`, transition: 'width 0.3s ease' }} />
+                   <div style={{ height: '10px', background: isLightMode ? 'rgba(15,23,42,0.12)' : 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden', border: isLightMode ? '1px solid rgba(15,23,42,0.18)' : '1px solid rgba(255,255,255,0.05)' }}>
+                     <div style={{ height: '100%', width: `${progress}%`, background: isLightMode ? `linear-gradient(90deg, #1d4ed8, ${accentColor})` : `linear-gradient(90deg, ${accentColor}, rgba(255,255,255,0.88))`, boxShadow: `0 0 18px ${accentColor}55`, transition: 'width 0.3s ease' }} />
                    </div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '0.78rem', color: isLightMode ? '#334155' : 'var(--text-muted)', fontWeight: isLightMode ? 700 : 500 }}>
                      <span>{completed} completados</span>
                      <span>{Math.max(blocks.length - completed, 0)} pendientes</span>
                    </div>
@@ -585,7 +615,7 @@ function PlannersList({ planners, filter, setFilter, onOpenPlanner, onNewPlanner
   );
 }
 
-function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlock }) {
+function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBlock, onUpdateBlock, onDeleteBlock, onEditBlock }) {
   const DAYS = DAY_OPTIONS.map(option => option.value);
   const BLOCKS = TIME_OPTIONS.map(option => option.value);
   const DAY_LABELS = DAY_OPTIONS.reduce((acc, option) => ({ ...acc, [option.value]: option.label }), {});
@@ -672,45 +702,45 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
 
       {/* Resumen Inteligente Mejorado */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
           <BarChart2 size={20} color="var(--accent-primary)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Avance</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{progress}%</div>
+          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Avance</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{progress}%</div>
         </div>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
           <CheckCircle2 size={20} color="var(--accent-lime)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Completados</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{completedCount}</div>
+          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Completados</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{completedCount}</div>
         </div>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
           <Circle size={20} color="var(--accent-warning)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Pendientes</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{pendingCount}</div>
+          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Pendientes</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{pendingCount}</div>
         </div>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
           <Clock size={20} color="var(--accent-purple)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>En Proceso</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{inProcessCount}</div>
+          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>En Proceso</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{inProcessCount}</div>
         </div>
         {busiestDay && (
-          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center' }}>
+          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
             <Calendar size={20} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Día más ocupado</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'capitalize' }}>{DAY_LABELS[busiestDay]} ({busiestDayCount})</div>
+            <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Día más ocupado</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'capitalize', color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{DAY_LABELS[busiestDay]} ({busiestDayCount})</div>
           </div>
         )}
         {totalDuration > 0 && (
-          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center' }}>
+          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
             <Clock size={20} color="var(--accent-success)" style={{ margin: '0 auto' }} />
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Duración Total</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{Math.round(totalDuration / 60)}h {totalDuration % 60}m</div>
+            <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Duración Total</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{Math.round(totalDuration / 60)}h {totalDuration % 60}m</div>
           </div>
         )}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
         <button 
-          className="click-press" 
+          className="click-press liquid-glass-hover liquid-glass-hover-cyan" 
           onClick={() => onAddBlock(null, null)} 
           style={{ 
             padding: '10px 24px', 
@@ -737,9 +767,9 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
       <div style={{
         borderRadius: '34px',
         overflow: 'hidden',
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
-        boxShadow: '0 34px 68px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05)',
+        border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)',
+        background: isLightMode ? 'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,246,255,0.98))' : 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
+        boxShadow: isLightMode ? '0 18px 34px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.95)' : '0 34px 68px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05)',
         padding: '12px'
       }}>
         <div className="weekly-grid-container" style={{ 
@@ -749,20 +779,20 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
           overflowX: 'auto',
           paddingBottom: '8px'
         }}>
-          <div style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '24px', padding: '16px' }} />
+          <div style={{ background: isLightMode ? 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,246,255,0.94))' : 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))', border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.07)', borderRadius: '24px', padding: '16px' }} />
           {DAYS.map(day => (
             <div key={day} style={{ 
-              background: 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
+              background: isLightMode ? 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,246,255,0.94))' : 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
               padding: '16px 14px',
               textAlign: 'center',
               fontWeight: 900,
               fontSize: '0.78rem',
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
-              color: 'var(--text-primary)',
+              color: isLightMode ? '#0f172a' : 'var(--text-primary)',
               borderRadius: '24px',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)'
+              border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)',
+              boxShadow: isLightMode ? 'inset 0 1px 0 rgba(255,255,255,0.92)' : 'inset 0 1px 0 rgba(255,255,255,0.05)'
             }}>
               <div style={{ color: planner.color || 'var(--accent-primary)', marginBottom: '4px', fontSize: '0.68rem' }}>DÍA</div>
               {DAY_LABELS[day]}
@@ -783,9 +813,9 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
                   justifyContent: 'space-between',
                   gap: '12px',
                   borderRadius: '28px',
-                  border: `1px solid ${theme.accent}26`,
-                  background: `linear-gradient(180deg, ${theme.accent}18 0%, rgba(10, 12, 22, 0.72) 100%)`,
-                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 32px ${theme.accent}14`
+                  border: isLightMode ? `1px solid ${theme.accent}4f` : `1px solid ${theme.accent}26`,
+                  background: isLightMode ? `linear-gradient(180deg, ${theme.accent}2b 0%, rgba(248, 251, 255, 0.98) 100%)` : `linear-gradient(180deg, ${theme.accent}18 0%, rgba(10, 12, 22, 0.72) 100%)`,
+                  boxShadow: isLightMode ? `inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 18px ${theme.accent}2e` : `inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 32px ${theme.accent}14`
                 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                     <div style={{
@@ -803,8 +833,8 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
                       <TimeIcon size={22} />
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)' }}>{theme.label}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{theme.description}</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{theme.label}</div>
+                      <div style={{ fontSize: '0.72rem', color: isLightMode ? '#334155' : 'var(--text-secondary)' }}>{theme.description}</div>
                     </div>
                   </div>
                   <button 
@@ -834,20 +864,20 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
                     minHeight: '190px',
                     padding: '14px',
                     borderRadius: '26px',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    background: `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(12, 15, 24, 0.78) 100%), radial-gradient(circle at top right, ${theme.accent}10 0%, transparent 42%)`,
+                    border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.07)',
+                    background: isLightMode ? `linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(244,248,255,0.98) 100%), radial-gradient(circle at top right, ${theme.accent}1a 0%, transparent 46%)` : `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(12, 15, 24, 0.78) 100%), radial-gradient(circle at top right, ${theme.accent}10 0%, transparent 42%)`,
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px',
                     position: 'relative',
                     overflowY: 'auto',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                    boxShadow: isLightMode ? 'inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 16px rgba(15,23,42,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.05)'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '44px' }}>
-                      <span style={{ fontSize: '0.72rem', color: theme.accent, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', width: '100%', minWidth: 0 }}>
+                      <span style={{ fontSize: '0.72rem', color: theme.accent, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', minWidth: 0, flex: '1 1 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {DAY_LABELS[day]}
                       </span>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: '0.72rem', color: isLightMode ? '#1e293b' : 'var(--text-muted)', fontWeight: isLightMode ? 800 : 500, fontFamily: isLightMode ? '"JetBrains Mono", monospace' : 'inherit', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 'auto' }}>
                         {scheduleMap[blockTime][day].length} bloques
                       </span>
                     </div>
@@ -857,7 +887,7 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
                       const statusTone = getStatusTone(b.status);
 
                       return (
-                        <div key={b.id} className="hover-lift" style={{ 
+                        <div key={b.id} className="hover-lift" onClick={() => onEditBlock(b)} style={{ 
                           padding: '12px',
                           borderRadius: '20px',
                           fontSize: '0.75rem',
@@ -868,8 +898,8 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
                           gap: '8px',
                           position: 'relative',
                           transition: 'all 0.2s',
-                          background: `linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)), radial-gradient(circle at top right, ${accent}16 0%, transparent 42%)`,
-                          boxShadow: `0 14px 26px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05)`
+                          background: isLightMode ? `linear-gradient(160deg, rgba(255,255,255,0.98), rgba(241,246,255,0.95)), radial-gradient(circle at top right, ${accent}1f 0%, transparent 44%)` : `linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)), radial-gradient(circle at top right, ${accent}16 0%, transparent 42%)`,
+                          boxShadow: isLightMode ? `0 8px 16px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.98)` : `0 14px 26px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05)`
                         }}
                         title={b.notes || 'Sin notas'}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
@@ -878,37 +908,54 @@ function PlannerDetail({ planner, onBack, onAddBlock, onUpdateBlock, onDeleteBlo
                                 {statusTone.icon}
                               </div>
                               <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontWeight: 800, color: 'var(--text-primary)', wordBreak: 'break-word', lineHeight: 1.35 }}>{b.title}</div>
-                                <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                <div style={{ fontWeight: 800, color: isLightMode ? '#0f172a' : 'var(--text-primary)', wordBreak: 'break-word', lineHeight: 1.35 }}>{b.title}</div>
+                                
+                                {(b.task_id || b.course_id) && (
+                                  <div style={{ fontSize: '0.68rem', color: isLightMode ? '#334155' : 'var(--text-muted)', marginTop: '4px', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                    {b.task_id && <span>{tasks?.find(t => t.id === b.task_id)?.title || 'Trabajo'}</span>}
+                                    {b.task_id && b.course_id && <span>·</span>}
+                                    {b.course_id && <span>{courses?.find(c => c.id === b.course_id)?.name || 'Materia'}</span>}
+                                  </div>
+                                )}
+                                
+                                <div style={{ fontSize: '0.67rem', color: isLightMode ? '#475569' : 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                                   {statusTone.label}
                                 </div>
                               </div>
                             </div>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); onDeleteBlock(b.id); }}
-                              style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '8px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                              title="Eliminar bloque"
-                              className="hover-opacity"
-                            >
-                              ×
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); onEditBlock(b); }}
+                                style={{ background: 'rgba(0,194,255,0.10)', border: '1px solid rgba(0,194,255,0.22)', color: 'var(--accent-primary)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '8px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                title="Editar bloque"
+                                className="click-press liquid-glass-hover liquid-glass-hover-edit"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteBlock(b.id); }}
+                                style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '8px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                title="Eliminar bloque"
+                                className="click-press liquid-glass-hover liquid-glass-hover-danger"
+                              >
+                                ×
+                              </button>
+                            </div>
                           </div>
 
-                          {(b.duration_minutes || b.course_id || b.task_id) && (
+                          {b.duration_minutes && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                              {b.duration_minutes && <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-secondary)', fontSize: '0.68rem' }}>⏱ {b.duration_minutes} min</span>}
-                              {b.course_id && <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'rgba(88,86,214,0.16)', border: '1px solid rgba(88,86,214,0.25)', color: '#b6b0ff', fontSize: '0.68rem' }}>Materia</span>}
-                              {b.task_id && <span style={{ padding: '5px 8px', borderRadius: '999px', background: 'rgba(255,149,0,0.14)', border: '1px solid rgba(255,149,0,0.22)', color: '#ffbe82', fontSize: '0.68rem' }}>Trabajo</span>}
+                              <span style={{ padding: '5px 8px', borderRadius: '999px', background: isLightMode ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.05)', border: isLightMode ? '1px solid rgba(15,23,42,0.16)' : '1px solid rgba(255,255,255,0.06)', color: isLightMode ? '#1e293b' : 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: isLightMode ? 700 : 500 }}>⏱ {b.duration_minutes} min</span>
                             </div>
                           )}
 
                           {b.notes && (
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.5, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
+                            <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-secondary)', lineHeight: 1.5, borderTop: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
                               {b.notes.substring(0, 64)}{b.notes.length > 64 ? '...' : ''}
                             </div>
                           )}
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '2px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '2px', borderTop: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
                             <select 
                               value={b.status} 
                               onChange={(e) => onUpdateBlock(b.id, { status: e.target.value })}
@@ -1153,7 +1200,7 @@ function PlannerModal({ onClose, onSave }) {
                 background: 'radial-gradient(circle, rgba(0, 243, 255, 0.5) 0%, rgba(0, 243, 255, 0) 70%)',
                 opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
               }} />
-              <span style={{ position: 'relative', zIndex: 1 }}>GUARDAR</span>
+              <span style={{ position: 'relative', zIndex: 1 }}>{mode === 'edit' ? 'GUARDAR CAMBIOS' : 'GUARDAR'}</span>
             </button>
           </div>
         </form>
@@ -1162,7 +1209,7 @@ function PlannerModal({ onClose, onSave }) {
   );
 }
 
-function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }) {
+function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', courses, tasks, onClose, onSave }) {
   const [formData, setFormData] = useState({
     day: initialDay || 'monday',
     block_time: initialTime || 'morning',
@@ -1175,14 +1222,66 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
     status: 'pendiente'
   });
 
+  useEffect(() => {
+    if (initialBlock) {
+      setFormData({
+        day: initialBlock.day || initialDay || 'monday',
+        block_time: initialBlock.block_time || initialTime || 'morning',
+        title: initialBlock.title || '',
+        block_type: initialBlock.block_type || 'libre',
+        course_id: initialBlock.course_id || '',
+        task_id: initialBlock.task_id || '',
+        duration_minutes: initialBlock.duration_minutes ?? '',
+        notes: initialBlock.notes || '',
+        status: initialBlock.status || 'pendiente'
+      });
+      return;
+    }
+
+    setFormData({
+      day: initialDay || 'monday',
+      block_time: initialTime || 'morning',
+      title: '',
+      block_type: 'libre',
+      course_id: '',
+      task_id: '',
+      duration_minutes: '',
+      notes: '',
+      status: 'pendiente'
+    });
+  }, [initialBlock, initialDay, initialTime, mode]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.title) return;
+
+    if (formData.block_type === 'materia' && !formData.course_id) {
+      alert('Por favor selecciona una materia.');
+      return;
+    }
+    if (formData.block_type === 'trabajo' && !formData.task_id) {
+      alert('Por favor selecciona un trabajo.');
+      return;
+    }
+    let finalCourseId = null;
+    let finalTaskId = null;
+
+    if (formData.block_type === 'materia') {
+      finalCourseId = formData.course_id;
+    } else if (formData.block_type === 'trabajo') {
+      finalTaskId = formData.task_id;
+      if (finalTaskId) {
+        const selectedTask = tasks.find(t => t.id === finalTaskId);
+        if (selectedTask && selectedTask.course_id) {
+          finalCourseId = selectedTask.course_id;
+        }
+      }
+    }
     
     onSave({
       ...formData,
-      course_id: formData.course_id || null,
-      task_id: formData.task_id || null,
+      course_id: finalCourseId,
+      task_id: finalTaskId,
       duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : null
     });
     onClose();
@@ -1211,7 +1310,7 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
       <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '620px', padding: '24px 30px', display: 'flex', flexDirection: 'column', gap: '16px', margin: 'auto', borderRadius: '30px', background: 'linear-gradient(155deg, rgba(10,12,22,0.96) 0%, rgba(18,22,34,0.92) 55%, rgba(0,243,255,0.06) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06)', maxHeight: '95vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
           <div>
-            <h2 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', color: '#fff' }}>Agregar Bloque</h2>
+            <h2 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', color: '#fff' }}>{mode === 'edit' ? 'Editar Bloque' : 'Agregar Bloque'}</h2>
             <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.4 }}>Define el día, el momento y el vínculo del bloque sin salir del estilo CampusFlow.</p>
           </div>
           <div style={{ padding: '6px 10px', borderRadius: '999px', border: '1px solid rgba(0,243,255,0.26)', background: 'rgba(0,243,255,0.10)', color: '#7fefff', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -1259,8 +1358,8 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
             />
           </PlannerField>
 
-          {(formData.block_type === 'materia' || formData.block_type === 'materia_trabajo') && (
-            <PlannerField label={`Materia ${formData.block_type === 'materia' ? '*' : ''}`} hint="Opcional si el bloque mezcla materia y trabajo">
+          {formData.block_type === 'materia' && (
+            <PlannerField label="Materia *" hint="Selecciona la materia vinculada al bloque">
               <CustomSelect
                 value={formData.course_id}
                 onChange={(nextValue) => setFormData({ ...formData, course_id: nextValue })}
@@ -1271,8 +1370,8 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
             </PlannerField>
           )}
 
-          {(formData.block_type === 'trabajo' || formData.block_type === 'materia_trabajo') && (
-            <PlannerField label={`Trabajo / Tarea ${formData.block_type === 'trabajo' ? '*' : ''}`} hint="El estado del bloque no altera el trabajo real">
+          {formData.block_type === 'trabajo' && (
+            <PlannerField label="Trabajo / Tarea *" hint="El estado del bloque no altera el trabajo real">
               <CustomSelect
                 value={formData.task_id}
                 onChange={(nextValue) => setFormData({ ...formData, task_id: nextValue })}
@@ -1331,7 +1430,7 @@ function BlockModal({ initialDay, initialTime, courses, tasks, onClose, onSave }
               e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 243, 255, 0.22), rgba(0, 243, 255, 0.08))';
               e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.36)';
               e.currentTarget.style.boxShadow = '0 22px 34px rgba(0,243,255,0.14), inset 0 1px 0 rgba(255,255,255,0.04)';
-            }}>Guardar Bloque</button>
+            }}>{mode === 'edit' ? 'GUARDAR CAMBIOS' : 'GUARDAR BLOQUE'}</button>
           </div>
         </form>
       </div>
