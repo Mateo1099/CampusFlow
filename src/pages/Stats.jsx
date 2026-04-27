@@ -1,13 +1,75 @@
 import React from 'react';
-import { useSettings } from '../context/SettingsContext';
-import { useTasksContext } from '../context/TaskContext';
-import { PieChart, Zap, TrendingUp, Target, Clock, Trophy } from 'lucide-react';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { BarChart3, CheckCircle2, Clock3, Sparkles, Sun, Sunset, Moon, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const weekDays = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+
+const formatMinutes = (value) => {
+  const minutes = Number(value);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  if (minutes < 60) return `${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  const rem = minutes % 60;
+  return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`;
+};
+
+const MetricCard = ({ icon: Icon, title, value, helper, accent = 'var(--accent-primary)', empty = false }) => (
+  <article
+    className="glass-panel"
+    style={{
+      padding: '20px 22px',
+      minHeight: '146px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      background: 'linear-gradient(155deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03))',
+      border: '1px solid var(--border-glass-top)',
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), 0 16px 30px ${accent}18`
+    }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+      <p style={{ margin: 0, fontSize: '0.72rem', letterSpacing: '0.11em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{title}</p>
+      <Icon size={16} color={accent} />
+    </div>
+
+    <div>
+      <p
+        style={{
+          margin: '12px 0 6px',
+          fontSize: empty ? '1.2rem' : '2rem',
+          fontWeight: 800,
+          fontFamily: 'var(--font-display)',
+          color: empty ? 'var(--text-secondary)' : 'var(--text-primary)',
+          letterSpacing: empty ? '0.02em' : '0.01em'
+        }}
+      >
+        {value}
+      </p>
+      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{helper}</p>
+    </div>
+  </article>
+);
 
 const Stats = () => {
-  const { settings, t } = useSettings();
-  const { courses, tasks, tasksLoading, coursesLoading, analytics, habitsLoading } = useTasksContext();
+  const {
+    totalTasks,
+    completedTasks,
+    pendingTasks,
+    totalHabits,
+    completedHabits,
+    totalMinutes,
+    completedBlocks,
+    pendingBlocks,
+    minutesByDay,
+    minutesByTime,
+    historicalSummary,
+    insights,
+    loading
+  } = useAnalytics();
 
-  if (tasksLoading || coursesLoading || habitsLoading) {
+  if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
         <div className="animate-pulse">Analizando métricas en tiempo real...</div>
@@ -15,141 +77,314 @@ const Stats = () => {
     );
   }
 
-  const { totalTasks, completedTasks, totalHabits, completedHabits, productivity, totalXP } = analytics;
-  const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-  const habitProgress = totalHabits > 0 ? (completedHabits / totalHabits) * 100 : 0;
+  const safeMinutesByDay = Array.isArray(minutesByDay) ? minutesByDay : [0, 0, 0, 0, 0, 0, 0];
+  const morningMinutes = minutesByTime?.morning || 0;
+  const afternoonMinutes = minutesByTime?.afternoon || 0;
+  const nightMinutes = minutesByTime?.night || 0;
 
-  const tasksByCourse = courses.map(c => ({
-    name: c.name,
-    color: c.color || c.prefixColor,
-    count: tasks.filter(t => t.course === c.name).length
-  }));
+  const totalBlocks = completedBlocks + pendingBlocks;
+  const hasTasks = totalTasks > 0;
+  const hasHabits = totalHabits > 0;
+  const hasBlocks = totalBlocks > 0;
+  const hasWeeklyMinutes = safeMinutesByDay.some((minutes) => minutes > 0);
+  const totalTimeDistribution = morningMinutes + afternoonMinutes + nightMinutes;
+  const hasTimeDistribution = totalTimeDistribution > 0;
+
+  const completionDenominator = totalTasks + totalBlocks + totalHabits;
+  const completionNumerator = completedTasks + completedBlocks + completedHabits;
+  const overallCompliance = completionDenominator > 0 ? Math.round((completionNumerator / completionDenominator) * 100) : null;
+
+  const maxDayMinutes = Math.max(...safeMinutesByDay, 0);
+
+  const dayDistribution = [
+    { key: 'morning', label: 'Manana', value: morningMinutes, icon: Sun, color: 'var(--accent-secondary)' },
+    { key: 'afternoon', label: 'Tarde', value: afternoonMinutes, icon: Sunset, color: 'var(--accent-lime)' },
+    { key: 'night', label: 'Noche', value: nightMinutes, icon: Moon, color: 'var(--accent-primary)' }
+  ];
+
+  const topDistribution = dayDistribution.reduce((top, current) => {
+    if (!top || current.value > top.value) return current;
+    return top;
+  }, null);
 
   return (
     <div className="animate-fade-in" style={{ padding: '32px 40px', height: '100%', overflowY: 'auto' }}>
       <header className="page-header" style={{ marginBottom: '40px' }}>
-        <h1 className="page-title">Analítica del Sistema</h1>
-        <p className="page-subtitle" style={{ color: 'var(--accent-secondary)' }}>Rendimiento derivado de Supabase Cloud</p>
+        <h1 className="page-title">Analitica PRO</h1>
       </header>
 
-      <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
-        
-        {/* Card: Gamificación */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Trophy size={20} color="var(--accent-primary)" />
-            <h3 className="font-display" style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>Estado de Rango</h3>
-          </div>
-          
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ 
-              fontSize: '4rem', fontWeight: 900, fontFamily: 'var(--font-display)', 
-              color: 'var(--accent-primary)', textShadow: '0 0 30px var(--accent-primary)44',
-              lineHeight: 1
-            }}>
-              {settings.level}
-            </div>
-            <p style={{ color: 'var(--accent-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '12px' }}>Nivel de Estudiante</p>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '10px', color: 'var(--text-secondary)' }}>
-              <span>Progreso de Nivel</span>
-              <span>{totalXP} / 1000 XP</span>
-            </div>
-            <div style={{ height: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border-glass-top)' }}>
-              <div style={{ width: `${(totalXP / 1000) * 100}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))', boxShadow: '0 0 10px var(--accent-primary)', transition: 'all 0.6s' }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Card: Métricas de Tareas */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-            <Zap size={20} color="var(--accent-lime)" />
-            <h3 className="font-display" style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>Eficiencia de Trabajos</h3>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total</p>
-              <h4 style={{ margin: '8px 0 0', fontSize: '1.8rem', color: 'var(--text-primary)' }}>{totalTasks}</h4>
-            </div>
-            <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Entregados</p>
-              <h4 style={{ margin: '8px 0 0', fontSize: '1.8rem', color: 'var(--accent-secondary)' }}>{completedTasks}</h4>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '8px' }}>
-              <span>Tasa de Finalización</span>
-              <span style={{ color: 'var(--accent-lime)', fontWeight: 700 }}>{taskProgress.toFixed(0)}%</span>
-            </div>
-            <div style={{ height: '6px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', overflow: 'hidden' }}>
-              <div style={{ width: `${taskProgress}%`, height: '100%', background: 'var(--accent-lime)' }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Card: Hábitos Hoy */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-            <Clock size={20} color="var(--accent-primary)" />
-            <h3 className="font-display" style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>Hábitos Hoy</h3>
-          </div>
-          
-          <div style={{ textAlign: 'center', padding: '10px 0' }}>
-             <h2 style={{ fontSize: '3rem', margin: 0, color: 'var(--accent-primary)' }}>{completedHabits} / {totalHabits}</h2>
-             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Objetivos cumplidos</p>
-          </div>
-
-          <div style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '8px' }}>
-              <span>Cumplimiento Diario</span>
-              <span style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>{habitProgress.toFixed(0)}%</span>
-            </div>
-            <div style={{ height: '6px', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', overflow: 'hidden' }}>
-              <div style={{ width: `${habitProgress}%`, height: '100%', background: 'var(--accent-primary)' }} />
-            </div>
-          </div>
-        </div>
-
+      <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <MetricCard
+          icon={BarChart3}
+          title="Total de trabajos"
+          value={hasTasks ? totalTasks : 'Sin datos'}
+          helper={hasTasks ? `${pendingTasks} pendientes` : 'Aun no hay trabajos cargados'}
+          accent="var(--accent-secondary)"
+          empty={!hasTasks}
+        />
+        <MetricCard
+          icon={CheckCircle2}
+          title="Trabajos completados"
+          value={hasTasks ? completedTasks : 'Sin datos'}
+          helper={hasTasks ? `${Math.round((completedTasks / totalTasks) * 100)}% de cumplimiento` : 'Sin historial de entregas'}
+          accent="var(--accent-lime)"
+          empty={!hasTasks}
+        />
+        <MetricCard
+          icon={Sparkles}
+          title="Bloques completados"
+          value={hasBlocks ? completedBlocks : 'Sin datos'}
+          helper={hasBlocks ? `${pendingBlocks} pendientes por ejecutar` : 'Aun no se registran bloques'}
+          accent="var(--accent-primary)"
+          empty={!hasBlocks}
+        />
+        <MetricCard
+          icon={Clock3}
+          title="Tiempo planeado total"
+          value={hasBlocks && totalMinutes > 0 ? formatMinutes(totalMinutes) : 'Sin datos'}
+          helper={hasBlocks && totalMinutes > 0 ? `${totalMinutes} minutos acumulados` : 'Planifica bloques para ver tendencia'}
+          accent="var(--accent-secondary)"
+          empty={!hasBlocks || totalMinutes <= 0}
+        />
+        <MetricCard
+          icon={AlertCircle}
+          title="Cumplimiento general"
+          value={overallCompliance !== null ? `${overallCompliance}%` : 'Sin datos'}
+          helper={overallCompliance !== null ? `${completionNumerator} de ${completionDenominator} objetivos ejecutados` : 'Sin registros suficientes aun'}
+          accent="var(--accent-lime)"
+          empty={overallCompliance === null}
+        />
       </div>
 
-      {/* Gráfico: Productividad Semanal */}
-      <div className="glass-panel" style={{ marginTop: '28px', padding: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px' }}>
-          <TrendingUp size={20} color="var(--accent-primary)" />
-          <h3 className="font-display" style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>Productividad Semanal (Tareas Entregadas)</h3>
+      <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '20px' }}>
+        <section className="glass-panel" style={{ padding: '24px 26px', border: '1px solid var(--border-glass-top)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '14px' }}>
+            <div>
+              <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Minutos por dia</h3>
+              <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Visual semanal de lunes a domingo</p>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Semanal</span>
+          </div>
+
+          {!hasWeeklyMinutes ? (
+            <div
+              style={{
+                minHeight: '240px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px dashed var(--border-glass-top)',
+                borderRadius: '16px',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))',
+                textAlign: 'center',
+                padding: '24px'
+              }}
+            >
+              <BarChart3 size={24} color="var(--text-muted)" />
+              <p style={{ margin: '14px 0 6px', color: 'var(--text-primary)', fontWeight: 700 }}>Sin actividad semanal registrada</p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.86rem' }}>Agrega bloques al planner para visualizar esta grafica.</p>
+            </div>
+          ) : (
+            <div style={{ height: '260px', display: 'flex', gap: '10px', alignItems: 'flex-end', padding: '8px 4px 0' }}>
+              {weekDays.map((label, index) => {
+                const dayMinutes = safeMinutesByDay[index] || 0;
+                const ratio = maxDayMinutes > 0 ? dayMinutes / maxDayMinutes : 0;
+                const height = Math.max(ratio * 100, dayMinutes > 0 ? 12 : 4);
+
+                return (
+                  <div key={label} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontSize: '0.68rem', color: dayMinutes > 0 ? 'var(--accent-secondary)' : 'var(--text-muted)', fontWeight: 700, minHeight: '16px' }}>
+                      {dayMinutes > 0 ? `${dayMinutes}m` : ''}
+                    </div>
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '190px',
+                        borderRadius: '12px',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '100%',
+                          height: `${height}%`,
+                          background: dayMinutes > 0
+                            ? 'linear-gradient(180deg, var(--accent-secondary), var(--accent-primary))'
+                            : 'rgba(255,255,255,0.08)',
+                          boxShadow: dayMinutes > 0 ? '0 0 18px var(--accent-secondary)33' : 'none',
+                          transition: 'height 0.7s var(--ease-out-expo)'
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="glass-panel" style={{ padding: '24px 24px', border: '1px solid var(--border-glass-top)' }}>
+          <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Distribucion por momento</h3>
+          <p style={{ margin: '8px 0 16px', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Manana, tarde y noche</p>
+
+          {!hasTimeDistribution ? (
+            <div
+              style={{
+                minHeight: '180px',
+                border: '1px dashed var(--border-glass-top)',
+                borderRadius: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-secondary)',
+                fontSize: '0.86rem',
+                textAlign: 'center',
+                padding: '16px'
+              }}
+            >
+              Sin registro de minutos por franja horaria.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
+              {dayDistribution.map((slot) => {
+                const percent = totalTimeDistribution > 0 ? Math.round((slot.value / totalTimeDistribution) * 100) : 0;
+                const SlotIcon = slot.icon;
+
+                return (
+                  <div key={slot.key}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                        <SlotIcon size={14} color={slot.color} /> {slot.label}
+                      </span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{slot.value} min · {percent}%</span>
+                    </div>
+                    <div style={{ height: '8px', borderRadius: '999px', overflow: 'hidden', background: 'rgba(0,0,0,0.28)' }}>
+                      <div style={{ width: `${percent}%`, height: '100%', background: `linear-gradient(90deg, ${slot.color}, var(--accent-primary))` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass-top)' }}>
+            <p style={{ margin: 0, fontSize: '0.72rem', letterSpacing: '0.11em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Resumen planner</p>
+            <p style={{ margin: '8px 0 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+              {hasBlocks ? `${completedBlocks} completados · ${pendingBlocks} pendientes · ${formatMinutes(totalMinutes) || `${totalMinutes} min`}` : 'Aun no hay bloques planificados'}
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <section className="glass-panel" style={{ marginTop: '22px', padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+          <Sparkles size={18} color="var(--accent-lime)" />
+          <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Insights de la semana</h3>
         </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', height: '200px', alignItems: 'flex-end', gap: '10px', padding: '0 20px' }}>
-          {['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'].map((d, i) => {
-            const val = productivity[i];
-            const max = Math.max(...productivity, 1);
-            const height = (val / max) * 100;
-            return (
-              <div key={d} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <div style={{ 
-                  width: '100%', 
-                  height: `${height}%`, 
-                  minHeight: val > 0 ? '10px' : '2px',
-                  background: val > 0 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)', 
-                  border: '1px solid var(--border-glass-top)',
-                  borderRadius: '8px 8px 4px 4px',
-                  boxShadow: val > 0 ? '0 0 15px var(--accent-primary)22' : 'none',
-                  transition: 'height 1s var(--ease-out-expo)',
-                  position: 'relative'
-                }}>
-                  {val > 0 && <span style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', fontSize: '0.7rem', fontWeight: 800 }}>{val}</span>}
-                </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>{d}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
+          {insights && insights.length > 0 ? (
+            <AnimatePresence>
+              {insights.slice(0, 3).map((insight, index) => {
+                const isWarning = insight.type === 'warning';
+                const isSuccess = insight.type === 'success';
+                const isInfo = insight.type === 'info';
+                
+                const iconColor = isWarning ? '#ffcc00' : isSuccess ? '#00ff66' : 'var(--accent-primary)';
+                const IconComponent = isWarning ? AlertTriangle : isSuccess ? CheckCircle2 : Info;
+                
+                return (
+                  <motion.div
+                    key={insight.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                      background: 'linear-gradient(140deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      boxShadow: `inset 2px 0 0 0 ${iconColor}`
+                    }}
+                  >
+                    <IconComponent size={20} color={iconColor} style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <span style={{ lineHeight: 1.5 }}>
+                      {insight.message}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          ) : (
+            <div style={{ opacity: 0.6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              Aún no hay suficiente información para generar insights.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Tendencia semanal (Fase 5 Analítica Histórica) */}
+      <section className="glass-panel" style={{ marginTop: '22px', padding: '24px', border: '1px outset var(--border-glass-top)', background: 'rgba(255, 255, 255, 0.02)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-primary)' }}>Tendencia Semanal</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>vs Semana Anterior</span>
+        </div>
+
+        {(!historicalSummary || historicalSummary.semanaAnterior.minutos === 0) ? (
+          <div style={{ opacity: 0.6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            Aún no hay suficiente historial para comparar.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '40px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Esta semana</p>
+              <p style={{ margin: '4px 0 0', fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                {formatMinutes(historicalSummary.semanaActual.minutos) || '0 min'}
+              </p>
+            </div>
+            <div style={{ height: '30px', width: '1px', background: 'var(--border-glass-top)' }} />
+            <div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Semana pasada</p>
+              <p style={{ margin: '4px 0 0', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                {formatMinutes(historicalSummary.semanaAnterior.minutos) || '0 min'}
+              </p>
+            </div>
+            <div style={{ height: '30px', width: '1px', background: 'var(--border-glass-top)' }} />
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '50px',
+                background: historicalSummary.tendencia === 'up' ? 'rgba(0, 255, 102, 0.15)' : historicalSummary.tendencia === 'down' ? 'rgba(255, 77, 77, 0.15)' : 'rgba(255,255,255,0.05)',
+                color: historicalSummary.tendencia === 'up' ? '#00ff66' : historicalSummary.tendencia === 'down' ? '#ff4d4d' : 'var(--text-primary)',
+                fontWeight: 900,
+                fontSize: '0.8rem'
+              }}>
+                {historicalSummary.tendencia === 'up' ? '↗ ' : historicalSummary.tendencia === 'down' ? '↘ ' : '→ '}
+                {Math.abs(historicalSummary.diferenciaMinutos)} min
               </div>
-            )
-          })}
-        </div>
-      </div>
+              <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                {historicalSummary.tendencia === 'up' ? 'Vas mejor que la semana pasada.' : 
+                 historicalSummary.tendencia === 'down' ? 'Tu planificación bajó esta semana.' : 
+                 'Mantienes el mismo ritmo.'}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
+
     </div>
   );
 };

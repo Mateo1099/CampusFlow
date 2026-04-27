@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
+import { useAnalytics } from '../hooks/useAnalytics';
 import { startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight } from 'lucide-react';
+import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight, BrainCircuit, Clock3, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const parseLocalDeadline = (dateStr) => {
@@ -29,6 +30,44 @@ const Dashboard = () => {
   const [currentFilter, setCurrentFilter] = useState('TODAS');
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
+
+  // Analítica PRO -> Dashboard Integration
+  const {
+    totalTasks,
+    completedTasks,
+    totalHabits,
+    completedHabits,
+    totalMinutes,
+    completedBlocks,
+    pendingBlocks,
+    minutesByTime,
+    loading: analyticsLoading
+  } = useAnalytics();
+
+  const formatMinutes = (value) => {
+    const min = Number(value);
+    if (!Number.isFinite(min) || min <= 0) return '0 min';
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  };
+
+  const getSmartInsight = () => {
+    const hasBlocks = (completedBlocks + pendingBlocks) > 0;
+    if (!hasBlocks && totalMinutes === 0) return 'Aún no hay planificación suficiente.';
+    if (pendingBlocks > completedBlocks) return 'Tienes bloques pendientes esta semana.';
+    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga está en la mañana.';
+    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga está en la noche.';
+    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga está en la tarde.';
+    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecución esta semana.';
+    return 'Tu semana tiene una planificación estable.';
+  };
+
+  const totalActionsForCompliance = totalTasks + completedBlocks + pendingBlocks + totalHabits;
+  const completedActionsForCompliance = completedTasks + completedBlocks + completedHabits;
+  const generalCompliance = totalActionsForCompliance > 0 ? Math.round((completedActionsForCompliance / totalActionsForCompliance) * 100) : null;
+  const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
 
   const playClick = (freq = 800) => {
     try {
@@ -174,7 +213,7 @@ const Dashboard = () => {
 
 
 
-      <header className="page-header" style={{ marginBottom: '40px' }}>
+      <header className="page-header" style={{ marginBottom: '24px' }}>
         <h1 className="page-title" style={{
           fontSize: '4rem',
           margin: 0,
@@ -188,6 +227,51 @@ const Dashboard = () => {
           Bienvenido a CampusFlow
         </h1>
       </header>
+
+      {/* SMART SUMMARY (ANALÍTICA PRO) */}
+      <div className="glass-panel animate-stagger" style={{ 
+        padding: '20px 28px', 
+        marginBottom: '32px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '16px', 
+        background: 'linear-gradient(90deg, rgba(0, 243, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+        border: '1px solid rgba(0, 243, 255, 0.15)',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <BrainCircuit size={18} color="var(--accent-primary)" />
+          <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900, margin: 0 }}>
+            Resumen Inteligente
+          </h2>
+        </div>
+        
+        {isAnalyticsEmpty ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Aún no hay datos suficientes para analizar tu semana.</p>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+            <p style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600, flex: 1, minWidth: '200px', fontStyle: 'italic' }}>
+              "{getSmartInsight()}"
+            </p>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '8px', borderRadius: '8px' }}><Clock3 size={18} color="var(--text-primary)" /></div>
+                <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Tiempo Planeado</p><p style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text-primary)' }}>{formatMinutes(totalMinutes)}</p></div>
+              </div>
+              <div style={{ height: '36px', width: '1px', background: 'var(--border-glass-top)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '8px', borderRadius: '8px' }}><Zap size={18} color="var(--accent-secondary)" /></div>
+                <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Bloques Pts</p><p style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--accent-secondary)' }}>{pendingBlocks}</p></div>
+              </div>
+              <div style={{ height: '36px', width: '1px', background: 'var(--border-glass-top)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '8px', borderRadius: '8px' }}><Sparkles size={18} color="var(--accent-primary)" /></div>
+                <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Cumplimiento</p><p style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--accent-primary)' }}>{generalCompliance !== null ? `${generalCompliance}%` : 'N/A'}</p></div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
         {/* FILTROS NEON-PILLS */}
