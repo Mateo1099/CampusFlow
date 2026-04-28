@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { usePlanners } from '../hooks/usePlanners';
@@ -6,6 +6,9 @@ import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft,
 import { useCourses } from '../hooks/useCourses';
 import { useTasksContext } from '../context/TaskContext';
 import ColorPicker from '../components/ui/ColorPicker';
+import WeeklyPlannerSkeleton from '../components/ui/WeeklyPlannerSkeleton';
+import { motion, AnimatePresence } from 'framer-motion';
+import { prefetchAnalyticsData } from '../lib/prefetchAnalyticsData';
 
 const DAY_OPTIONS = [
   { value: 'monday', label: 'Lunes' },
@@ -237,7 +240,21 @@ function CustomSelect({ value, onChange, options, placeholder, accentColor = 'va
 }
 
 // --- MAIN ENTRANCE ---
-export default function WeeklyPlanner() {
+function WeeklyPlanner() {
+  const plannerMountTsRef = React.useRef(performance.now());
+  const plannerFetchStartTsRef = React.useRef(null);
+  const plannerRealContentLoggedRef = React.useRef(false);
+
+  const perfLog = React.useCallback((event, payload = {}) => {
+    const ts = performance.now();
+    const entry = { event, ts, route: '/planner', ...payload };
+    if (typeof window !== 'undefined') {
+      window.__CF_PERF_LOGS = window.__CF_PERF_LOGS || [];
+      window.__CF_PERF_LOGS.push(entry);
+    }
+    console.log('[PERF]', entry);
+  }, []);
+
   const { user } = useAuth();
   const { settings } = useSettings();
   const { planners, loading, addPlanner, addBlock, updateBlock, deleteBlock } = usePlanners(user?.id);
@@ -254,15 +271,71 @@ export default function WeeklyPlanner() {
   const [blockDayTarget, setBlockDayTarget] = useState(null);
   const [blockTimeTarget, setBlockTimeTarget] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
+  const prefetchGuardRef = useRef({ key: '', ts: 0 });
+
+  useEffect(() => {
+    perfLog('weeklyplanner_mount', {
+      sinceNavStartMs: window.__CF_NAV_START?.to === '/planner'
+        ? Number((performance.now() - window.__CF_NAV_START.ts).toFixed(2))
+        : null
+    });
+  }, [perfLog]);
+
+  useEffect(() => {
+    if (loading && plannerFetchStartTsRef.current === null) {
+      plannerFetchStartTsRef.current = performance.now();
+      perfLog('weeklyplanner_data_fetch_start');
+    }
+
+    if (!loading && plannerFetchStartTsRef.current !== null) {
+      perfLog('weeklyplanner_data_fetch_end', {
+        durationMs: Number((performance.now() - plannerFetchStartTsRef.current).toFixed(2)),
+        plannersCount: Array.isArray(planners) ? planners.length : 0
+      });
+      plannerFetchStartTsRef.current = null;
+    }
+  }, [loading, planners, perfLog]);
+
+  useEffect(() => {
+    const skeletonVisible = loading && !planners.length;
+    if (!skeletonVisible && !plannerRealContentLoggedRef.current) {
+      plannerRealContentLoggedRef.current = true;
+      perfLog('weeklyplanner_real_content_visible', {
+        sinceMountMs: Number((performance.now() - plannerMountTsRef.current).toFixed(2)),
+        sinceNavStartMs: window.__CF_NAV_START?.to === '/planner'
+          ? Number((performance.now() - window.__CF_NAV_START.ts).toFixed(2))
+          : null
+      });
+    }
+  }, [loading, planners.length, perfLog]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const now = Date.now();
+    const key = `weekly-planner:${user.id}`;
+    if (prefetchGuardRef.current.key === key && (now - prefetchGuardRef.current.ts) < 5000) {
+      return undefined;
+    }
+    prefetchGuardRef.current = { key, ts: now };
+
+    const prefetch = () => {
+      prefetchAnalyticsData(user.id).catch(() => null);
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(prefetch, { timeout: 1200 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(prefetch, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [user?.id]);
 
   const activePlanner = useMemo(() => planners.find(p => p.id === activePlannerId), [planners, activePlannerId]);
 
   if (loading && !planners.length) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-        <div className="animate-pulse">Cargando planificador...</div>
-      </div>
-    );
+    return <WeeklyPlannerSkeleton />;
   }
 
   return (
@@ -333,6 +406,8 @@ export default function WeeklyPlanner() {
   );
 }
 
+export default WeeklyPlanner;
+
 // --- VIEWS ---
 
 function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner, onNewPlanner }) {
@@ -399,7 +474,7 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
       </header>
 
       <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
-        {Object.keys(filterColors).map(f => {
+        {Object.keys(filterColors).map((f, index) => {
           const getNeonColor = (filterName) => {
             switch(filterName) {
               case 'Todas': return '#00f3ff';
@@ -413,9 +488,14 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
           const isActive = filter === f;
 
           return (
-            <button
+            <motion.button
               key={f}
               onClick={() => setFilter(f)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.3, ease: 'easeOut' }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.97 }}
               style={{
                 padding: '10px 24px',
                 borderRadius: '50px',
@@ -436,15 +516,21 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
                 letterSpacing: '1px'
               }}
             >
-              <div style={{ 
-                width: '6px', 
-                height: '6px', 
-                borderRadius: '50%', 
-                background: isActive ? neonColor : (isLightMode ? 'rgba(30,41,59,0.35)' : 'rgba(255,255,255,0.2)'),
-                boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
-              }} />
+              <motion.div 
+                animate={{ 
+                  scale: isActive ? 1.3 : 1,
+                  boxShadow: isActive ? `0 0 16px ${neonColor}` : `0 0 0px ${neonColor}00`
+                }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                style={{ 
+                  width: '6px', 
+                  height: '6px', 
+                  borderRadius: '50%', 
+                  background: isActive ? neonColor : (isLightMode ? 'rgba(30,41,59,0.35)' : 'rgba(255,255,255,0.2)'),
+                }}
+              />
               {f}
-            </button>
+            </motion.button>
           )
         })}
       </div>
@@ -519,38 +605,63 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
-          {filteredPlanners.map(planner => {
-             const blocks = planner.planner_blocks || [];
-             const completed = blocks.filter(b => b.status === 'completado').length;
-             const progress = blocks.length ? Math.round((completed / blocks.length) * 100) : 0;
-             const catColor = filterColors[planner.category] || 'var(--accent-primary)';
-             const accentColor = planner.color || CATEGORY_COLORS[planner.category] || catColor;
+        <motion.div 
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.05,
+                delayChildren: 0.1
+              }
+            }
+          }}
+        >
+          <AnimatePresence mode="popLayout">
+            {filteredPlanners.map((planner, index) => {
+              const blocks = planner.planner_blocks || [];
+              const completed = blocks.filter(b => b.status === 'completado').length;
+              const progress = blocks.length ? Math.round((completed / blocks.length) * 100) : 0;
+              const catColor = filterColors[planner.category] || 'var(--accent-primary)';
+              const accentColor = planner.color || CATEGORY_COLORS[planner.category] || catColor;
 
-             return (
-               <div
-                 key={planner.id}
-                 className="hover-lift click-press"
-                 onClick={() => onOpenPlanner(planner.id)}
-                 style={{
-                   cursor: 'pointer',
-                   padding: '26px',
-                   display: 'flex',
-                   flexDirection: 'column',
-                   gap: '18px',
-                   position: 'relative',
-                   overflow: 'hidden',
-                   minHeight: '240px',
-                   borderRadius: '30px',
-                   background: isLightMode
-                     ? `linear-gradient(155deg, rgba(255,255,255,0.95) 0%, rgba(243,248,255,0.98) 58%, ${accentColor}1f 100%)`
-                     : `linear-gradient(155deg, rgba(10, 14, 24, 0.96) 0%, rgba(20, 24, 38, 0.88) 52%, ${accentColor}14 100%)`,
-                   border: isLightMode ? `1px solid ${accentColor}55` : `1px solid ${accentColor}38`,
-                   boxShadow: isLightMode
-                     ? `0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.92), inset 0 0 0 1px ${accentColor}22`
-                     : `0 28px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px ${accentColor}10`
-                 }}
-               >
+              return (
+                <motion.div
+                  key={planner.id}
+                  className="hover-lift click-press"
+                  onClick={() => onOpenPlanner(planner.id)}
+                  layout
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ 
+                    duration: 0.4, 
+                    ease: 'easeOut',
+                    layout: { duration: 0.3 }
+                  }}
+                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '26px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '18px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    minHeight: '240px',
+                    borderRadius: '30px',
+                    background: isLightMode
+                      ? `linear-gradient(155deg, rgba(255,255,255,0.95) 0%, rgba(243,248,255,0.98) 58%, ${accentColor}1f 100%)`
+                      : `linear-gradient(155deg, rgba(10, 14, 24, 0.96) 0%, rgba(20, 24, 38, 0.88) 52%, ${accentColor}14 100%)`,
+                    border: isLightMode ? `1px solid ${accentColor}55` : `1px solid ${accentColor}38`,
+                    boxShadow: isLightMode
+                      ? `0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.92), inset 0 0 0 1px ${accentColor}22`
+                      : `0 28px 50px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px ${accentColor}10`
+                  }}
+                >
                  <div style={{
                    position: 'absolute',
                    inset: 0,
@@ -606,10 +717,11 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
                      <span>{Math.max(blocks.length - completed, 0)} pendientes</span>
                    </div>
                  </div>
-               </div>
-             );
-          })}
-        </div>
+                </motion.div>
+              );
+           })}
+          </AnimatePresence>
+        </motion.div>
       )}
     </>
   );
@@ -633,8 +745,9 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
   const busiestDay = Object.keys(dayCounts).length > 0 ? Object.keys(dayCounts).reduce((a, b) => dayCounts[a] > dayCounts[b] ? a : b) : null;
   const busiestDayCount = busiestDay ? dayCounts[busiestDay] : 0;
   
-  // Duración total estimada
-  const totalDuration = blocks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0);
+  // Duración total estimada - FIX: Only count valid, non-zero duration_minutes from current planner blocks
+  const blocksUsedForDuration = blocks.filter(b => b && typeof b.duration_minutes === 'number' && b.duration_minutes > 0);
+  const totalDuration = blocksUsedForDuration.reduce((sum, b) => sum + b.duration_minutes, 0);
   
   // Alertas inteligentes
   const alerts = [];
@@ -733,7 +846,12 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
           <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
             <Clock size={20} color="var(--accent-success)" style={{ margin: '0 auto' }} />
             <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Duración Total</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{Math.round(totalDuration / 60)}h {totalDuration % 60}m</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>
+              {Math.floor(totalDuration / 60) > 0 
+                ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
+                : `${totalDuration}m`
+              }
+            </div>
           </div>
         )}
       </div>
@@ -1200,7 +1318,7 @@ function PlannerModal({ onClose, onSave }) {
                 background: 'radial-gradient(circle, rgba(0, 243, 255, 0.5) 0%, rgba(0, 243, 255, 0) 70%)',
                 opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
               }} />
-              <span style={{ position: 'relative', zIndex: 1 }}>{mode === 'edit' ? 'GUARDAR CAMBIOS' : 'GUARDAR'}</span>
+              <span style={{ position: 'relative', zIndex: 1 }}>GUARDAR</span>
             </button>
           </div>
         </form>

@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
+import { useAuth } from '../context/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { prefetchAnalyticsData } from '../lib/prefetchAnalyticsData';
 import { startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight, BrainCircuit, Clock3, Sparkles } from 'lucide-react';
@@ -24,12 +26,37 @@ const calculateRemainingDays = (deadlineDate) => {
 };
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const { tasks, courses, tasksLoading, coursesLoading } = useTasksContext();
   const { t, settings } = useSettings();
   const navigate = useNavigate();
   const [currentFilter, setCurrentFilter] = useState('TODAS');
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
+  const prefetchGuardRef = useRef({ key: '', ts: 0 });
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const now = Date.now();
+    const key = `dashboard:${user.id}`;
+    if (prefetchGuardRef.current.key === key && (now - prefetchGuardRef.current.ts) < 5000) {
+      return undefined;
+    }
+    prefetchGuardRef.current = { key, ts: now };
+
+    const prefetch = () => {
+      prefetchAnalyticsData(user.id).catch(() => null);
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(prefetch, { timeout: 1500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(prefetch, 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [user?.id]);
 
   // Analítica PRO -> Dashboard Integration
   const {
@@ -52,6 +79,15 @@ const Dashboard = () => {
     const m = min % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   };
+
+  // Calculate pending tasks
+  const pendingTasks = Math.max(totalTasks - completedTasks, 0);
+
+  // Calculate completion rate
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Determine if analytics is empty for new dashboard section
+  const isAnalyticsDashboardEmpty = analyticsLoading || (totalTasks === 0 && totalMinutes === 0 && totalHabits === 0);
 
   const getSmartInsight = () => {
     const hasBlocks = (completedBlocks + pendingBlocks) > 0;
@@ -272,6 +308,210 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* PREMIUM ANALYTICS DASHBOARD */}
+      {!isAnalyticsDashboardEmpty && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          style={{ marginBottom: '40px' }}
+        >
+          {/* Metric Cards Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+            {/* Card: Total Tasks */}
+            <motion.div 
+              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0, 243, 255, 0.2)' }}
+              style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
+                border: '1px solid rgba(0, 243, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(0, 243, 255, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(0, 243, 255, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Total de trabajos</p>
+                  <motion.h3 
+                    key={totalTasks}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: '#00f3ff', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(0, 243, 255, 0.5)' }}
+                  >
+                    {totalTasks}
+                  </motion.h3>
+                </div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Target size={24} color="#00f3ff" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card: Completed Tasks */}
+            <motion.div 
+              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0, 255, 136, 0.2)' }}
+              style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
+                border: '1px solid rgba(0, 255, 136, 0.2)',
+                backdropFilter: 'blur(10px)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(0, 255, 136, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Completados</p>
+                  <motion.h3 
+                    key={completedTasks}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: '#00ff88', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(0, 255, 136, 0.5)' }}
+                  >
+                    {completedTasks}
+                  </motion.h3>
+                </div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(0, 255, 136, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={24} color="#00ff88" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card: Pending Tasks */}
+            <motion.div 
+              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(255, 200, 0, 0.2)' }}
+              style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(255, 200, 0, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
+                border: '1px solid rgba(255, 200, 0, 0.2)',
+                backdropFilter: 'blur(10px)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(255, 200, 0, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255, 200, 0, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Pendientes</p>
+                  <motion.h3 
+                    key={pendingTasks}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: '#ffc800', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(255, 200, 0, 0.5)' }}
+                  >
+                    {pendingTasks}
+                  </motion.h3>
+                </div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 200, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertCircle size={24} color="#ffc800" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Card: Total Minutes */}
+            <motion.div 
+              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(188, 19, 254, 0.2)' }}
+              style={{
+                padding: '24px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.08) 0%, rgba(0, 243, 255, 0.04) 100%)',
+                border: '1px solid rgba(188, 19, 254, 0.2)',
+                backdropFilter: 'blur(10px)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(188, 19, 254, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(188, 19, 254, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Minutos totales</p>
+                  <motion.h3 
+                    key={totalMinutes}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ fontSize: '2.8rem', fontWeight: 900, margin: '0', color: '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(188, 19, 254, 0.5)' }}
+                  >
+                    {Math.floor(totalMinutes)}
+                  </motion.h3>
+                </div>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock3 size={24} color="#bc13fe" />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Completion Rate Progress Bar */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            style={{
+              padding: '20px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.05) 0%, rgba(188, 19, 254, 0.05) 100%)',
+              border: '1px solid rgba(0, 243, 255, 0.15)',
+              backdropFilter: 'blur(10px)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
+                Cumplimiento
+              </p>
+              <motion.span 
+                key={completionRate}
+                initial={{ scale: 1.3, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00f3ff', textShadow: '0 0 15px rgba(0, 243, 255, 0.5)' }}
+              >
+                {completionRate}%
+              </motion.span>
+            </div>
+            {/* Progress Bar Background */}
+            <div style={{ width: '100%', height: '12px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(0, 243, 255, 0.1)', overflow: 'hidden', position: 'relative' }}>
+              {/* Progress Bar Fill */}
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${completionRate}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                style={{
+                  height: '100%',
+                  borderRadius: '10px',
+                  background: `linear-gradient(90deg, #00f3ff 0%, #bc13fe 50%, #00ff88 100%)`,
+                  boxShadow: '0 0 15px rgba(0, 243, 255, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.2)',
+                  position: 'relative'
+                }}
+              />
+            </div>
+            {/* Subtitle */}
+            <p style={{ margin: '12px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              {completedTasks} de {totalTasks} trabajos completados
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
         {/* FILTROS NEON-PILLS */}

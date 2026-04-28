@@ -34,6 +34,49 @@ const validateStatus = (value) => {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const plannerQueryTracker = new Map();
+const plannerDataCache = new Map();
+const plannerInFlight = new Map();
+const PLANNER_CACHE_TTL_MS = 5000;
+
+const perfLog = (event, payload = {}) => {
+  const ts = performance.now();
+  const entry = { event, ts, source: 'plannerService', ...payload };
+  if (typeof window !== 'undefined') {
+    window.__CF_PERF_LOGS = window.__CF_PERF_LOGS || [];
+    window.__CF_PERF_LOGS.push(entry);
+    window.__CF_QUERY_COUNT = (window.__CF_QUERY_COUNT || 0) + (event.includes('query_start') ? 1 : 0);
+  }
+  console.log('[PERF]', entry);
+};
+
+const getPlannerCacheKey = (userId) => `plannerService.getPlanners:${userId}`;
+
+const getCachedPlanners = (cacheKey) => {
+  const cached = plannerDataCache.get(cacheKey);
+  if (!cached) return null;
+
+  if (Date.now() - cached.timestamp > PLANNER_CACHE_TTL_MS) {
+    plannerDataCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.data;
+};
+
+const setCachedPlanners = (cacheKey, data) => {
+  plannerDataCache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+};
+
+const invalidatePlannerCache = (userId) => {
+  if (!userId) return;
+  const cacheKey = getPlannerCacheKey(userId);
+  plannerDataCache.delete(cacheKey);
+  plannerInFlight.delete(cacheKey);
+};
 
 export const plannerService = {
   async getAuthenticatedUserId(fallbackUserId) {
@@ -60,20 +103,71 @@ export const plannerService = {
   async getPlanners(fallbackUserId) {
     try {
       const userId = await this.getAuthenticatedUserId(fallbackUserId);
+      const queryKey = getPlannerCacheKey(userId);
+      const now = performance.now();
+      const lastTs = plannerQueryTracker.get(queryKey);
 
-      const { data, error } = await supabase
-        .from('planners')
-        .select('*, planner_blocks(*)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .order('created_at', { foreignTable: 'planner_blocks', ascending: true });
-
-      if (error) {
-        console.error('plannerService.getPlanners: error consultando planners', error);
-        throw error;
+      const cachedData = getCachedPlanners(queryKey);
+      if (cachedData) {
+        perfLog('planner_query_cache_hit', {
+          queryKey,
+          userId,
+          rows: Array.isArray(cachedData) ? cachedData.length : 0
+        });
+        return cachedData;
       }
 
-      return data || [];
+      const inFlightRequest = plannerInFlight.get(queryKey);
+      if (inFlightRequest) {
+        perfLog('planner_query_inflight_reuse', { queryKey, userId });
+        return inFlightRequest;
+      }
+
+      perfLog('planner_query_start', { queryKey, userId });
+      if (typeof lastTs === 'number' && now - lastTs < 1200) {
+        perfLog('planner_query_duplicate_detected', {
+          queryKey,
+          userId,
+          deltaMs: Number((now - lastTs).toFixed(2))
+        });
+      }
+      plannerQueryTracker.set(queryKey, now);
+
+      const queryPromise = (async () => {
+        const queryStart = performance.now();
+
+        const { data, error } = await supabase
+          .from('planners')
+          .select('*, planner_blocks(*)')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .order('created_at', { foreignTable: 'planner_blocks', ascending: true });
+
+        perfLog('planner_query_end', {
+          queryKey,
+          userId,
+          durationMs: Number((performance.now() - queryStart).toFixed(2)),
+          rows: Array.isArray(data) ? data.length : 0,
+          hasError: Boolean(error)
+        });
+
+        if (error) {
+          console.error('plannerService.getPlanners: error consultando planners', error);
+          throw error;
+        }
+
+        const plannersData = data || [];
+        setCachedPlanners(queryKey, plannersData);
+        return plannersData;
+      })();
+
+      plannerInFlight.set(queryKey, queryPromise);
+
+      try {
+        return await queryPromise;
+      } finally {
+        plannerInFlight.delete(queryKey);
+      }
     } catch (error) {
       console.error('plannerService.getPlanners: error inesperado', error);
       throw error;
@@ -106,6 +200,8 @@ export const plannerService = {
         throw error;
       }
 
+      invalidatePlannerCache(userId);
+
       return data;
     } catch (error) {
       console.error('plannerService.createPlanner: error inesperado', error);
@@ -131,6 +227,8 @@ export const plannerService = {
         throw error;
       }
 
+      invalidatePlannerCache(userId);
+
       return data;
     } catch (error) {
       console.error('plannerService.updatePlanner: error inesperado', error);
@@ -153,6 +251,8 @@ export const plannerService = {
         console.error('plannerService.deletePlanner: error eliminando planner', error);
         throw error;
       }
+
+      invalidatePlannerCache(userId);
 
       return true;
     } catch (error) {
@@ -244,6 +344,8 @@ export const plannerService = {
         throw error;
       }
 
+      invalidatePlannerCache(userId);
+
       return data;
     } catch (error) {
       console.error(error.message, error.details, error.hint, error.code);
@@ -290,6 +392,8 @@ export const plannerService = {
         throw error;
       }
 
+      invalidatePlannerCache(userId);
+
       return data;
     } catch (error) {
       console.error('plannerService.updatePlannerBlock: error inesperado', error);
@@ -312,6 +416,8 @@ export const plannerService = {
         console.error('plannerService.deletePlannerBlock: error eliminando bloque', error);
         throw error;
       }
+
+      invalidatePlannerCache(userId);
 
       return true;
     } catch (error) {

@@ -4,11 +4,13 @@ import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, Pie
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useTasksContext } from '../../context/TaskContext';
+import { prefetchWeeklyPlannerData } from '../../lib/prefetchWeeklyPlannerData';
+import { prefetchAnalyticsData } from '../../lib/prefetchAnalyticsData';
 
 const Sidebar = () => {
   const { t, settings } = useSettings();
   const { analytics } = useTasksContext();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
@@ -251,12 +253,31 @@ const Sidebar = () => {
           const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '');
           const isTriggering = triggerAnimation.key === item.path;
           
+          // Prefetch data on hover for heavy pages
+          const handleMouseEnter = () => {
+            if (!user?.id) return;
+            
+            if (item.path === '/planner') {
+              console.log('[SIDEBAR] Prefetching WeeklyPlanner data on hover');
+              prefetchWeeklyPlannerData(user.id).catch(err => {
+                console.error('[SIDEBAR] Error prefetching planner data:', err);
+              });
+            } else if (item.path === '/stats') {
+              console.log('[SIDEBAR] Prefetching Analytics data on hover');
+              prefetchAnalyticsData(user.id).catch(err => {
+                console.error('[SIDEBAR] Error prefetching analytics data:', err);
+              });
+            }
+          };
+          
           return (
             <NavLink
               key={item.path}
               to={item.path}
               end={item.path === '/'}
               className={isActive ? 'active' : ''}
+              onMouseEnter={handleMouseEnter}
+              onFocus={handleMouseEnter}
               style={{
                 position: 'relative',
                 padding: isHorizontal ? '10px 16px' : '14px 18px',

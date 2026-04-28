@@ -52,7 +52,57 @@ const MetricCard = ({ icon: Icon, title, value, helper, accent = 'var(--accent-p
   </article>
 );
 
-const Stats = () => {
+const SectionSkeletonBlock = ({ height = 16, width = '100%', borderRadius = 10 }) => (
+  <div
+    style={{
+      height,
+      width,
+      borderRadius,
+      background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))',
+      border: '1px solid rgba(255,255,255,0.07)',
+      animation: 'pulse 1.8s ease-in-out infinite'
+    }}
+  />
+);
+
+const MetricCardSkeleton = () => (
+  <article
+    className="glass-panel"
+    style={{
+      padding: '20px 22px',
+      minHeight: '146px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      background: 'linear-gradient(155deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03))',
+      border: '1px solid var(--border-glass-top)'
+    }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+      <SectionSkeletonBlock width={100} height={12} borderRadius={6} />
+      <SectionSkeletonBlock width={18} height={18} borderRadius={6} />
+    </div>
+    <div style={{ display: 'grid', gap: '8px' }}>
+      <SectionSkeletonBlock width={84} height={30} borderRadius={8} />
+      <SectionSkeletonBlock width={140} height={12} borderRadius={6} />
+    </div>
+  </article>
+);
+
+const Stats = React.memo(() => {
+  const statsMountTsRef = React.useRef(performance.now());
+  const statsRealContentLoggedRef = React.useRef(false);
+
+  const perfLog = React.useCallback((event, payload = {}) => {
+    const ts = performance.now();
+    const entry = { event, ts, route: '/stats', ...payload };
+    if (typeof window !== 'undefined') {
+      window.__CF_PERF_LOGS = window.__CF_PERF_LOGS || [];
+      window.__CF_PERF_LOGS.push(entry);
+    }
+    console.log('[PERF]', entry);
+  }, []);
+
   const {
     totalTasks,
     completedTasks,
@@ -66,16 +116,31 @@ const Stats = () => {
     minutesByTime,
     historicalSummary,
     insights,
+    recommendations,
     loading
   } = useAnalytics();
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-        <div className="animate-pulse">Analizando métricas en tiempo real...</div>
-      </div>
-    );
-  }
+  const showPageSkeleton = loading;
+
+  React.useEffect(() => {
+    perfLog('stats_mount', {
+      sinceNavStartMs: window.__CF_NAV_START?.to === '/stats'
+        ? Number((performance.now() - window.__CF_NAV_START.ts).toFixed(2))
+        : null
+    });
+  }, [perfLog]);
+
+  React.useEffect(() => {
+    if (!showPageSkeleton && !statsRealContentLoggedRef.current) {
+      statsRealContentLoggedRef.current = true;
+      perfLog('stats_real_content_visible', {
+        sinceMountMs: Number((performance.now() - statsMountTsRef.current).toFixed(2)),
+        sinceNavStartMs: window.__CF_NAV_START?.to === '/stats'
+          ? Number((performance.now() - window.__CF_NAV_START.ts).toFixed(2))
+          : null
+      });
+    }
+  }, [showPageSkeleton, perfLog]);
 
   const safeMinutesByDay = Array.isArray(minutesByDay) ? minutesByDay : [0, 0, 0, 0, 0, 0, 0];
   const morningMinutes = minutesByTime?.morning || 0;
@@ -102,11 +167,6 @@ const Stats = () => {
     { key: 'night', label: 'Noche', value: nightMinutes, icon: Moon, color: 'var(--accent-primary)' }
   ];
 
-  const topDistribution = dayDistribution.reduce((top, current) => {
-    if (!top || current.value > top.value) return current;
-    return top;
-  }, null);
-
   return (
     <div className="animate-fade-in" style={{ padding: '32px 40px', height: '100%', overflowY: 'auto' }}>
       <header className="page-header" style={{ marginBottom: '40px' }}>
@@ -114,46 +174,52 @@ const Stats = () => {
       </header>
 
       <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <MetricCard
-          icon={BarChart3}
-          title="Total de trabajos"
-          value={hasTasks ? totalTasks : 'Sin datos'}
-          helper={hasTasks ? `${pendingTasks} pendientes` : 'Aun no hay trabajos cargados'}
-          accent="var(--accent-secondary)"
-          empty={!hasTasks}
-        />
-        <MetricCard
-          icon={CheckCircle2}
-          title="Trabajos completados"
-          value={hasTasks ? completedTasks : 'Sin datos'}
-          helper={hasTasks ? `${Math.round((completedTasks / totalTasks) * 100)}% de cumplimiento` : 'Sin historial de entregas'}
-          accent="var(--accent-lime)"
-          empty={!hasTasks}
-        />
-        <MetricCard
-          icon={Sparkles}
-          title="Bloques completados"
-          value={hasBlocks ? completedBlocks : 'Sin datos'}
-          helper={hasBlocks ? `${pendingBlocks} pendientes por ejecutar` : 'Aun no se registran bloques'}
-          accent="var(--accent-primary)"
-          empty={!hasBlocks}
-        />
-        <MetricCard
-          icon={Clock3}
-          title="Tiempo planeado total"
-          value={hasBlocks && totalMinutes > 0 ? formatMinutes(totalMinutes) : 'Sin datos'}
-          helper={hasBlocks && totalMinutes > 0 ? `${totalMinutes} minutos acumulados` : 'Planifica bloques para ver tendencia'}
-          accent="var(--accent-secondary)"
-          empty={!hasBlocks || totalMinutes <= 0}
-        />
-        <MetricCard
-          icon={AlertCircle}
-          title="Cumplimiento general"
-          value={overallCompliance !== null ? `${overallCompliance}%` : 'Sin datos'}
-          helper={overallCompliance !== null ? `${completionNumerator} de ${completionDenominator} objetivos ejecutados` : 'Sin registros suficientes aun'}
-          accent="var(--accent-lime)"
-          empty={overallCompliance === null}
-        />
+        {showPageSkeleton ? (
+          Array.from({ length: 5 }).map((_, index) => <MetricCardSkeleton key={`metric-skeleton-${index}`} />)
+        ) : (
+          <>
+            <MetricCard
+              icon={BarChart3}
+              title="Total de trabajos"
+              value={hasTasks ? totalTasks : 'Sin datos'}
+              helper={hasTasks ? `${pendingTasks} pendientes` : 'Aun no hay trabajos cargados'}
+              accent="var(--accent-secondary)"
+              empty={!hasTasks}
+            />
+            <MetricCard
+              icon={CheckCircle2}
+              title="Trabajos completados"
+              value={hasTasks ? completedTasks : 'Sin datos'}
+              helper={hasTasks ? `${Math.round((completedTasks / totalTasks) * 100)}% de cumplimiento` : 'Sin historial de entregas'}
+              accent="var(--accent-lime)"
+              empty={!hasTasks}
+            />
+            <MetricCard
+              icon={Sparkles}
+              title="Bloques completados"
+              value={hasBlocks ? completedBlocks : 'Sin datos'}
+              helper={hasBlocks ? `${pendingBlocks} pendientes por ejecutar` : 'Aun no se registran bloques'}
+              accent="var(--accent-primary)"
+              empty={!hasBlocks}
+            />
+            <MetricCard
+              icon={Clock3}
+              title="Tiempo planeado total"
+              value={hasBlocks && totalMinutes > 0 ? formatMinutes(totalMinutes) : 'Sin datos'}
+              helper={hasBlocks && totalMinutes > 0 ? `${totalMinutes} minutos acumulados` : 'Planifica bloques para ver tendencia'}
+              accent="var(--accent-secondary)"
+              empty={!hasBlocks || totalMinutes <= 0}
+            />
+            <MetricCard
+              icon={AlertCircle}
+              title="Cumplimiento general"
+              value={overallCompliance !== null ? `${overallCompliance}%` : 'Sin datos'}
+              helper={overallCompliance !== null ? `${completionNumerator} de ${completionDenominator} objetivos ejecutados` : 'Sin registros suficientes aun'}
+              accent="var(--accent-lime)"
+              empty={overallCompliance === null}
+            />
+          </>
+        )}
       </div>
 
       <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '20px' }}>
@@ -166,7 +232,16 @@ const Stats = () => {
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Semanal</span>
           </div>
 
-          {!hasWeeklyMinutes ? (
+          {showPageSkeleton ? (
+            <div style={{ minHeight: '240px', display: 'grid', gap: '12px', alignContent: 'end' }}>
+              <SectionSkeletonBlock height={12} width={180} borderRadius={6} />
+              <div style={{ height: '190px', display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '8px' }}>
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <SectionSkeletonBlock key={`day-chart-skeleton-${index}`} height="100%" borderRadius={10} />
+                ))}
+              </div>
+            </div>
+          ) : !hasWeeklyMinutes ? (
             <div
               style={{
                 minHeight: '240px',
@@ -233,7 +308,15 @@ const Stats = () => {
           <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Distribucion por momento</h3>
           <p style={{ margin: '8px 0 16px', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Manana, tarde y noche</p>
 
-          {!hasTimeDistribution ? (
+          {showPageSkeleton ? (
+            <div style={{ minHeight: '180px', display: 'grid', gap: '12px', alignContent: 'start' }}>
+              <SectionSkeletonBlock height={12} width={'60%'} borderRadius={6} />
+              <SectionSkeletonBlock height={12} width={'80%'} borderRadius={6} />
+              <SectionSkeletonBlock height={8} width={'100%'} borderRadius={999} />
+              <SectionSkeletonBlock height={8} width={'100%'} borderRadius={999} />
+              <SectionSkeletonBlock height={8} width={'100%'} borderRadius={999} />
+            </div>
+          ) : !hasTimeDistribution ? (
             <div
               style={{
                 minHeight: '180px',
@@ -275,9 +358,15 @@ const Stats = () => {
 
           <div style={{ marginTop: '20px', padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass-top)' }}>
             <p style={{ margin: 0, fontSize: '0.72rem', letterSpacing: '0.11em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Resumen planner</p>
-            <p style={{ margin: '8px 0 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-              {hasBlocks ? `${completedBlocks} completados · ${pendingBlocks} pendientes · ${formatMinutes(totalMinutes) || `${totalMinutes} min`}` : 'Aun no hay bloques planificados'}
-            </p>
+            {showPageSkeleton ? (
+              <div style={{ marginTop: '10px' }}>
+                <SectionSkeletonBlock height={12} width={'80%'} borderRadius={6} />
+              </div>
+            ) : (
+              <p style={{ margin: '8px 0 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                {hasBlocks ? `${completedBlocks} completados · ${pendingBlocks} pendientes · ${formatMinutes(totalMinutes) || `${totalMinutes} min`}` : 'Aun no hay bloques planificados'}
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -288,7 +377,25 @@ const Stats = () => {
           <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Insights de la semana</h3>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-          {insights && insights.length > 0 ? (
+          {showPageSkeleton ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`insight-skeleton-${index}`}
+                style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  background: 'linear-gradient(140deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+                  display: 'grid',
+                  gap: '10px'
+                }}
+              >
+                <SectionSkeletonBlock width={20} height={20} borderRadius={6} />
+                <SectionSkeletonBlock width={'95%'} height={11} borderRadius={6} />
+                <SectionSkeletonBlock width={'80%'} height={11} borderRadius={6} />
+              </div>
+            ))
+          ) : insights && insights.length > 0 ? (
             <AnimatePresence>
               {insights.slice(0, 3).map((insight, index) => {
                 const isWarning = insight.type === 'warning';
@@ -333,6 +440,112 @@ const Stats = () => {
         </div>
       </section>
 
+      <section className="glass-panel" style={{ marginTop: '22px', padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+          <Sparkles size={18} color="var(--accent-primary)" />
+          <h3 className="font-display" style={{ margin: 0, fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Recomendaciones PRO</h3>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+          {showPageSkeleton ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`recommendation-skeleton-${index}`}
+                style={{
+                  padding: '18px',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'linear-gradient(140deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01))',
+                  display: 'grid',
+                  gap: '10px'
+                }}
+              >
+                <SectionSkeletonBlock width={'70%'} height={13} borderRadius={6} />
+                <SectionSkeletonBlock width={'100%'} height={11} borderRadius={6} />
+                <SectionSkeletonBlock width={'100%'} height={11} borderRadius={6} />
+                <SectionSkeletonBlock width={'45%'} height={28} borderRadius={8} />
+              </div>
+            ))
+          ) : recommendations && recommendations.length > 0 ? (
+            <AnimatePresence>
+              {recommendations.slice(0, 3).map((rec, index) => {
+                const isHigh = rec.priority === 'high';
+                const isMedium = rec.priority === 'medium';
+                const isLow = rec.priority === 'low';
+
+                const priorityColor = isHigh ? '#ff6b6b' : isMedium ? '#ffcc00' : '#00ff66';
+                const priorityBg = isHigh ? 'rgba(255, 107, 107, 0.15)' : isMedium ? 'rgba(255, 204, 0, 0.15)' : 'rgba(0, 255, 102, 0.15)';
+                const priorityLabel = isHigh ? 'URGENTE' : isMedium ? 'MODERADA' : 'BAJA';
+
+                return (
+                  <motion.div
+                    key={rec.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                    style={{
+                      padding: '18px',
+                      borderRadius: '14px',
+                      border: `1px solid ${priorityColor}33`,
+                      background: `linear-gradient(140deg, ${priorityBg}, rgba(255,255,255,0.01))`,
+                      color: 'var(--text-primary)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {rec.title}
+                      </h4>
+                      <span
+                        style={{
+                          fontSize: '0.65rem',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          background: priorityBg,
+                          color: priorityColor,
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}
+                      >
+                        {priorityLabel}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {rec.description}
+                    </p>
+                    <div
+                      style={{
+                        marginTop: '4px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: `${priorityColor}15`,
+                        border: `1px solid ${priorityColor}33`,
+                        fontSize: '0.82rem',
+                        color: priorityColor,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {rec.actionLabel}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          ) : (
+            <div style={{ opacity: 0.6, fontSize: '0.9rem', color: 'var(--text-muted)', padding: '20px', textAlign: 'center', gridColumn: '1 / -1' }}>
+              No hay recomendaciones por ahora. Sigue registrando actividad.
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Tendencia semanal (Fase 5 Analítica Histórica) */}
       <section className="glass-panel" style={{ marginTop: '22px', padding: '24px', border: '1px outset var(--border-glass-top)', background: 'rgba(255, 255, 255, 0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -340,7 +553,13 @@ const Stats = () => {
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>vs Semana Anterior</span>
         </div>
 
-        {(!historicalSummary || historicalSummary.semanaAnterior.minutos === 0) ? (
+        {showPageSkeleton ? (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            <SectionSkeletonBlock width={160} height={14} borderRadius={7} />
+            <SectionSkeletonBlock width={'90%'} height={14} borderRadius={7} />
+            <SectionSkeletonBlock width={'50%'} height={28} borderRadius={14} />
+          </div>
+        ) : (!historicalSummary || historicalSummary.semanaAnterior.minutos === 0) ? (
           <div style={{ opacity: 0.6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
             Aún no hay suficiente historial para comparar.
           </div>
@@ -387,6 +606,8 @@ const Stats = () => {
 
     </div>
   );
-};
+});
+
+Stats.displayName = 'Stats';
 
 export default Stats;

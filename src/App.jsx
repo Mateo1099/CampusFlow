@@ -1,35 +1,30 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import Dashboard from './pages/Dashboard';
-import Agenda from './pages/Agenda';
-import TaskBoard from './pages/TaskBoard';
-import WeeklyPlanner from './pages/WeeklyPlanner';
-import Pomodoro from './pages/Pomodoro';
-import Profile from './pages/Profile';
-import Stats from './pages/Stats';
-import Login from './pages/Login';
-import MFAChallenge from './pages/MFAChallenge';
+import LoadingGlass from './components/ui/LoadingGlass';
+import AppTransitionWrapper from './components/ui/AppTransitionWrapper';
+import { usePrefetchRoutes } from './hooks/usePrefetchRoutes';
+
+// Lazy-loaded pages for code splitting
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const Agenda = React.lazy(() => import('./pages/Agenda'));
+const TaskBoard = React.lazy(() => import('./pages/TaskBoard'));
+const WeeklyPlanner = React.lazy(() => import('./pages/WeeklyPlanner'));
+const Pomodoro = React.lazy(() => import('./pages/Pomodoro'));
+const Profile = React.lazy(() => import('./pages/Profile'));
+const Stats = React.lazy(() => import('./pages/Stats'));
+const Login = React.lazy(() => import('./pages/Login'));
+const MFAChallenge = React.lazy(() => import('./pages/MFAChallenge'));
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { SettingsProvider, useSettings } from './context/SettingsContext';
-import { TaskProvider, useTasksContext } from './context/TaskContext';
+import { SettingsProvider } from './context/SettingsContext';
+import { TaskProvider } from './context/TaskContext';
 import { supabase } from './lib/supabaseClient';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, aal, mfaRequired, loading } = useAuth();
 
-  console.log('[ROUTE-PROTECTED] Check Protegido:', { isAuthenticated, aal, mfaRequired, loading, 'needsMFA': mfaRequired && aal !== 'aal2' });
-
-  // Si no está autenticado, ir a login
-  if (!isAuthenticated) {
-    console.log('[ROUTE-PROTECTED] Redirigiendo a /login - no autenticado');
-    return <Navigate to="/login" replace />;
-  }
-
-  // 💡 VERIFICACIÓN DIRECTA: Si MFA parece requerido pero no está en AAL2,
-  // verificar factores reales de Supabase antes de redirigir
-  // Esto evita redirects incorrectos cuando mfaRequired está stale
+  // ✅ HOOKS MUST BE CALLED AT THE TOP LEVEL, BEFORE ANY CONDITIONALS
   const [directCheck, setDirectCheck] = React.useState({ status: 'pending', hasTotp: null });
 
   React.useEffect(() => {
@@ -51,6 +46,15 @@ const ProtectedRoute = ({ children }) => {
       });
     }
   }, [mfaRequired, aal, loading]);
+
+  // ✅ NOW IT'S SAFE TO USE CONDITIONALS
+  console.log('[ROUTE-PROTECTED] Check Protegido:', { isAuthenticated, aal, mfaRequired, loading, 'needsMFA': mfaRequired && aal !== 'aal2' });
+
+  // Si no está autenticado, ir a login
+  if (!isAuthenticated) {
+    console.log('[ROUTE-PROTECTED] Redirigiendo a /login - no autenticado');
+    return <Navigate to="/login" replace />;
+  }
 
   // Si la verificación directa muestra que NO hay TOTP, permitir acceso
   if (mfaRequired && aal !== 'aal2' && !loading) {
@@ -139,10 +143,84 @@ const MFARoute = ({ children }) => {
 };
 
 function AppRoutes() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, isAuthenticated, user } = useAuth();
   const [loading, setLoading] = React.useState(authLoading);
+  const location = useLocation();
+
+  const perfLog = React.useCallback((event, payload = {}) => {
+    const ts = performance.now();
+    const entry = {
+      event,
+      ts,
+      ...payload
+    };
+
+    if (typeof window !== 'undefined') {
+      window.__CF_PERF_LOGS = window.__CF_PERF_LOGS || [];
+      window.__CF_PERF_LOGS.push(entry);
+    }
+
+    console.log('[PERF]', entry);
+  }, []);
 
   console.log('[APP-ROUTES]', { authLoading, componentLoading: loading });
+
+  // Enable intelligent prefetching of heavy routes after authentication
+  usePrefetchRoutes(isAuthenticated, user?.id);
+
+  React.useEffect(() => {
+    const onClickCapture = (event) => {
+      const element = event.target instanceof Element ? event.target.closest('a[href], [data-nav-target]') : null;
+      if (!element) return;
+
+      const rawHref = element.getAttribute('href') || element.getAttribute('data-nav-target');
+      if (!rawHref) return;
+
+      let targetPath = rawHref;
+      if (rawHref.startsWith('http')) {
+        try {
+          targetPath = new URL(rawHref).pathname;
+        } catch {
+          return;
+        }
+      }
+
+      if (!targetPath.startsWith('/')) return;
+
+      if (!['/tasks', '/planner', '/stats'].includes(targetPath)) return;
+
+      const navStart = {
+        from: location.pathname,
+        to: targetPath,
+        ts: performance.now()
+      };
+
+      window.__CF_NAV_START = navStart;
+      perfLog('route_click_start', navStart);
+    };
+
+    document.addEventListener('click', onClickCapture, true);
+    return () => document.removeEventListener('click', onClickCapture, true);
+  }, [location.pathname, perfLog]);
+
+  React.useEffect(() => {
+    const navStart = typeof window !== 'undefined' ? window.__CF_NAV_START : null;
+    const now = performance.now();
+
+    if (navStart && navStart.to === location.pathname) {
+      perfLog('route_mount_commit', {
+        from: navStart.from,
+        to: location.pathname,
+        durationMs: Number((now - navStart.ts).toFixed(2))
+      });
+      return;
+    }
+
+    perfLog('route_mount_commit', {
+      to: location.pathname,
+      durationMs: null
+    });
+  }, [location.pathname, perfLog]);
 
   // Timeout de seguridad: después de 5 segundos, forzar loading = false
   React.useEffect(() => {
@@ -171,26 +249,30 @@ function AppRoutes() {
 
   console.log('[APP-ROUTES] ✅ Loading completado, renderizando rutas');
   return (
-    <Routes>
-      <Route path="/login" element={<LoginRoute><Login /></LoginRoute>} />
-      <Route path="/mfa-challenge" element={<MFARoute><MFAChallenge /></MFARoute>} />
+    <AppTransitionWrapper>
+      <Suspense fallback={<LoadingGlass />}>
+        <Routes>
+          <Route path="/login" element={<LoginRoute><Login /></LoginRoute>} />
+          <Route path="/mfa-challenge" element={<MFARoute><MFAChallenge /></MFARoute>} />
 
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Layout />
-        </ProtectedRoute>
-      }>
-        <Route index element={<Dashboard />} />
-        <Route path="agenda" element={<Agenda />} />
-        <Route path="tasks" element={<TaskBoard />} />
-        <Route path="planner" element={<WeeklyPlanner />} />
-        <Route path="pomodoro" element={<Pomodoro />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="stats" element={<Stats />} />
-      </Route>
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Suspense fallback={<LoadingGlass />}><Dashboard /></Suspense>} />
+            <Route path="agenda" element={<Suspense fallback={<LoadingGlass />}><Agenda /></Suspense>} />
+            <Route path="tasks" element={<Suspense fallback={<LoadingGlass />}><TaskBoard /></Suspense>} />
+            <Route path="planner" element={<Suspense fallback={<LoadingGlass />}><WeeklyPlanner /></Suspense>} />
+            <Route path="pomodoro" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
+            <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />
+            <Route path="stats" element={<Suspense fallback={<LoadingGlass />}><Stats /></Suspense>} />
+          </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </AppTransitionWrapper>
   );
 }
 
