@@ -3,7 +3,6 @@ import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
-import { prefetchAnalyticsData } from '../lib/prefetchAnalyticsData';
 import { startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight, BrainCircuit, Clock3, Sparkles } from 'lucide-react';
@@ -33,30 +32,6 @@ const Dashboard = () => {
   const [currentFilter, setCurrentFilter] = useState('TODAS');
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
-  const prefetchGuardRef = useRef({ key: '', ts: 0 });
-
-  useEffect(() => {
-    if (!user?.id) return undefined;
-
-    const now = Date.now();
-    const key = `dashboard:${user.id}`;
-    if (prefetchGuardRef.current.key === key && (now - prefetchGuardRef.current.ts) < 5000) {
-      return undefined;
-    }
-    prefetchGuardRef.current = { key, ts: now };
-
-    const prefetch = () => {
-      prefetchAnalyticsData(user.id).catch(() => null);
-    };
-
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const idleId = window.requestIdleCallback(prefetch, { timeout: 1500 });
-      return () => window.cancelIdleCallback(idleId);
-    }
-
-    const timeoutId = window.setTimeout(prefetch, 300);
-    return () => window.clearTimeout(timeoutId);
-  }, [user?.id]);
 
   // Analítica PRO -> Dashboard Integration
   const {
@@ -249,9 +224,9 @@ const Dashboard = () => {
 
 
 
-      <header className="page-header" style={{ marginBottom: '24px' }}>
+      <header className="page-header" style={{ marginBottom: '16px' }}>
         <h1 className="page-title" style={{
-          fontSize: '4rem',
+          fontSize: '3rem',
           margin: 0,
           fontWeight: 900,
           fontFamily: 'var(--font-body)',
@@ -264,50 +239,75 @@ const Dashboard = () => {
         </h1>
       </header>
 
-      {/* SMART SUMMARY (ANALÍTICA PRO) */}
-      <div className="glass-panel animate-stagger" style={{ 
-        padding: '20px 28px', 
-        marginBottom: '32px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '16px', 
-        background: 'linear-gradient(90deg, rgba(0, 243, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
-        border: '1px solid rgba(0, 243, 255, 0.15)',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <BrainCircuit size={18} color="var(--accent-primary)" />
-          <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900, margin: 0 }}>
-            Resumen Inteligente
-          </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px' }}>
+        {/* FILTROS NEON-PILLS */}
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {['TODAS', 'UNAD', 'SENA', 'PERSONALIZADO'].map(f => {
+            const isActive = currentFilter === f;
+            const neonColor = f === 'TODAS' ? '#00f3ff' : 
+                              f === 'UNAD' ? '#ffcc00' : 
+                              f === 'SENA' ? '#00ff88' : '#bc13fe';
+
+            return (
+              <button
+                key={f}
+                onClick={() => {
+                  setCurrentFilter(f);
+                  setSelectedDay(null); // Reset day filter on institution change
+                  const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
+                  playClick(freqs[f] || 800);
+                }}
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '50px',
+                  border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
+                  background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
+                  color: isActive ? neonColor : 'var(--text-muted)',
+                  fontSize: '0.8rem',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}
+              >
+                <div style={{ 
+                  width: '6px', 
+                  height: '6px', 
+                  borderRadius: '50%', 
+                  background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
+                  boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
+                }} />
+                {f}
+              </button>
+            );
+          })}
         </div>
-        
-        {isAnalyticsEmpty ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Aún no hay datos suficientes para analizar tu semana.</p>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-            <p style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 600, flex: 1, minWidth: '200px', fontStyle: 'italic' }}>
-              "{getSmartInsight()}"
-            </p>
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '8px', borderRadius: '8px' }}><Clock3 size={18} color="var(--text-primary)" /></div>
-                <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Tiempo Planeado</p><p style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--text-primary)' }}>{formatMinutes(totalMinutes)}</p></div>
-              </div>
-              <div style={{ height: '36px', width: '1px', background: 'var(--border-glass-top)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '8px', borderRadius: '8px' }}><Zap size={18} color="var(--accent-secondary)" /></div>
-                <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Bloques Pts</p><p style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--accent-secondary)' }}>{pendingBlocks}</p></div>
-              </div>
-              <div style={{ height: '36px', width: '1px', background: 'var(--border-glass-top)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '8px', borderRadius: '8px' }}><Sparkles size={18} color="var(--accent-primary)" /></div>
-                <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 800 }}>Cumplimiento</p><p style={{ margin: '2px 0 0', fontSize: '1.05rem', fontWeight: 900, color: 'var(--accent-primary)' }}>{generalCompliance !== null ? `${generalCompliance}%` : 'N/A'}</p></div>
-              </div>
-            </div>
-          </div>
-        )}
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <motion.button 
+            whileHover={{ scale: 1.05, boxShadow: '0 0 15px #00f3ff' }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { playClick(1200); navigate('/tasks', { state: { openModal: true } }); }}
+            style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(0, 243, 255, 0.1)', color: '#00f3ff', border: '1px solid rgba(0, 243, 255, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
+          >
+            <Plus size={16} /> NUEVO TRABAJO
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.05, boxShadow: '0 0 15px #ffcc00' }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => { playClick(1500); navigate('/pomodoro'); }}
+            style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(255, 204, 0, 0.1)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
+          >
+            <Timer size={16} /> + POMODORO
+          </motion.button>
+        </div>
       </div>
+
 
       {/* PREMIUM ANALYTICS DASHBOARD */}
       {!isAnalyticsDashboardEmpty && (
@@ -315,13 +315,14 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          style={{ marginBottom: '40px' }}
+          style={{ marginBottom: '20px' }}
         >
           {/* Metric Cards Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             {/* Card: Total Tasks */}
             <motion.div 
               whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0, 243, 255, 0.2)' }}
+              onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={{
                 padding: '24px',
                 borderRadius: '16px',
@@ -460,187 +461,120 @@ const Dashboard = () => {
             </motion.div>
           </div>
 
-          {/* Completion Rate Progress Bar */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            style={{
-              padding: '20px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.05) 0%, rgba(188, 19, 254, 0.05) 100%)',
-              border: '1px solid rgba(0, 243, 255, 0.15)',
-              backdropFilter: 'blur(10px)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
-                Cumplimiento
+          {/* Metric Overlays: Compliance & Smart Summary Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+            {/* Completion Rate Progress Bar */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              style={{
+                padding: '16px 20px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.05) 0%, rgba(188, 19, 254, 0.05) 100%)',
+                border: '1px solid rgba(0, 243, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
+                  Cumplimiento
+                </p>
+                <motion.span 
+                  key={completionRate}
+                  initial={{ scale: 1.3, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00f3ff', textShadow: '0 0 15px rgba(0, 243, 255, 0.5)' }}
+                >
+                  {completionRate}%
+                </motion.span>
+              </div>
+              {/* Progress Bar Background */}
+              <div style={{ width: '100%', height: '8px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(0, 243, 255, 0.1)', overflow: 'hidden', position: 'relative' }}>
+                {/* Progress Bar Fill */}
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${completionRate}%` }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  style={{
+                    height: '100%',
+                    borderRadius: '10px',
+                    background: `linear-gradient(90deg, #00f3ff 0%, #bc13fe 50%, #00ff88 100%)`,
+                    boxShadow: '0 0 15px rgba(0, 243, 255, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.2)',
+                    position: 'relative'
+                  }}
+                />
+              </div>
+              {/* Subtitle */}
+              <p style={{ margin: '8px 0 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {completedTasks} de {totalTasks} trabajos completados
               </p>
-              <motion.span 
-                key={completionRate}
-                initial={{ scale: 1.3, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00f3ff', textShadow: '0 0 15px rgba(0, 243, 255, 0.5)' }}
-              >
-                {completionRate}%
-              </motion.span>
+            </motion.div>
+
+            {/* SMART SUMMARY (ANALÍTICA PRO) */}
+            <div className="glass-panel" style={{ 
+              padding: '16px 20px', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '8px', 
+              background: 'linear-gradient(90deg, rgba(0, 243, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+              border: '1px solid rgba(0, 243, 255, 0.15)',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
+              justifyContent: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <BrainCircuit size={18} color="var(--accent-primary)" />
+                <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900, margin: 0 }}>
+                  Resumen Inteligente
+                </h2>
+              </div>
+              
+              {isAnalyticsEmpty ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Sin datos suficientes.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600, fontStyle: 'italic', lineHeight: 1.4 }}>
+                    "{getSmartInsight()}"
+                  </p>
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock3 size={14} color="var(--accent-primary)" />
+                      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
+                        <span style={{ opacity: 0.7 }}>Tiempo planeado: </span>
+                        <span style={{ color: 'var(--text-primary)' }}>{formatMinutes(totalMinutes)}</span>
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Zap size={14} color="var(--accent-secondary)" />
+                      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
+                        <span style={{ opacity: 0.7 }}>Bloques pendientes: </span>
+                        <span style={{ color: 'var(--accent-secondary)' }}>{pendingBlocks}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            {/* Progress Bar Background */}
-            <div style={{ width: '100%', height: '12px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(0, 243, 255, 0.1)', overflow: 'hidden', position: 'relative' }}>
-              {/* Progress Bar Fill */}
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${completionRate}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-                style={{
-                  height: '100%',
-                  borderRadius: '10px',
-                  background: `linear-gradient(90deg, #00f3ff 0%, #bc13fe 50%, #00ff88 100%)`,
-                  boxShadow: '0 0 15px rgba(0, 243, 255, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.2)',
-                  position: 'relative'
-                }}
-              />
-            </div>
-            {/* Subtitle */}
-            <p style={{ margin: '12px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {completedTasks} de {totalTasks} trabajos completados
-            </p>
-          </motion.div>
+          </div>
         </motion.div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
-        {/* FILTROS NEON-PILLS */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {['TODAS', 'UNAD', 'SENA', 'PERSONALIZADO'].map(f => {
-            const isActive = currentFilter === f;
-            const neonColor = f === 'TODAS' ? '#00f3ff' : 
-                              f === 'UNAD' ? '#ffcc00' : 
-                              f === 'SENA' ? '#00ff88' : '#bc13fe';
 
-            return (
-              <button
-                key={f}
-                onClick={() => {
-                  setCurrentFilter(f);
-                  setSelectedDay(null); // Reset day filter on institution change
-                  const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
-                  playClick(freqs[f] || 800);
-                }}
-                style={{
-                  padding: '10px 24px',
-                  borderRadius: '50px',
-                  border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
-                  background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
-                  color: isActive ? neonColor : 'var(--text-muted)',
-                  fontSize: '0.8rem',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}
-              >
-                <div style={{ 
-                  width: '6px', 
-                  height: '6px', 
-                  borderRadius: '50%', 
-                  background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
-                  boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
-                }} />
-                {f}
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: '0 0 15px #00f3ff' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { playClick(1200); navigate('/tasks', { state: { openModal: true } }); }}
-            style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(0, 243, 255, 0.1)', color: '#00f3ff', border: '1px solid rgba(0, 243, 255, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
-          >
-            <Plus size={16} /> NUEVO TRABAJO
-          </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: '0 0 15px #ffcc00' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => { playClick(1500); navigate('/pomodoro'); }}
-            style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(255, 204, 0, 0.1)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
-          >
-            <Timer size={16} /> POMODORO
-          </motion.button>
-        </div>
-      </div>
 
       <div className="animate-stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px' }}>
 
-        {/* Métricas grandes */}
-        <motion.div 
-          whileHover={{ y: -5 }}
-          onClick={() => navigate('/agenda')}
-          className="glass-panel glass-card-hover" 
-          style={{ gridColumn: 'span 4', padding: '32px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
-        >
-          <Activity color="var(--accent-primary)" size={40} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
-          <p style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.72rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>{t.activeSubjects}</p>
-          <h3 key={filteredCourses.length} className="animate-number-pop" style={{ fontSize: '4.5rem', fontWeight: 900, margin: '8px 0 -8px', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-primary)', display: 'inline-block' }}>
-            {String(filteredCourses.length).padStart(2, '0')}
-          </h3>
-          <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '24px', position: 'relative', borderRadius: '1px' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(filteredCourses.length * 10, 100)}%`, background: 'var(--accent-primary)', boxShadow: `0 0 8px var(--accent-primary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
-          </div>
-        </motion.div>
 
-        <motion.div 
-          whileHover={{ y: -5 }}
-          onClick={() => navigate('/tasks')}
-          className="glass-panel glass-card-hover" 
-          style={{ gridColumn: 'span 4', padding: '32px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
-        >
-          <Target color="var(--accent-secondary)" size={40} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
-          <p style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.72rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>{t.pendingTasks}</p>
-          <h3 key={pendingCount} className="animate-number-pop" style={{ fontSize: '4.5rem', fontWeight: 900, margin: '8px 0 -8px', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-secondary)', display: 'inline-block' }}>
-            {String(pendingCount).padStart(2, '0')}
-          </h3>
-          <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '24px', position: 'relative', borderRadius: '1px' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(pendingCount * 10, 100)}%`, background: 'var(--accent-secondary)', boxShadow: `0 0 8px var(--accent-secondary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
-          </div>
-        </motion.div>
+        {/* RADAR DE ENTREGAS & CONTENIDO DERECHO */}
+        <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px', alignItems: 'stretch' }}>
 
-        {/* PRIORIDAD MÁXIMA - Tarea más próxima */}
-        <div className="glass-panel" style={{ gridColumn: 'span 4', padding: '24px', background: `linear-gradient(135deg, ${bigBossColor}15 0%, rgba(255, 77, 77, 0.02) 100%)`, border: `1px solid ${bigBossColor}33`, position: 'relative', overflow: 'hidden' }}>
-          <Flame color={bigBossColor} size={60} style={{ opacity: 0.1, position: 'absolute', bottom: '-10px', right: '-10px' }} />
-          <h2 style={{ fontSize: '0.75rem', fontWeight: 900, color: bigBossColor, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertCircle size={14} /> PRIORIDAD MÁXIMA
-          </h2>
-          {bigBossTask ? (
-            <div>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 950, margin: '0 0 8px', color: '#fff' }}>{bigBossTask.title}</h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '12px' }}>
-                {formatDateLegible(bigBossTask.deadline || bigBossTask.due_date)} - {courses.find(c => c.id === bigBossTask.course_id)?.name || 'Sin Materia'}
-              </p>
-              <div style={{ display: 'inline-flex', padding: '6px 14px', background: `${bigBossColor}22`, borderRadius: '6px', border: `1px solid ${bigBossColor}33` }}>
-                <span style={{ color: bigBossColor, fontWeight: 900, fontSize: '0.75rem' }}>
-                  //_OBJETIVO_CRÍTICO
-                </span>
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700 }}>SIN AMENAZAS PRÓXIMAS</p>
-          )}
-        </div>
-
-        <div className="glass-panel glass-card-hover" style={{ gridColumn: 'span 4', gridRow: 'span 2', padding: '28px', background: 'rgba(0, 243, 255, 0.02)', position: 'relative' }}>
+          {/* COLUMNA IZQUIERDA: Entregas */}
+          <div className="glass-panel glass-card-hover" style={{ gridColumn: 'span 4', padding: '24px', background: 'rgba(0, 243, 255, 0.02)', position: 'relative', height: '100%', maxHeight: '600px', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900 }}>
               <Zap size={18} /> {selectedDay !== null ? `Entregas ${daysLabels[selectedDay]}:` : 'Proximas Entregas:'}
@@ -728,8 +662,11 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* MATRIZ DE ESFUERZO - Células de Energía */}
-        <div className="glass-panel" style={{ gridColumn: 'span 8', padding: '28px' }}>
+        {/* COLUMNA DERECHA */}
+        <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* MATRIZ DE ESFUERZO - Células de Energía */}
+          <div className="glass-panel" style={{ padding: '20px 24px', height: 'max-content' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Flame size={16} color="var(--accent-secondary)" /> CARGA SEMANAL
@@ -744,7 +681,7 @@ const Dashboard = () => {
             {effortMatrixDetails.map((dayTasks, idx) => {
               const isActive = selectedDay === idx;
               return (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', position: 'relative' }}>
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', position: 'relative' }}>
                   <motion.div 
                     onMouseEnter={() => setHoveredDay(idx)}
                     onMouseLeave={() => setHoveredDay(null)}
@@ -755,16 +692,17 @@ const Dashboard = () => {
                     whileHover={{ scale: 1.02 }}
                     style={{ 
                       width: '100%', 
-                      minHeight: '140px', 
+                      minHeight: '64px', 
                       background: isActive ? 'rgba(0, 243, 255, 0.08)' : 'rgba(255,255,255,0.02)', 
                       borderRadius: '12px', 
                       padding: '8px',
                       display: 'flex',
                       flexDirection: 'column-reverse',
-                      gap: '6px',
+                      justifyContent: 'center',
+                      gap: '4px',
                       border: isActive ? '1px solid rgba(0, 243, 255, 0.5)' : '1px solid rgba(255,255,255,0.05)',
                       boxShadow: isActive ? '0 0 20px rgba(0, 243, 255, 0.2)' : 'none',
-                      maxHeight: '200px',
+                      maxHeight: '140px',
                       overflowY: 'auto',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
@@ -845,22 +783,84 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Materias filtradas */}
-        <div className="glass-panel glass-card-hover" style={{ gridColumn: 'span 8', padding: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontWeight: 900 }}>{t.subjects}</h2>
-            <button onClick={() => navigate('/agenda')} style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* MÉTRICAS COMPACTAS (FILA DE 3 COLUMNAS DENTRO DE DERECHA) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+
+          <motion.div 
+            whileHover={{ y: -5 }}
+            onClick={() => navigate('/agenda')}
+            className="glass-panel glass-card-hover" 
+            style={{ padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+        >
+          <Activity color="var(--accent-primary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
+          <p style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>{t.activeSubjects}</p>
+          <h3 key={filteredCourses.length} className="animate-number-pop" style={{ fontSize: '2.5rem', fontWeight: 900, margin: '4px 0', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-primary)', display: 'inline-block' }}>
+            {String(filteredCourses.length).padStart(2, '0')}
+          </h3>
+          <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '8px', position: 'relative', borderRadius: '1px' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(filteredCourses.length * 10, 100)}%`, background: 'var(--accent-primary)', boxShadow: `0 0 8px var(--accent-primary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
+          </div>
+        </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -5 }}
+            onClick={() => navigate('/tasks')}
+            className="glass-panel glass-card-hover" 
+            style={{ padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+        >
+          <Target color="var(--accent-secondary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
+          <p style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800 }}>{t.pendingTasks}</p>
+          <h3 key={pendingCount} className="animate-number-pop" style={{ fontSize: '2.5rem', fontWeight: 900, margin: '4px 0', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-secondary)', display: 'inline-block' }}>
+            {String(pendingCount).padStart(2, '0')}
+          </h3>
+          <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '8px', position: 'relative', borderRadius: '1px' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(pendingCount * 10, 100)}%`, background: 'var(--accent-secondary)', boxShadow: `0 0 8px var(--accent-secondary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
+          </div>
+        </motion.div>
+
+          {/* PRIORIDAD MÁXIMA - Tarea más próxima */}
+          <div className="glass-panel" style={{ padding: '20px', background: `linear-gradient(135deg, ${bigBossColor}15 0%, rgba(255, 77, 77, 0.02) 100%)`, border: `1px solid ${bigBossColor}33`, position: 'relative', overflow: 'hidden' }}>
+          <Flame color={bigBossColor} size={40} style={{ opacity: 0.1, position: 'absolute', bottom: '-8px', right: '-8px' }} />
+          <h2 style={{ fontSize: '0.65rem', fontWeight: 900, color: bigBossColor, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)' }}>
+            <AlertCircle size={14} /> PRIORIDAD MÁXIMA
+          </h2>
+          {bigBossTask ? (
+            <div>
+              <h4 style={{ fontSize: '1rem', fontWeight: 950, margin: '0 0 4px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bigBossTask.title}</h4>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>
+                {formatDateLegible(bigBossTask.deadline || bigBossTask.due_date)} - {courses.find(c => c.id === bigBossTask.course_id)?.name || 'Sin Materia'}
+              </p>
+              <div style={{ display: 'inline-flex', padding: '4px 10px', background: `${bigBossColor}22`, borderRadius: '4px', border: `1px solid ${bigBossColor}33` }}>
+                <span style={{ color: bigBossColor, fontWeight: 900, fontSize: '0.6rem', letterSpacing: '1px' }}>
+                  //_OBJETIVO_CRÍTICO
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>SIN AMENAZAS PRÓXIMAS</p>
+          )}
+        </div>
+
+        </div>
+      </div>
+    </div>
+
+        {/* Materias filtradas (Nueva fila inferior decorativa) */}
+        <div className="glass-panel glass-card-hover" style={{ gridColumn: 'span 12', padding: '16px 20px', marginTop: '-8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h2 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontWeight: 900, margin: 0 }}>{t.subjects}</h2>
+            <button onClick={() => navigate('/agenda')} style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}>
               VER TODAS <ChevronRight size={14} />
             </button>
           </div>
           {filteredCourses.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 700 }}>{t.emptyDatabase}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, margin: 0 }}>{t.emptyDatabase}</p>
           ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {filteredCourses.map(c => {
                 const displayColor = c.color || 'var(--accent-primary)';
                 return (
-                  <div key={c.id} style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', border: `1px solid ${displayColor}`, color: displayColor, fontSize: '0.8rem', fontFamily: 'var(--font-display)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', boxShadow: `0 0 10px ${displayColor}33`, background: `${displayColor}05` }}>
+                  <div key={c.id} style={{ padding: '4px 10px', borderRadius: 'var(--radius-full)', border: `1px solid ${displayColor}`, color: displayColor, fontSize: '0.7rem', fontFamily: 'var(--font-display)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', boxShadow: `0 0 10px ${displayColor}33`, background: `${displayColor}05` }}>
                     {c.name}
                   </div>
                 );

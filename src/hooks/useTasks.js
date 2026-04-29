@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { tasksService } from '../lib/tasksService';
+import { dataStoreService } from '../lib/dataStoreService';
 
 export const useTasks = (userId, addXP, incrementStat) => {
   const [tasks, setTasks] = useState([]);
@@ -13,7 +14,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
     }
     setLoading(true);
     try {
-      const data = await tasksService.getTasks(userId);
+      const data = await dataStoreService.getTasks(userId);
       setTasks(data);
     } catch (err) {
       setError(err.message);
@@ -30,6 +31,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
     try {
       const newTask = await tasksService.createTask(userId, task);
       setTasks(prev => [newTask, ...prev]);
+      dataStoreService.invalidate('tasks', userId);
       return newTask;
     } catch (err) {
       setError(err.message);
@@ -41,6 +43,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
     try {
       const updatedTask = await tasksService.updateTask(id, updates);
       setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
+      dataStoreService.invalidate('tasks', userId);
       return updatedTask;
     } catch (err) {
       setError(err.message);
@@ -71,6 +74,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
 
       const updatedTask = await tasksService.updateTask(id, updates);
       setTasks(prev => prev.map(t => String(t.id) === String(id) ? updatedTask : t));
+      dataStoreService.invalidate('tasks', userId);
     } catch (err) {
       console.error("ERROR EN updateTaskStatus:", err);
       setError(err.message);
@@ -82,6 +86,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
     try {
       await tasksService.deleteTask(id);
       setTasks(prev => prev.filter(t => t.id !== id));
+      dataStoreService.invalidate('tasks', userId);
     } catch (err) {
       setError(err.message);
       throw err;
@@ -95,6 +100,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
 
       const updatedTask = await tasksService.updateTask(id, { ...task, day, block });
       setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
+      dataStoreService.invalidate('tasks', userId);
       return updatedTask;
     } catch (err) {
       setError(err.message);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { habitsService } from '../lib/habitsService';
+import { dataStoreService } from '../lib/dataStoreService';
 
 export const useHabits = (userId, addXP, incrementStat) => {
   const [habits, setHabits] = useState([]);
@@ -15,14 +16,11 @@ export const useHabits = (userId, addXP, incrementStat) => {
     }
     setLoading(true);
     try {
-      const h = await habitsService.getHabits(userId);
+      const [h, l] = await Promise.all([
+        dataStoreService.getHabits(userId),
+        dataStoreService.getHabitLogs(userId),
+      ]);
       setHabits(h);
-      
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-      
-      const l = await habitsService.getLogs(userId, startOfDay, endOfDay).catch(e => []);
       setLogs(l);
     } catch (err) {
       // No seteamos setError para no bloquear UI principal
@@ -46,6 +44,7 @@ export const useHabits = (userId, addXP, incrementStat) => {
       };
       const newHabit = await habitsService.createHabit(userId, habitData);
       setHabits(prev => [...prev, newHabit]);
+      dataStoreService.invalidate('habits', userId);
       return newHabit;
     } catch (err) {
       setError(err.message);
@@ -66,6 +65,7 @@ export const useHabits = (userId, addXP, incrementStat) => {
         setLogs(prev => prev.filter(l => l.habit_id !== habitId));
         if (addXP) addXP(-50);
       }
+      dataStoreService.invalidate('habitLogs', userId);
     } catch (err) {
       console.error("Error toggling habit:", err);
     }
@@ -76,6 +76,8 @@ export const useHabits = (userId, addXP, incrementStat) => {
       await habitsService.deleteHabit(id);
       setHabits(prev => prev.filter(h => h.id !== id));
       setLogs(prev => prev.filter(l => l.habit_id !== id));
+      dataStoreService.invalidate('habits', userId);
+      dataStoreService.invalidate('habitLogs', userId);
     } catch (err) {
       console.error("Error deleting habit:", err);
     }

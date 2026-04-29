@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { coursesService } from '../lib/coursesService';
+import { dataStoreService } from '../lib/dataStoreService';
 
 export const useCourses = (userId) => {
   const [courses, setCourses] = useState([]);
@@ -13,7 +14,7 @@ export const useCourses = (userId) => {
     }
     setLoading(true);
     try {
-      const data = await coursesService.getCourses(userId);
+      const data = await dataStoreService.getCourses(userId);
       
       // ALFA_NORMALIZATION: Blindaje contra nombres de columnas inconsistentes
       const normalizedData = data.map(item => {
@@ -55,6 +56,7 @@ export const useCourses = (userId) => {
         institution: newCourse.institution || course.institution
       };
       setCourses(prev => [normalized, ...prev]);
+      dataStoreService.invalidate('courses', userId);
       return normalized;
     } catch (err) {
       setError(err.message);
@@ -66,6 +68,7 @@ export const useCourses = (userId) => {
     try {
       const updatedCourse = await coursesService.updateCourse(id, updates);
       setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updatedCourse } : c));
+      dataStoreService.invalidate('courses', userId);
       return updatedCourse;
     } catch (err) {
       setError(err.message);
@@ -77,6 +80,7 @@ export const useCourses = (userId) => {
     try {
       await coursesService.deleteCourse(id);
       setCourses(prev => prev.filter(c => c.id !== id));
+      dataStoreService.invalidate('courses', userId);
     } catch (err) {
       setError(err.message);
       throw err;

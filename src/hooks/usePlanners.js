@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { plannerService } from '../lib/plannerService';
+import { dataStoreService } from '../lib/dataStoreService';
 
 export const usePlanners = (userId) => {
   const [planners, setPlanners] = useState([]);
@@ -10,7 +11,7 @@ export const usePlanners = (userId) => {
     if (!userId) return;
     setLoading(true);
     try {
-      const data = await plannerService.getPlanners(userId);
+      const data = await dataStoreService.getPlanners(userId);
       setPlanners(data || []);
     } catch (err) {
       console.error('usePlanners.fetchPlanners: error cargando planners', err);
@@ -28,6 +29,7 @@ export const usePlanners = (userId) => {
     try {
       const data = await plannerService.createPlanner(plannerData, userId);
       setPlanners(prev => [{ ...data, planner_blocks: [] }, ...prev]);
+      dataStoreService.invalidate('planners', userId);
       return data;
     } catch (err) {
       console.error('usePlanners.addPlanner: error creando planner', err);
@@ -40,6 +42,7 @@ export const usePlanners = (userId) => {
     try {
       const data = await plannerService.updatePlanner(id, updates, userId);
       setPlanners(prev => prev.map(p => (p.id === id ? { ...p, ...data } : p)));
+      dataStoreService.invalidate('planners', userId);
       return data;
     } catch (err) {
       console.error('usePlanners.updatePlanner: error actualizando planner', err);
@@ -52,6 +55,7 @@ export const usePlanners = (userId) => {
     try {
       await plannerService.deletePlanner(id, userId);
       setPlanners(prev => prev.filter(p => p.id !== id));
+      dataStoreService.invalidate('planners', userId);
     } catch (err) {
       console.error('usePlanners.deletePlanner: error eliminando planner', err);
       setError(err.message);
@@ -93,6 +97,7 @@ export const usePlanners = (userId) => {
         }
         return p;
       }));
+      dataStoreService.invalidate('planners', userId);
       return block;
     } catch (err) {
       console.error('usePlanners.addBlock: error creando bloque', err);
@@ -113,6 +118,7 @@ export const usePlanners = (userId) => {
         }
         return p;
       }));
+      dataStoreService.invalidate('planners', userId);
       return data;
     } catch (err) {
       console.error('usePlanners.updateBlock: error actualizando bloque', err);
@@ -130,6 +136,7 @@ export const usePlanners = (userId) => {
         }
         return p;
       }));
+      dataStoreService.invalidate('planners', userId);
     } catch (err) {
       console.error('usePlanners.deleteBlock: error eliminando bloque', err);
       setError(err.message);

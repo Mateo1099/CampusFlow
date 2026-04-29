@@ -34,10 +34,6 @@ const validateStatus = (value) => {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const plannerQueryTracker = new Map();
-const plannerDataCache = new Map();
-const plannerInFlight = new Map();
-const PLANNER_CACHE_TTL_MS = 5000;
 
 const perfLog = (event, payload = {}) => {
   const ts = performance.now();
@@ -50,124 +46,35 @@ const perfLog = (event, payload = {}) => {
   console.log('[PERF]', entry);
 };
 
-const getPlannerCacheKey = (userId) => `plannerService.getPlanners:${userId}`;
-
-const getCachedPlanners = (cacheKey) => {
-  const cached = plannerDataCache.get(cacheKey);
-  if (!cached) return null;
-
-  if (Date.now() - cached.timestamp > PLANNER_CACHE_TTL_MS) {
-    plannerDataCache.delete(cacheKey);
-    return null;
-  }
-
-  return cached.data;
-};
-
-const setCachedPlanners = (cacheKey, data) => {
-  plannerDataCache.set(cacheKey, {
-    data,
-    timestamp: Date.now()
-  });
-};
-
-const invalidatePlannerCache = (userId) => {
-  if (!userId) return;
-  const cacheKey = getPlannerCacheKey(userId);
-  plannerDataCache.delete(cacheKey);
-  plannerInFlight.delete(cacheKey);
-};
-
 export const plannerService = {
-  async getAuthenticatedUserId(fallbackUserId) {
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error) {
-      console.error('plannerService.getAuthenticatedUserId: error obteniendo usuario autenticado', error);
-      throw error;
-    }
-
-    if (data?.user?.id) {
-      return data.user.id;
-    }
-
-    if (fallbackUserId) {
-      console.warn('plannerService.getAuthenticatedUserId: usando fallback userId por ausencia de sesion activa');
-      return fallbackUserId;
-    }
-
-    throw new Error('Usuario no autenticado');
-  },
-
   // 1. Obtener planificaciones del usuario
-  async getPlanners(fallbackUserId) {
+  async getPlanners(userId) {
+    if (!userId) throw new Error('userId es obligatorio para getPlanners');
+    
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
-      const queryKey = getPlannerCacheKey(userId);
-      const now = performance.now();
-      const lastTs = plannerQueryTracker.get(queryKey);
+      perfLog('planner_query_start', { userId });
+      const queryStart = performance.now();
 
-      const cachedData = getCachedPlanners(queryKey);
-      if (cachedData) {
-        perfLog('planner_query_cache_hit', {
-          queryKey,
-          userId,
-          rows: Array.isArray(cachedData) ? cachedData.length : 0
-        });
-        return cachedData;
+      const { data, error } = await supabase
+        .from('planners')
+        .select('*, planner_blocks(*)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .order('created_at', { foreignTable: 'planner_blocks', ascending: true });
+
+      perfLog('planner_query_end', {
+        userId,
+        durationMs: Number((performance.now() - queryStart).toFixed(2)),
+        rows: Array.isArray(data) ? data.length : 0,
+        hasError: Boolean(error)
+      });
+
+      if (error) {
+        console.error('plannerService.getPlanners: error consultando planners', error);
+        throw error;
       }
 
-      const inFlightRequest = plannerInFlight.get(queryKey);
-      if (inFlightRequest) {
-        perfLog('planner_query_inflight_reuse', { queryKey, userId });
-        return inFlightRequest;
-      }
-
-      perfLog('planner_query_start', { queryKey, userId });
-      if (typeof lastTs === 'number' && now - lastTs < 1200) {
-        perfLog('planner_query_duplicate_detected', {
-          queryKey,
-          userId,
-          deltaMs: Number((now - lastTs).toFixed(2))
-        });
-      }
-      plannerQueryTracker.set(queryKey, now);
-
-      const queryPromise = (async () => {
-        const queryStart = performance.now();
-
-        const { data, error } = await supabase
-          .from('planners')
-          .select('*, planner_blocks(*)')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .order('created_at', { foreignTable: 'planner_blocks', ascending: true });
-
-        perfLog('planner_query_end', {
-          queryKey,
-          userId,
-          durationMs: Number((performance.now() - queryStart).toFixed(2)),
-          rows: Array.isArray(data) ? data.length : 0,
-          hasError: Boolean(error)
-        });
-
-        if (error) {
-          console.error('plannerService.getPlanners: error consultando planners', error);
-          throw error;
-        }
-
-        const plannersData = data || [];
-        setCachedPlanners(queryKey, plannersData);
-        return plannersData;
-      })();
-
-      plannerInFlight.set(queryKey, queryPromise);
-
-      try {
-        return await queryPromise;
-      } finally {
-        plannerInFlight.delete(queryKey);
-      }
+      return data || [];
     } catch (error) {
       console.error('plannerService.getPlanners: error inesperado', error);
       throw error;
@@ -175,10 +82,10 @@ export const plannerService = {
   },
 
   // 2. Crear una planificacion
-  async createPlanner(plannerData, fallbackUserId) {
+  async createPlanner(plannerData, userId) {
+    if (!userId) throw new Error('userId es obligatorio');
+    
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
-
       const newPlanner = {
         title: plannerData.title,
         category: plannerData.category,
@@ -195,13 +102,7 @@ export const plannerService = {
         .select()
         .single();
 
-      if (error) {
-        console.error('plannerService.createPlanner: error creando planner', error);
-        throw error;
-      }
-
-      invalidatePlannerCache(userId);
-
+      if (error) throw error;
       return data;
     } catch (error) {
       console.error('plannerService.createPlanner: error inesperado', error);
@@ -210,10 +111,10 @@ export const plannerService = {
   },
 
   // 3. Actualizar planificacion
-  async updatePlanner(plannerId, updates, fallbackUserId) {
-    try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
+  async updatePlanner(plannerId, updates, userId) {
+    if (!userId) throw new Error('userId es obligatorio');
 
+    try {
       const { data, error } = await supabase
         .from('planners')
         .update(updates)
@@ -222,13 +123,7 @@ export const plannerService = {
         .select()
         .single();
 
-      if (error) {
-        console.error('plannerService.updatePlanner: error actualizando planner', error);
-        throw error;
-      }
-
-      invalidatePlannerCache(userId);
-
+      if (error) throw error;
       return data;
     } catch (error) {
       console.error('plannerService.updatePlanner: error inesperado', error);
@@ -237,29 +132,24 @@ export const plannerService = {
   },
 
   // 4. Eliminar planificacion
-  async deletePlanner(plannerId, fallbackUserId) {
-    try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
+  async deletePlanner(plannerId, userId) {
+    if (!userId) throw new Error('userId es obligatorio');
 
+    try {
       const { error } = await supabase
         .from('planners')
         .delete()
         .eq('id', plannerId)
         .eq('user_id', userId);
 
-      if (error) {
-        console.error('plannerService.deletePlanner: error eliminando planner', error);
-        throw error;
-      }
-
-      invalidatePlannerCache(userId);
-
+      if (error) throw error;
       return true;
     } catch (error) {
       console.error('plannerService.deletePlanner: error inesperado', error);
       throw error;
     }
   },
+
 
   // 5. Obtener bloques de una planificacion
   async getPlannerBlocks(plannerId, fallbackUserId) {
@@ -286,9 +176,9 @@ export const plannerService = {
   },
 
   // 6. Crear bloque
-  async createPlannerBlock(plannerId, blockData, fallbackUserId) {
+  async createPlannerBlock(plannerId, blockData, userId) {
+    if (!userId) throw new Error('userId es obligatorio');
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
 
       if (!plannerId) {
         throw new Error('planner_id es obligatorio para crear un bloque');
@@ -344,7 +234,6 @@ export const plannerService = {
         throw error;
       }
 
-      invalidatePlannerCache(userId);
 
       return data;
     } catch (error) {
@@ -355,9 +244,9 @@ export const plannerService = {
   },
 
   // 7. Actualizar bloque
-  async updatePlannerBlock(blockId, updates, fallbackUserId) {
+  async updatePlannerBlock(blockId, updates, userId) {
+    if (!userId) throw new Error('userId es obligatorio');
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
       const normalizedUpdates = { ...updates };
 
       if (normalizedUpdates.block_time !== undefined) {
@@ -392,7 +281,6 @@ export const plannerService = {
         throw error;
       }
 
-      invalidatePlannerCache(userId);
 
       return data;
     } catch (error) {
@@ -402,9 +290,9 @@ export const plannerService = {
   },
 
   // 8. Eliminar bloque
-  async deletePlannerBlock(blockId, fallbackUserId) {
+  async deletePlannerBlock(blockId, userId) {
+    if (!userId) throw new Error('userId es obligatorio');
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
 
       const { error } = await supabase
         .from('planner_blocks')
@@ -417,7 +305,6 @@ export const plannerService = {
         throw error;
       }
 
-      invalidatePlannerCache(userId);
 
       return true;
     } catch (error) {
@@ -427,9 +314,9 @@ export const plannerService = {
   },
 
   // 9. Calcular total de minutos planeados
-  async getTotalPlannedMinutes({ plannerId, fallbackUserId } = {}) {
+  async getTotalPlannedMinutes({ plannerId, userId } = {}) {
+    if (!userId) return 0;
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
 
       let query = supabase
         .from('planner_blocks')
@@ -456,9 +343,9 @@ export const plannerService = {
   },
 
   // 10. Calcular minutos por dia
-  async getPlannedMinutesByDay({ plannerId, fallbackUserId } = {}) {
+  async getPlannedMinutesByDay({ plannerId, userId } = {}) {
+    if (!userId) return {};
     try {
-      const userId = await this.getAuthenticatedUserId(fallbackUserId);
 
       let query = supabase
         .from('planner_blocks')

@@ -1,10 +1,9 @@
-import { plannerService } from './plannerService';
-import { coursesService } from './coursesService';
+import { dataStoreService } from './dataStoreService';
 import { prefetchCacheService } from './prefetchCacheService';
 
 /**
  * Fetch weekly planner data needed for the WeeklyPlanner page
- * Extracts planners and courses data
+ * NOW uses the unified dataStoreService instead of direct service calls.
  * 
  * @param {string} userId - User ID
  * @returns {Promise<{ planners: Array, courses: Array }>}
@@ -23,18 +22,12 @@ export async function fetchWeeklyPlannerData(userId) {
     return cached;
   }
 
-  console.log(`[PREFETCH] Fetching weekly planner data for user ${userId}`);
+  console.log(`[PREFETCH] Fetching weekly planner data for user ${userId} via dataStore`);
 
-  // Fetch both in parallel
+  // Fetch both via the unified data store (deduplicates automatically)
   const [planners, courses] = await Promise.all([
-    plannerService.getPlanners(userId).catch((err) => {
-      console.error('[PREFETCH] Error fetching planners:', err);
-      return [];
-    }),
-    coursesService.getCourses(userId).catch((err) => {
-      console.error('[PREFETCH] Error fetching courses:', err);
-      return [];
-    })
+    dataStoreService.getPlanners(userId),
+    dataStoreService.getCourses(userId),
   ]);
 
   const data = { planners, courses };

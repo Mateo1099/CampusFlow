@@ -1,11 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from './../context/AuthContext';
-import { useTasks } from './useTasks';
-import { useHabits } from './useHabits';
-import { usePlanners } from './usePlanners';
-import { getCurrentWeekSnapshot, saveWeeklySnapshot } from './../lib/analyticsService';
+import { saveWeeklySnapshot } from './../lib/analyticsService';
 import { getAnalyticsDataFromCache } from './../lib/prefetchAnalyticsData';
 import { prefetchCacheService } from './../lib/prefetchCacheService';
+import { dataStoreService } from './../lib/dataStoreService';
 
 const DEFAULT_ANALYTICS = {
   totalTasks: 0,
@@ -241,8 +239,21 @@ const mapSnapshotToAnalytics = (snapshot) => {
   };
 };
 
-export const useAnalytics = () => {
-  const perfLog = (event, payload = {}) => {
+/**
+ * useAnalytics — OPTIMIZED
+ *
+ * Instead of calling useTasks / useHabits / usePlanners (which each
+ * independently fetch from Supabase), this version reads SHARED data
+ * from the unified dataStoreService.  Since TaskContext already fetches
+ * tasks, habits, and courses at the provider level, this hook only needs
+ * to fetch PLANNERS (shared via dataStore) and the snapshot.
+ *
+ * External data (tasks, habits, logs) can be injected via the optional
+ * `externalData` parameter — used by consumers that already have the
+ * data (e.g. Dashboard which uses TaskContext).
+ */
+export const useAnalytics = (externalData) => {
+  const perfLog = useCallback((event, payload = {}) => {
     const ts = performance.now();
     const entry = { event, ts, hook: 'useAnalytics', ...payload };
     if (typeof window !== 'undefined') {
@@ -250,14 +261,17 @@ export const useAnalytics = () => {
       window.__CF_PERF_LOGS.push(entry);
     }
     console.log('[PERF]', entry);
-  };
+  }, []);
 
   const { user } = useAuth();
   const userId = user?.id;
 
-  const { tasks, loading: tasksLoading } = useTasks(userId);
-  const { habits, logs, loading: habitsLoading } = useHabits(userId);
-  const { planners, loading: plannersLoading } = usePlanners(userId);
+  // ── Shared raw data state ─────────────────────────────────────
+  const [rawTasks, setRawTasks] = useState([]);
+  const [rawHabits, setRawHabits] = useState([]);
+  const [rawLogs, setRawLogs] = useState([]);
+  const [rawPlanners, setRawPlanners] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const initialCachedAnalytics = useMemo(() => {
     if (!userId) return DEFAULT_ANALYTICS;
@@ -267,14 +281,14 @@ export const useAnalytics = () => {
   const [analytics, setAnalytics] = useState(initialCachedAnalytics);
   const [loading, setLoading] = useState(!hasAnyFastAnalyticsData(initialCachedAnalytics));
   const lastSnapshotSignatureRef = useRef(null);
-  const snapshotRequestWeekRef = useRef('');
   const analyticsRef = useRef(initialCachedAnalytics);
-  const analyticsDataFetchStartRef = useRef(null);
+  const fetchGuardRef = useRef('');
 
   useEffect(() => {
     analyticsRef.current = analytics;
   }, [analytics]);
 
+  // ── Initial cache seed ────────────────────────────────────────
   useEffect(() => {
     if (!userId) {
       setAnalytics(DEFAULT_ANALYTICS);
@@ -293,42 +307,53 @@ export const useAnalytics = () => {
     setLoading(true);
   }, [userId]);
 
+  // ── Single bulk fetch via dataStoreService ────────────────────
   useEffect(() => {
-    if (!userId) return;
-
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-    startOfWeek.setHours(0, 0, 0, 0);
-    const weekKey = `${userId}:${startOfWeek.toISOString().split('T')[0]}`;
-
-    if (snapshotRequestWeekRef.current === weekKey) {
+    if (!userId) {
+      setRawTasks([]);
+      setRawHabits([]);
+      setRawLogs([]);
+      setRawPlanners([]);
+      setDataLoading(false);
       return;
     }
 
-    snapshotRequestWeekRef.current = weekKey;
+    // Guard: skip if already fetching for this user
+    const fetchKey = `useAnalytics:${userId}`;
+    if (fetchGuardRef.current === fetchKey) return;
+    fetchGuardRef.current = fetchKey;
 
-    const snapshotFetchStart = performance.now();
-    perfLog('analytics_snapshot_fetch_start', { userId, weekKey });
+    setDataLoading(true);
+    perfLog('analytics_unified_fetch_start', { userId });
 
-    getCurrentWeekSnapshot(userId).then((snapshot) => {
-      perfLog('analytics_snapshot_fetch_end', {
-        userId,
-        weekKey,
-        durationMs: Number((performance.now() - snapshotFetchStart).toFixed(2)),
-        hasSnapshot: Boolean(snapshot)
-      });
+    dataStoreService.getAllAnalyticsData(userId).then(({ tasks, habits, logs, planners, snapshot }) => {
+      perfLog('analytics_unified_fetch_end', { userId });
 
+      setRawTasks(tasks || []);
+      setRawHabits(habits || []);
+      setRawLogs(logs || []);
+      setRawPlanners(planners || []);
+      setDataLoading(false);
+
+      // Apply snapshot immediately if available
       const mapped = mapSnapshotToAnalytics(snapshot);
-      if (!mapped || !hasAnyFastAnalyticsData(mapped)) {
-        return;
+      if (mapped && hasAnyFastAnalyticsData(mapped)) {
+        setAnalytics((prev) => ({ ...prev, ...mapped }));
+        inMemoryAnalyticsCache.set(userId, { ...analyticsRef.current, ...mapped });
+        setLoading(false);
       }
-
-      setAnalytics((prev) => ({ ...prev, ...mapped }));
-      inMemoryAnalyticsCache.set(userId, { ...analyticsRef.current, ...mapped });
-      setLoading(false);
+    }).catch((err) => {
+      console.error('[useAnalytics] bulk fetch error:', err);
+      setDataLoading(false);
     });
-  }, [userId]);
+  }, [userId, perfLog]);
+
+  // Use external data if provided (from TaskContext), else use fetched data
+  const tasks = externalData?.tasks ?? rawTasks;
+  const habits = externalData?.habits ?? rawHabits;
+  const logs = externalData?.logs ?? rawLogs;
+  const planners = externalData?.planners ?? rawPlanners;
+  const isCoreLoading = externalData ? false : dataLoading;
 
   // ✅ MEMOIZED: Task totals
   const taskTotals = useMemo(() => {
@@ -415,29 +440,9 @@ export const useAnalytics = () => {
   useEffect(() => {
     if (!userId) {
       lastSnapshotSignatureRef.current = null;
-      snapshotRequestWeekRef.current = '';
       setAnalytics(DEFAULT_ANALYTICS);
       setLoading(false);
       return;
-    }
-
-    const isCoreLoading = tasksLoading || habitsLoading || plannersLoading;
-    if (isCoreLoading && analyticsDataFetchStartRef.current === null) {
-      analyticsDataFetchStartRef.current = performance.now();
-      perfLog('analytics_data_fetch_start', {
-        userId,
-        tasksLoading,
-        habitsLoading,
-        plannersLoading
-      });
-    }
-
-    if (!isCoreLoading && analyticsDataFetchStartRef.current !== null) {
-      perfLog('analytics_data_fetch_end', {
-        userId,
-        durationMs: Number((performance.now() - analyticsDataFetchStartRef.current).toFixed(2))
-      });
-      analyticsDataFetchStartRef.current = null;
     }
 
     const latestKnown = inMemoryAnalyticsCache.get(userId) || analyticsRef.current;
@@ -552,7 +557,7 @@ export const useAnalytics = () => {
         window.cancelIdleCallback(idleId);
       }
     };
-  }, [userId, taskTotals, habitTotals, blockTotals, minutesByDay, minutesByTime, tasksLoading, habitsLoading, plannersLoading]);
+  }, [userId, taskTotals, habitTotals, blockTotals, minutesByDay, minutesByTime, isCoreLoading, perfLog]);
 
   return {
     ...analytics,

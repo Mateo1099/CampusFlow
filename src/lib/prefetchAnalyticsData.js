@@ -1,7 +1,4 @@
-import { tasksService } from './tasksService';
-import { coursesService } from './coursesService';
-import { habitsService } from './habitsService';
-import { plannerService } from './plannerService';
+import { dataStoreService } from './dataStoreService';
 import { prefetchCacheService } from './prefetchCacheService';
 
 // Constants from useAnalytics
@@ -255,7 +252,7 @@ function computeAnalytics(tasks, habits, logs, planners) {
 
 /**
  * Fetch analytics data needed for the Stats page
- * Fetches tasks, habits, habit logs, and planners data
+ * NOW uses the unified dataStoreService instead of direct service calls.
  * 
  * @param {string} userId - User ID
  * @returns {Promise<Object>} - Analytics data
@@ -274,32 +271,15 @@ export async function fetchAnalyticsData(userId) {
     return cached;
   }
 
-  console.log(`[PREFETCH] Fetching analytics data for user ${userId}`);
+  console.log(`[PREFETCH] Fetching analytics data for user ${userId} via dataStore`);
 
   try {
-    // Fetch all data in parallel
-    // For habit logs, get current day range to match useHabits behavior
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-
+    // Fetch all data via the unified data store (deduplicates automatically)
     const [tasks, habits, logs, planners] = await Promise.all([
-      tasksService.getTasks(userId).catch((err) => {
-        console.error('[PREFETCH] Error fetching tasks:', err);
-        return [];
-      }),
-      habitsService.getHabits(userId).catch((err) => {
-        console.error('[PREFETCH] Error fetching habits:', err);
-        return [];
-      }),
-      habitsService.getLogs(userId, startOfDay, endOfDay).catch((err) => {
-        console.error('[PREFETCH] Error fetching habit logs:', err);
-        return [];
-      }),
-      plannerService.getPlanners(userId).catch((err) => {
-        console.error('[PREFETCH] Error fetching planners:', err);
-        return [];
-      })
+      dataStoreService.getTasks(userId),
+      dataStoreService.getHabits(userId),
+      dataStoreService.getHabitLogs(userId),
+      dataStoreService.getPlanners(userId),
     ]);
 
     // Compute analytics from fetched data

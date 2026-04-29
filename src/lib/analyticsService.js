@@ -1,10 +1,5 @@
 import { supabase } from './supabaseClient';
 
-const analyticsQueryTracker = new Map();
-const snapshotCache = new Map();
-const snapshotInFlight = new Map();
-const SNAPSHOT_CACHE_TTL_MS = 5000;
-
 const perfLog = (event, payload = {}) => {
   const ts = performance.now();
   const entry = { event, ts, source: 'analyticsService', ...payload };
@@ -24,98 +19,37 @@ const getStartOfWeekDate = () => {
   return start.toISOString().split('T')[0];
 };
 
-const getSnapshotCacheKey = (userId, startOfWeek) => `${userId}:${startOfWeek}`;
-
-const getCachedSnapshot = (cacheKey) => {
-  const cached = snapshotCache.get(cacheKey);
-  if (!cached) return null;
-
-  if (Date.now() - cached.timestamp > SNAPSHOT_CACHE_TTL_MS) {
-    snapshotCache.delete(cacheKey);
-    return null;
-  }
-
-  return cached.data;
-};
-
-const setCachedSnapshot = (cacheKey, data) => {
-  snapshotCache.set(cacheKey, {
-    data,
-    timestamp: Date.now()
-  });
-};
-
 export async function getCurrentWeekSnapshot(userId) {
   if (!userId) return null;
 
   try {
     const startOfWeek = getStartOfWeekDate();
-    const queryKey = `analyticsService.getCurrentWeekSnapshot:${userId}:${startOfWeek}`;
-    const snapshotCacheKey = getSnapshotCacheKey(userId, startOfWeek);
-
-    const cachedSnapshot = getCachedSnapshot(snapshotCacheKey);
-    if (cachedSnapshot) {
-      perfLog('analytics_snapshot_cache_hit', { queryKey, userId });
-      return cachedSnapshot;
-    }
-
-    const inFlightRequest = snapshotInFlight.get(snapshotCacheKey);
-    if (inFlightRequest) {
-      perfLog('analytics_snapshot_inflight_reuse', { queryKey, userId });
-      return inFlightRequest;
-    }
-
+    perfLog('analytics_snapshot_query_start', { userId, startOfWeek });
     const startTs = performance.now();
-    const lastTs = analyticsQueryTracker.get(queryKey);
-    perfLog('analytics_snapshot_query_start', { queryKey, userId, startOfWeek });
-    if (typeof lastTs === 'number' && startTs - lastTs < 1200) {
-      perfLog('analytics_snapshot_query_duplicate_detected', {
-        queryKey,
-        userId,
-        deltaMs: Number((startTs - lastTs).toFixed(2))
-      });
+
+    const { data, error } = await supabase
+      .from('analytics_snapshots')
+      .select('snapshot_date,week_start_date,total_blocks_created,total_blocks_completed,total_blocks_pending,total_planned_minutes,total_assignments,completed_assignments,pending_assignments,total_habits,completed_habits,morning_minutes,afternoon_minutes,night_minutes,minutes_by_day,overall_compliance_percent,trend_direction')
+      .eq('user_id', userId)
+      .eq('period_type', 'weekly')
+      .gte('week_start_date', startOfWeek)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    perfLog('analytics_snapshot_query_end', {
+      userId,
+      durationMs: Number((performance.now() - startTs).toFixed(2)),
+      hasRow: Boolean(data),
+      hasError: Boolean(error)
+    });
+
+    if (error) {
+      console.error('Error leyendo snapshot semanal:', error);
+      return null;
     }
-    analyticsQueryTracker.set(queryKey, startTs);
 
-    const queryPromise = (async () => {
-      const { data, error } = await supabase
-        .from('analytics_snapshots')
-        .select('snapshot_date,week_start_date,total_blocks_created,total_blocks_completed,total_blocks_pending,total_planned_minutes,total_assignments,completed_assignments,pending_assignments,total_habits,completed_habits,morning_minutes,afternoon_minutes,night_minutes,minutes_by_day,overall_compliance_percent,trend_direction')
-        .eq('user_id', userId)
-        .eq('period_type', 'weekly')
-        .gte('week_start_date', startOfWeek)
-        .order('snapshot_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      perfLog('analytics_snapshot_query_end', {
-        queryKey,
-        userId,
-        durationMs: Number((performance.now() - startTs).toFixed(2)),
-        hasRow: Boolean(data),
-        hasError: Boolean(error)
-      });
-
-      if (error) {
-        console.error('Error leyendo snapshot semanal:', error);
-        return null;
-      }
-
-      const snapshotData = data || null;
-      if (snapshotData) {
-        setCachedSnapshot(snapshotCacheKey, snapshotData);
-      }
-
-      return snapshotData;
-    })();
-
-    snapshotInFlight.set(snapshotCacheKey, queryPromise);
-
-    try {
-      return await queryPromise;
-    } finally {
-      snapshotInFlight.delete(snapshotCacheKey);
-    }
+    return data || null;
   } catch (err) {
     console.error('Error inesperado leyendo snapshot semanal:', err);
     return null;
@@ -125,18 +59,8 @@ export async function getCurrentWeekSnapshot(userId) {
 export async function saveWeeklySnapshot(userId, analyticsData) {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const queryKey = `analyticsService.saveWeeklySnapshot:${userId}:${today}`;
+    perfLog('analytics_save_query_start', { userId, day: today });
     const startTs = performance.now();
-    const lastTs = analyticsQueryTracker.get(queryKey);
-    perfLog('analytics_save_query_start', { queryKey, userId, day: today });
-    if (typeof lastTs === 'number' && startTs - lastTs < 1200) {
-      perfLog('analytics_save_query_duplicate_detected', {
-        queryKey,
-        userId,
-        deltaMs: Number((startTs - lastTs).toFixed(2))
-      });
-    }
-    analyticsQueryTracker.set(queryKey, startTs);
 
     const snapshot = {
       user_id: userId,
@@ -174,13 +98,7 @@ export async function saveWeeklySnapshot(userId, analyticsData) {
         onConflict: 'user_id,snapshot_date,period_type'
       });
 
-    if (!error) {
-      const snapshotCacheKey = getSnapshotCacheKey(userId, getStartOfWeekDate());
-      setCachedSnapshot(snapshotCacheKey, snapshot);
-    }
-
     perfLog('analytics_save_query_end', {
-      queryKey,
       userId,
       durationMs: Number((performance.now() - startTs).toFixed(2)),
       hasError: Boolean(error)
@@ -197,4 +115,4 @@ export async function saveWeeklySnapshot(userId, analyticsData) {
     console.error('Error inesperado:', err);
     return { success: false, error: err };
   }
-}
+}

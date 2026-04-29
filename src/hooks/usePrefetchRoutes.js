@@ -1,12 +1,18 @@
 import { useEffect, useRef } from 'react';
-import { prefetchWeeklyPlannerData } from '../lib/prefetchWeeklyPlannerData';
-import { prefetchAnalyticsData } from '../lib/prefetchAnalyticsData';
+import { dataStoreService } from '../lib/dataStoreService';
 
 /**
- * Intelligent route prefetching hook
- * Preloads heavy pages (TaskBoard, WeeklyPlanner, Stats) after authentication and during idle time
- * Prefetches both component code and data to enable instant navigation
- * Improves perceived navigation speed without blocking the main app
+ * Intelligent route prefetching hook — OPTIMIZED
+ *
+ * Instead of calling prefetchWeeklyPlannerData + prefetchAnalyticsData
+ * (which each independently fetch tasks, habits, planners, courses from
+ * Supabase, duplicating what TaskContext already does), we now simply
+ * warm the unified dataStoreService cache with a single bulk call.
+ *
+ * Since the data store deduplicates in-flight requests, this is a no-op
+ * if TaskContext hooks have already triggered the same fetches.
+ *
+ * We still prefetch component JS bundles for instant navigation.
  */
 export const usePrefetchRoutes = (isAuthenticated, userId) => {
   const alreadyPrefetchedRef = useRef('');
@@ -93,33 +99,29 @@ export const usePrefetchRoutes = (isAuthenticated, userId) => {
           });
       });
 
-      // Prefetch data for heavy pages
-      console.log(`[PREFETCH] Starting data prefetch for user ${userId}`);
-      
-      // Prefetch WeeklyPlanner data
-      prefetchWeeklyPlannerData(userId)
+      // Warm the unified data store — this is a NO-OP if TaskContext
+      // hooks have already triggered these fetches (deduplication).
+      // One call warms tasks, habits, logs, planners, snapshot, and courses.
+      console.log(`[PREFETCH] Warming data store for user ${userId}`);
+
+      dataStoreService.getAllAnalyticsData(userId)
         .then(() => {
-          console.log(`[PREFETCH] ✓ Preloaded data: WeeklyPlanner`);
-          perfLog('prefetch_weeklyplanner_data_done', {
+          perfLog('prefetch_datastore_warm_done', {
             durationMs: Number((performance.now() - prefetchStartTs).toFixed(2))
           });
         })
         .catch((err) => {
-          console.warn(`[PREFETCH] Failed to preload WeeklyPlanner data:`, err);
-          perfLog('prefetch_weeklyplanner_data_error', { message: err?.message || String(err) });
+          console.warn(`[PREFETCH] Data store warm error:`, err);
         });
 
-      // Prefetch Stats/Analytics data
-      prefetchAnalyticsData(userId)
+      dataStoreService.getCourses(userId)
         .then(() => {
-          console.log(`[PREFETCH] ✓ Preloaded data: Stats`);
-          perfLog('prefetch_analytics_data_done', {
+          perfLog('prefetch_courses_warm_done', {
             durationMs: Number((performance.now() - prefetchStartTs).toFixed(2))
           });
         })
         .catch((err) => {
-          console.warn(`[PREFETCH] Failed to preload Stats data:`, err);
-          perfLog('prefetch_analytics_data_error', { message: err?.message || String(err) });
+          console.warn(`[PREFETCH] Courses warm error:`, err);
         });
     });
 
