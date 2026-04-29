@@ -249,7 +249,7 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   overflow: hidden;
 }
 
-.btn:active { transform: scale(0.96); }
+.btn:active { transform: scale(0.98); }
 
 .btn-primary {
   background: transparent;
@@ -275,12 +275,15 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .btn-icon:hover {
   color: var(--accent-primary);
   background: rgba(0, 243, 255, 0.1);
-  transform: scale(1.1);
+  transform: scale(1.05); /* Softer scale than 1.1 */
+}
+.btn-icon:active {
+  transform: scale(0.95);
 }
 
 .btn-icon-danger {
@@ -298,7 +301,10 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   background: rgba(255, 77, 77, 0.15);
   border-color: rgba(255, 77, 77, 0.5);
   box-shadow: 0 0 15px rgba(255, 77, 77, 0.4), inset 0 0 8px rgba(255, 77, 77, 0.2);
-  transform: scale(1.1);
+  transform: scale(1.05); /* Softer scale */
+}
+.btn-icon-danger:active {
+  transform: scale(0.95);
 }
 .btn-icon-danger:hover svg {
   filter: drop-shadow(0 0 4px rgba(255, 77, 77, 0.5));
@@ -321,11 +327,15 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
   letter-spacing: 0.06em;
   position: relative;
   overflow: hidden;
-  transition: color 0.3s var(--ease-out-quint);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   opacity: 0.7;
   z-index: 1;
   transform: translateZ(0);
   cursor: pointer;
+}
+
+.nav-link:active {
+  transform: scale(0.98) translateZ(0) !important;
 }
 
 .nav-link.active {
@@ -340,7 +350,6 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
 
 .nav-link:hover:not(.active) {
   background: rgba(255, 255, 255, 0.08);
-  transition: background 0.2s var(--ease-out-expo);
 }
 
 /* Glassmorphism: Glassmorphism Background Layer */
@@ -361,7 +370,7 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
 }
 
 .nav-link:hover:not(.active) svg {
-  transform: scale(1.05) translateX(3px);
+  transform: scale(1.05) translateX(2px);
 }
 
 .input, .textarea, .select {
@@ -537,9 +546,22 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
 .animate-stagger > * { animation: slideUp 0.6s var(--ease-out-expo) both; }
 .animate-stagger > *:nth-child(n) { animation-delay: calc(var(--delay, 0s) + 0.05s * n); }
 
+.glass-card-hover {
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateZ(0);
+}
+
 .glass-card-hover:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-glass), 0 10px 30px rgba(0,0,0,0.2);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--shadow-glass), 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.glass-card-hover:active {
+  transform: scale(0.98);
+}
+
+.click-press:active {
+  transform: scale(0.98);
 }
 
 /* grain overlay */
@@ -704,8 +726,9 @@ h1, h2, h3, h4, h5, .font-display { font-family: var(--font-display); font-weigh
 .stagger-item:nth-child(5) { animation-delay: 0.3s; }
 .stagger-item:nth-child(6) { animation-delay: 0.35s; }
 
-.hover-lift { transition: transform 0.3s var(--ease-out-quint); }
+.hover-lift { transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
 .hover-lift:hover { transform: translateY(-4px) scale(1.02); }
+.hover-lift:active { transform: scale(0.98); }
 
 .liquid-glass-hover {
   position: relative;

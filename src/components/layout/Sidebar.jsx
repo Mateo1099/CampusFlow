@@ -275,7 +275,7 @@ const Sidebar = () => {
               key={item.path}
               to={item.path}
               end={item.path === '/'}
-              className={isActive ? 'active' : ''}
+              className={`nav-link ${isActive ? 'active' : ''}`}
               onMouseEnter={handleMouseEnter}
               onFocus={handleMouseEnter}
               style={{
@@ -294,7 +294,7 @@ const Sidebar = () => {
                 color: isActive ? '#fff' : 'var(--text-secondary)',
                 textShadow: isActive ? '0 0 10px rgba(0, 243, 255, 0.4)' : 'none',
                 overflow: 'hidden',
-                transition: 'all 0.3s var(--ease-out-quint)',
+                transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
                 transform: isActive ? 'translateY(-1px) translateZ(0)' : 'translateZ(0)',
               }}
             >
@@ -500,10 +500,11 @@ const Sidebar = () => {
             border: '1px solid rgba(255, 0, 0, 0.2)',
             color: '#ff4d4d',
             cursor: 'pointer',
-            transition: 'all 0.3s var(--ease-out-quint)',
-            width: isHorizontal ? 'auto' : '100%'
+            transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
+            width: isHorizontal ? 'auto' : '100%',
+            transform: 'translateZ(0)'
           }}
-          className="click-press"
+          className="click-press hover-bg"
           title={t.logout}
         >
           <LogOut size={isHorizontal ? 20 : 18} />

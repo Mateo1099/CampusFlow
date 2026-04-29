@@ -83,12 +83,12 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         <div style={{ display: 'flex', gap: '8px' }}>
           <motion.button 
             whileHover={{ 
-              scale: 1.08, 
+              scale: 1.02, 
               backgroundColor: 'rgba(0, 243, 255, 0.15)', 
               borderColor: 'rgba(0, 243, 255, 0.5)',
               boxShadow: '0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 8px rgba(0, 243, 255, 0.2)'
             }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.98 }}
             className="btn-icon-alfa"
             style={{ 
               opacity: 1, 
@@ -109,12 +109,12 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
           </motion.button>
           <motion.button 
             whileHover={{ 
-              scale: 1.08, 
+              scale: 1.02, 
               backgroundColor: 'rgba(255, 77, 77, 0.15)', 
               borderColor: 'rgba(255, 77, 77, 0.5)',
               boxShadow: '0 0 15px rgba(255, 77, 77, 0.4), inset 0 0 8px rgba(255, 77, 77, 0.2)'
             }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.98 }}
             className="btn-icon-alfa"
             style={{ 
               opacity: 1, 
@@ -164,6 +164,7 @@ const TaskBoard = () => {
   }, [location, navigate]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
   const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '' });
   const [activePicker, setActivePicker] = useState(null);
   const [currentFilter, setCurrentFilter] = useState('TODAS');
@@ -523,7 +524,7 @@ const TaskBoard = () => {
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '200px' }}>
               <AnimatePresence>
                 {filteredTasks.filter(t => t.status === col.id).map(task => (
-                  <TaskCard key={task.id} task={task} onDelete={deleteTask} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
+                  <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
                 ))}
               </AnimatePresence>
             </div>
@@ -628,6 +629,20 @@ const TaskBoard = () => {
           </div>
         </AnimatePresence>
       )}
+
+      <AnimatePresence>
+        {taskToDelete && (
+          <ConfirmDeleteModal
+            onClose={() => setTaskToDelete(null)}
+            onConfirm={() => {
+              deleteTask(taskToDelete);
+              setTaskToDelete(null);
+            }}
+            title="Eliminar trabajo"
+            message="¿Seguro que quieres eliminar este trabajo? Esta acción no se puede deshacer."
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -638,9 +653,9 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       type={type} 
       onClick={onClick} 
       disabled={disabled}
-      whileHover={!disabled ? { scale: 1.05 } : {}}
+      whileHover={!disabled ? { scale: 1.02, boxShadow: variant === 'save' ? '0 0 15px rgba(0, 243, 255, 0.3)' : '0 0 15px rgba(255, 77, 77, 0.2)' } : {}}
       whileTap={!disabled ? { scale: 0.98 } : {}}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      transition={{ hover: { duration: 0.2, ease: "easeOut" }, tap: { duration: 0.1 } }}
       style={{ 
         width: '180px', 
         height: '48px', 
@@ -664,5 +679,93 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
     </motion.button>
   );
 };
+
+};
+
+function ConfirmDeleteModal({ onClose, onConfirm, title, message }) {
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: '100%', maxWidth: '420px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px',
+          background: 'linear-gradient(135deg, rgba(30,15,15,0.95) 0%, rgba(20,10,10,0.98) 100%)',
+          border: '1px solid rgba(255,59,48,0.2)', borderRadius: '24px', boxShadow: '0 30px 60px rgba(0,0,0,0.6), inset 0 0 40px rgba(255,59,48,0.05)',
+          position: 'relative', overflow: 'hidden'
+        }}
+      >
+        <div style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: '60%', height: '4px', background: 'linear-gradient(90deg, transparent, rgba(255,59,48,0.6), transparent)'
+        }} />
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff3b30', margin: '0 auto', boxShadow: '0 0 30px rgba(255,59,48,0.2)'
+        }}>
+          <Trash2 size={26} />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ margin: '0 0 12px 0', fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '0.5px' }}>{title}</h2>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            {message}
+          </p>
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
+          <button type="button" onClick={onClose} className="click-press" 
+            onMouseEnter={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-cancel');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
+            }}
+            onMouseLeave={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-cancel');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
+            }}
+            style={{ 
+              padding: '12px 24px', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', 
+              color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 700, transition: 'all 0.3s ease',
+              position: 'relative', overflow: 'hidden', letterSpacing: '1px', flex: 1
+            }}>
+            <div className="liquid-fill-cancel" style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
+              width: '150%', aspectRatio: '1/1', borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)',
+              opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
+            }} />
+            <span style={{ position: 'relative', zIndex: 1 }}>CANCELAR</span>
+          </button>
+          
+          <button type="button" onClick={onConfirm} className="click-press" 
+            onMouseEnter={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
+            }}
+            onMouseLeave={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
+            }}
+            style={{ 
+              padding: '12px 24px', borderRadius: '50px', border: '1px solid rgba(255, 59, 48, 0.6)', background: 'linear-gradient(135deg, rgba(255,59,48,0.2), rgba(255,59,48,0.05))', 
+              color: '#ff7d7d', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 24px rgba(255,59,48,0.2), inset 0 0 12px rgba(255,59,48,0.1)',
+              transition: 'all 0.3s ease', letterSpacing: '1px', textTransform: 'uppercase',
+              position: 'relative', overflow: 'hidden', flex: 1
+            }}>
+            <div className="liquid-fill-delete" style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
+              width: '150%', aspectRatio: '1/1', borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,59,48,0.4) 0%, transparent 70%)',
+              opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
+            }} />
+            <span style={{ position: 'relative', zIndex: 1, textShadow: '0 0 8px rgba(255,59,48,0.4)' }}>ELIMINAR</span>
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 export default TaskBoard;

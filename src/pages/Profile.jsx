@@ -1190,13 +1190,13 @@ const Profile = () => {
 
                           <div style={{ marginTop: 'auto', paddingTop: '10px', display: 'flex', justifyContent: 'center' }}>
                             {settings.two_factor_enabled ? (
-                              <motion.button onClick={(e) => { e.stopPropagation(); setIsDisablingMfa(true); }} whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(220, 20, 60, 0.7)' }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.2, ease: 'circOut' }} style={{ background: 'linear-gradient(145deg, #a3142d, #dc143c)', border: 'none', borderRadius: '50px', color: '#fff', fontWeight: 900, fontSize: '0.8rem', letterSpacing: '0.08em', cursor: 'pointer', padding: '10px 28px', boxShadow: '0 8px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)', textTransform: 'uppercase' }}>DESACTIVAR</motion.button>
+                              <motion.button onClick={(e) => { e.stopPropagation(); setIsDisablingMfa(true); }} whileHover={{ scale: 1.02, boxShadow: '0 0 25px rgba(220, 20, 60, 0.7)' }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.2, ease: 'circOut' }} style={{ background: 'linear-gradient(145deg, #a3142d, #dc143c)', border: 'none', borderRadius: '50px', color: '#fff', fontWeight: 900, fontSize: '0.8rem', letterSpacing: '0.08em', cursor: 'pointer', padding: '10px 28px', boxShadow: '0 8px 15px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2)', textTransform: 'uppercase' }}>DESACTIVAR</motion.button>
                             ) : (
                               <motion.button
                                 onClick={(e) => { e.stopPropagation(); handleEnrollMfa(); }}
                                 disabled={mfaLoading}
-                                whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(34, 197, 94, 0.5), inset 0 0 15px rgba(34, 197, 94, 0.15)' }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(34, 197, 94, 0.5), inset 0 0 15px rgba(34, 197, 94, 0.15)' }}
+                                whileTap={{ scale: 0.98 }}
                                 transition={{ duration: 0.2, ease: 'circOut' }}
                                 animate={!mfaLoading ? { boxShadow: ['0 0 12px rgba(34, 197, 94, 0.15)', '0 0 22px rgba(34, 197, 94, 0.35)', '0 0 12px rgba(34, 197, 94, 0.15)'] } : {}}
                                 style={{
@@ -1501,10 +1501,10 @@ const Profile = () => {
                           disabled={mfaLoading}
                           className="crystal-btn"
                           whileHover={{
-                            scale: 1.03,
+                            scale: 1.02,
                             boxShadow: '0 8px 40px rgba(59, 130, 246, 0.4), 0 0 60px rgba(96, 165, 250, 0.15), inset 0 1px 2px rgba(255,255,255,0.2)'
                           }}
-                          whileTap={{ scale: 0.96 }}
+                          whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
                           style={{
                             position: 'relative',

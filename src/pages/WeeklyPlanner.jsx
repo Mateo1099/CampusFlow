@@ -1,8 +1,8 @@
-﻿import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { usePlanners } from '../hooks/usePlanners';
-import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2 } from 'lucide-react';
+import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2, Trash2 } from 'lucide-react';
 import { useCourses } from '../hooks/useCourses';
 import { useTasksContext } from '../context/TaskContext';
 import ColorPicker from '../components/ui/ColorPicker';
@@ -257,7 +257,7 @@ function WeeklyPlanner() {
 
   const { user } = useAuth();
   const { settings } = useSettings();
-  const { planners, loading, addPlanner, addBlock, updateBlock, deleteBlock } = usePlanners(user?.id);
+  const { planners, loading, addPlanner, updatePlanner, deletePlanner, addBlock, updateBlock, deleteBlock } = usePlanners(user?.id);
   const { courses } = useCourses(user?.id);
   const { tasks } = useTasksContext();
   const isLightMode = settings?.theme === 'light';
@@ -271,6 +271,8 @@ function WeeklyPlanner() {
   const [blockDayTarget, setBlockDayTarget] = useState(null);
   const [blockTimeTarget, setBlockTimeTarget] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
+  const [editingPlanner, setEditingPlanner] = useState(null);
+  const [plannerToDelete, setPlannerToDelete] = useState(null);
   const prefetchGuardRef = useRef({ key: '', ts: 0 });
 
   useEffect(() => {
@@ -347,7 +349,9 @@ function WeeklyPlanner() {
           setFilter={setFilter}
           isLightMode={isLightMode}
           onOpenPlanner={setActivePlannerId}
-          onNewPlanner={() => setIsPlannerModalOpen(true)}
+          onNewPlanner={() => { setEditingPlanner(null); setIsPlannerModalOpen(true); }}
+          onEditPlanner={(planner) => { setEditingPlanner(planner); setIsPlannerModalOpen(true); }}
+          onDeletePlanner={(plannerId) => setPlannerToDelete(plannerId)}
         />
       ) : (
         <PlannerDetail 
@@ -375,10 +379,29 @@ function WeeklyPlanner() {
 
       {isPlannerModalOpen && (
         <PlannerModal 
-          onClose={() => setIsPlannerModalOpen(false)} 
-          onSave={(data) => addPlanner(data)} 
+          initialPlanner={editingPlanner}
+          onClose={() => { setIsPlannerModalOpen(false); setEditingPlanner(null); }} 
+          onSave={(data) => {
+            if (editingPlanner) {
+              updatePlanner(editingPlanner.id, data);
+            } else {
+              addPlanner(data);
+            }
+          }} 
         />
       )}
+
+      <AnimatePresence>
+        {plannerToDelete && (
+          <ConfirmDeleteModal
+            onClose={() => setPlannerToDelete(null)}
+            onConfirm={() => {
+              deletePlanner(plannerToDelete);
+              setPlannerToDelete(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {isBlockModalOpen && activePlanner && (
         <BlockModal 
@@ -410,7 +433,7 @@ export default WeeklyPlanner;
 
 // --- VIEWS ---
 
-function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner, onNewPlanner }) {
+function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner, onNewPlanner, onEditPlanner, onDeletePlanner }) {
   const filteredPlanners = useMemo(() => {
     if (filter === 'Todas') return planners;
     return planners.filter(p => p.category === filter);
@@ -494,8 +517,8 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.3, ease: 'easeOut' }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               style={{
                 padding: '10px 24px',
                 borderRadius: '50px',
@@ -642,7 +665,8 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
                     ease: 'easeOut',
                     layout: { duration: 0.3 }
                   }}
-                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                  whileHover={{ scale: 1.02, y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                  whileTap={{ scale: 0.98 }}
                   style={{
                     cursor: 'pointer',
                     padding: '26px',
@@ -691,8 +715,32 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
                        <h3 style={{ margin: 0, fontSize: '1.2rem', color: isLightMode ? '#0f172a' : 'var(--text-primary)', lineHeight: 1.15, letterSpacing: '-0.02em', textShadow: isLightMode ? 'none' : `0 0 24px ${accentColor}18` }}>{planner.title}</h3>
                      </div>
                    </div>
-                   <div style={{ fontSize: '0.72rem', color: isLightMode ? '#334155' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                     {blocks.length} bloques
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                     <div style={{ display: 'flex', gap: '6px' }}>
+                       <button
+                         onClick={(e) => { e.stopPropagation(); onEditPlanner(planner); }}
+                         style={{ background: 'rgba(0,194,255,0.10)', border: '1px solid rgba(0,194,255,0.22)', color: 'var(--accent-primary)', cursor: 'pointer', width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                         title="Editar planificación"
+                         className="click-press hover-bg"
+                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,194,255,0.2)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(0,194,255,0.3)'; }}
+                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,194,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
+                       >
+                         <Pencil size={14} />
+                       </button>
+                       <button
+                         onClick={(e) => { e.stopPropagation(); onDeletePlanner(planner.id); }}
+                         style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                         title="Eliminar planificación"
+                         className="click-press hover-bg"
+                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,59,48,0.2)'; e.currentTarget.style.boxShadow = '0 0 10px rgba(255,59,48,0.3)'; }}
+                         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,59,48,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
+                       >
+                         <Trash2 size={14} />
+                       </button>
+                     </div>
+                     <div style={{ fontSize: '0.72rem', color: isLightMode ? '#334155' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                       {blocks.length} bloques
+                     </div>
                    </div>
                  </div>
                  
@@ -1129,13 +1177,13 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
 
 // --- MODALS ---
 
-function PlannerModal({ onClose, onSave }) {
+function PlannerModal({ onClose, onSave, initialPlanner }) {
   const [formData, setFormData] = useState({
-    title: '',
-    category: 'UNAD',
-    weekly_goal: '',
-    color: '#00f3ff',
-    description: ''
+    title: initialPlanner?.title || '',
+    category: initialPlanner?.category || 'UNAD',
+    weekly_goal: initialPlanner?.weekly_goal || '',
+    color: initialPlanner?.color || '#00f3ff',
+    description: initialPlanner?.description || ''
   });
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -1161,7 +1209,7 @@ function PlannerModal({ onClose, onSave }) {
         background: 'linear-gradient(135deg, rgba(30,30,35,0.9) 0%, rgba(15,15,20,0.95) 100%)',
         border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', boxShadow: '0 30px 60px rgba(0,0,0,0.6)'
       }}>
-        <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '0.5px' }}>NUEVA PLANIFICACIÓN</h2>
+        <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '0.5px' }}>{initialPlanner ? 'EDITAR PLANIFICACIÓN' : 'NUEVA PLANIFICACIÓN'}</h2>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
@@ -1552,6 +1600,92 @@ function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', co
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function ConfirmDeleteModal({ onClose, onConfirm }) {
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: '100%', maxWidth: '420px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px',
+          background: 'linear-gradient(135deg, rgba(30,15,15,0.95) 0%, rgba(20,10,10,0.98) 100%)',
+          border: '1px solid rgba(255,59,48,0.2)', borderRadius: '24px', boxShadow: '0 30px 60px rgba(0,0,0,0.6), inset 0 0 40px rgba(255,59,48,0.05)',
+          position: 'relative', overflow: 'hidden'
+        }}
+      >
+        <div style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: '60%', height: '4px', background: 'linear-gradient(90deg, transparent, rgba(255,59,48,0.6), transparent)'
+        }} />
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff3b30', margin: '0 auto', boxShadow: '0 0 30px rgba(255,59,48,0.2)'
+        }}>
+          <Trash2 size={26} />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ margin: '0 0 12px 0', fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '0.5px' }}>Eliminar planificación</h2>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>
+            ¿Seguro que quieres eliminar esta planificación? Esta acción no se puede deshacer.
+          </p>
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
+          <button type="button" onClick={onClose} className="click-press" 
+            onMouseEnter={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-cancel');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
+            }}
+            onMouseLeave={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-cancel');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
+            }}
+            style={{ 
+              padding: '12px 24px', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', 
+              color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 700, transition: 'all 0.3s ease',
+              position: 'relative', overflow: 'hidden', letterSpacing: '1px', flex: 1
+            }}>
+            <div className="liquid-fill-cancel" style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
+              width: '150%', aspectRatio: '1/1', borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)',
+              opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
+            }} />
+            <span style={{ position: 'relative', zIndex: 1 }}>CANCELAR</span>
+          </button>
+          
+          <button type="button" onClick={onConfirm} className="click-press" 
+            onMouseEnter={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
+            }}
+            onMouseLeave={(e) => {
+              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
+              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
+            }}
+            style={{ 
+              padding: '12px 24px', borderRadius: '50px', border: '1px solid rgba(255, 59, 48, 0.6)', background: 'linear-gradient(135deg, rgba(255,59,48,0.2), rgba(255,59,48,0.05))', 
+              color: '#ff7d7d', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 24px rgba(255,59,48,0.2), inset 0 0 12px rgba(255,59,48,0.1)',
+              transition: 'all 0.3s ease', letterSpacing: '1px', textTransform: 'uppercase',
+              position: 'relative', overflow: 'hidden', flex: 1
+            }}>
+            <div className="liquid-fill-delete" style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
+              width: '150%', aspectRatio: '1/1', borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,59,48,0.4) 0%, transparent 70%)',
+              opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
+            }} />
+            <span style={{ position: 'relative', zIndex: 1, textShadow: '0 0 8px rgba(255,59,48,0.4)' }}>ELIMINAR</span>
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }

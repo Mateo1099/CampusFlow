@@ -316,9 +316,9 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       type={type} 
       onClick={onClick} 
       disabled={disabled}
-      whileHover={!disabled ? { scale: 1.06, textShadow: variant === 'save' ? '0 0 10px rgba(0, 243, 255, 0.5)' : '0 0 10px rgba(255, 77, 77, 0.3)' } : {}}
+      whileHover={!disabled ? { scale: 1.02, textShadow: variant === 'save' ? '0 0 10px rgba(0, 243, 255, 0.5)' : '0 0 10px rgba(255, 77, 77, 0.3)' } : {}}
       whileTap={!disabled ? { scale: 0.98 } : {}}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      transition={{ hover: { duration: 0.2, ease: "easeOut" }, tap: { duration: 0.1 } }}
       style={{ 
         padding: '12px 32px',
         borderRadius: '12px',

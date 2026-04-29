@@ -290,16 +290,18 @@ const Dashboard = () => {
 
         <div style={{ display: 'flex', gap: '12px' }}>
           <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: '0 0 15px #00f3ff' }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 15px rgba(0, 243, 255, 0.4)' }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={() => { playClick(1200); navigate('/tasks', { state: { openModal: true } }); }}
             style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(0, 243, 255, 0.1)', color: '#00f3ff', border: '1px solid rgba(0, 243, 255, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
           >
             <Plus size={16} /> NUEVO TRABAJO
           </motion.button>
           <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: '0 0 15px #ffcc00' }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 0 15px rgba(255, 204, 0, 0.4)' }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={() => { playClick(1500); navigate('/pomodoro'); }}
             style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(255, 204, 0, 0.1)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
           >
@@ -320,8 +322,9 @@ const Dashboard = () => {
           {/* Metric Cards Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             {/* Card: Total Tasks */}
-            <motion.div 
-              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0, 243, 255, 0.2)' }}
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(0, 243, 255, 0.25)', borderColor: 'rgba(0, 243, 255, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={{
                 padding: '24px',
@@ -353,11 +356,12 @@ const Dashboard = () => {
                   <Target size={24} color="#00f3ff" />
                 </div>
               </div>
-            </motion.div>
+            </motion.button>
 
-            {/* Card: Completed Tasks */}
-            <motion.div 
-              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(0, 255, 136, 0.2)' }}
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(0, 255, 136, 0.25)', borderColor: 'rgba(0, 255, 136, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={{
                 padding: '24px',
                 borderRadius: '16px',
@@ -388,11 +392,12 @@ const Dashboard = () => {
                   <Zap size={24} color="#00ff88" />
                 </div>
               </div>
-            </motion.div>
+            </motion.button>
 
-            {/* Card: Pending Tasks */}
-            <motion.div 
-              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(255, 200, 0, 0.2)' }}
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(255, 200, 0, 0.25)', borderColor: 'rgba(255, 200, 0, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={{
                 padding: '24px',
                 borderRadius: '16px',
@@ -423,11 +428,12 @@ const Dashboard = () => {
                   <AlertCircle size={24} color="#ffc800" />
                 </div>
               </div>
-            </motion.div>
+            </motion.button>
 
-            {/* Card: Total Minutes */}
-            <motion.div 
-              whileHover={{ y: -8, boxShadow: '0 20px 40px rgba(188, 19, 254, 0.2)' }}
+            <motion.button 
+              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(188, 19, 254, 0.25)', borderColor: 'rgba(188, 19, 254, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { playClick(1000); navigate('/stats'); }}
               style={{
                 padding: '24px',
                 borderRadius: '16px',
@@ -458,7 +464,7 @@ const Dashboard = () => {
                   <Clock3 size={24} color="#bc13fe" />
                 </div>
               </div>
-            </motion.div>
+            </motion.button>
           </div>
 
           {/* Metric Overlays: Compliance & Smart Summary Row */}
@@ -622,16 +628,25 @@ const Dashboard = () => {
                 const taskCourse = courses.find(c => c.id === task.course_id);
                 
                 return (
-                  <motion.div 
+                  <motion.button 
                     key={task.id} 
+                    whileHover={{ scale: 1.01, boxShadow: `0 0 20px ${glowColor}55`, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => { playClick(800); navigate('/tasks'); }}
                     style={{ 
                       position: 'relative', 
                       padding: '14px',
                       paddingLeft: '18px', 
+                      border: 'none',
                       borderLeft: `3px solid ${glowColor}`,
                       background: 'rgba(255,255,255,0.02)',
                       borderRadius: '0 12px 12px 0',
-                      boxShadow: `0 0 15px ${glowColor}11`
+                      boxShadow: `0 0 15px ${glowColor}11`,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'block',
+                      width: '100%',
+                      transition: 'background 0.2s easeOut'
                     }}
                     animate={{
                       boxShadow: [
@@ -641,9 +656,13 @@ const Dashboard = () => {
                       ]
                     }}
                     transition={{
-                      duration: parseFloat(glowSpeed),
-                      repeat: Infinity,
-                      ease: "easeInOut"
+                      hover: { duration: 0.2 },
+                      tap: { duration: 0.1 },
+                      boxShadow: {
+                        duration: parseFloat(glowSpeed),
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }
                     }}
                   >
                     <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', fontWeight: 900, color: '#fff' }}>{task.title}</h4>
@@ -655,7 +674,7 @@ const Dashboard = () => {
                         {days < 0 ? 'VENCIDO' : days === 0 ? 'HOY' : `${days}D`}
                       </span>
                     </div>
-                  </motion.div>
+                  </motion.button>
                 );
               })}
             </div>
@@ -689,7 +708,9 @@ const Dashboard = () => {
                       playClick(900);
                       setSelectedDay(isActive ? null : idx);
                     }}
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 0 15px rgba(0, 243, 255, 0.3)', backgroundColor: 'rgba(0, 243, 255, 0.08)' }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
                     style={{ 
                       width: '100%', 
                       minHeight: '64px', 
@@ -787,9 +808,11 @@ const Dashboard = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
 
           <motion.div 
-            whileHover={{ y: -5 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(0, 243, 255, 0.15)' }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={() => navigate('/agenda')}
-            className="glass-panel glass-card-hover" 
+            className="glass-panel" 
             style={{ padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
         >
           <Activity color="var(--accent-primary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
@@ -803,9 +826,11 @@ const Dashboard = () => {
         </motion.div>
 
           <motion.div 
-            whileHover={{ y: -5 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(188, 19, 254, 0.15)' }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             onClick={() => navigate('/tasks')}
-            className="glass-panel glass-card-hover" 
+            className="glass-panel" 
             style={{ padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
         >
           <Target color="var(--accent-secondary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />

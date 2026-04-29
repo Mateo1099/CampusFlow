@@ -158,7 +158,7 @@ export const dataStoreService = {
 
     const bulkPromise = (async () => {
       perfLog('ds_bulk_start', { userId });
-      
+
       const [tasks, habits, logs, planners, snapshot] = await Promise.all([
         this.getTasks(userId),
         this.getHabits(userId),
