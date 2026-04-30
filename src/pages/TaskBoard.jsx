@@ -680,8 +680,6 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
   );
 };
 
-};
-
 function ConfirmDeleteModal({ onClose, onConfirm, title, message }) {
   return (
     <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>

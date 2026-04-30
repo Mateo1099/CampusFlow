@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { usePlanners } from '../hooks/usePlanners';
-import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2, Trash2 } from 'lucide-react';
+import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2, Trash2, ChevronDown } from 'lucide-react';
 import { useCourses } from '../hooks/useCourses';
 import { useTasksContext } from '../context/TaskContext';
 import ColorPicker from '../components/ui/ColorPicker';
@@ -780,7 +780,64 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
   const BLOCKS = TIME_OPTIONS.map(option => option.value);
   const DAY_LABELS = DAY_OPTIONS.reduce((acc, option) => ({ ...acc, [option.value]: option.label }), {});
 
+  const [expandedBlockIds, setExpandedBlockIds] = useState(() => new Set());
+  const [expandedSections, setExpandedSections] = useState(() => new Set());
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
   const blocks = planner.planner_blocks || [];
+
+  useEffect(() => {
+    setExpandedBlockIds(new Set());
+    setExpandedSections(new Set());
+  }, [planner.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    updatePreference();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updatePreference);
+      return () => mediaQuery.removeEventListener('change', updatePreference);
+    }
+
+    mediaQuery.addListener(updatePreference);
+    return () => mediaQuery.removeListener(updatePreference);
+  }, []);
+
+  const toggleBlockExpanded = (blockId) => {
+    setExpandedBlockIds((current) => {
+      const next = new Set(current);
+      if (next.has(blockId)) {
+        next.delete(blockId);
+      } else {
+        next.add(blockId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSectionExpanded = (sectionKey) => {
+    setExpandedSections((current) => {
+      const next = new Set(current);
+      if (next.has(sectionKey)) {
+        next.delete(sectionKey);
+      } else {
+        next.add(sectionKey);
+      }
+      return next;
+    });
+  };
+
+  const resolveBlockLinkLabel = (block) => {
+    const taskName = block.task_id ? (tasks?.find((task) => task.id === block.task_id)?.title || 'Trabajo') : null;
+    const courseName = block.course_id ? (courses?.find((course) => course.id === block.course_id)?.name || 'Materia') : null;
+
+    if (taskName && courseName) return `${taskName} · ${courseName}`;
+    return taskName || courseName || 'Bloque libre';
+  };
   
   // Resumen inteligente mejorado
   const completedCount = blocks.filter(b => b.status === 'completado').length;
@@ -796,6 +853,8 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
   // Duración total estimada - FIX: Only count valid, non-zero duration_minutes from current planner blocks
   const blocksUsedForDuration = blocks.filter(b => b && typeof b.duration_minutes === 'number' && b.duration_minutes > 0);
   const totalDuration = blocksUsedForDuration.reduce((sum, b) => sum + b.duration_minutes, 0);
+  const metricLabelColor = isLightMode ? '#475569' : 'rgba(226,232,240,0.92)';
+  const metricValueColor = isLightMode ? '#0f172a' : '#f8fafc';
   
   // Alertas inteligentes
   const alerts = [];
@@ -823,37 +882,68 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
 
   return (
     <>
-      <header className="page-header" style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '10px', borderRadius: '50%', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }} className="hover-bg click-press">
+      <header className="page-header" style={{ marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+          <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '9px', borderRadius: '50%', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }} className="hover-bg click-press">
             <ArrowLeft size={20} />
           </button>
-          <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: `linear-gradient(135deg, ${(planner.color || 'var(--accent-primary)')}25, rgba(255,255,255,0.06))`, border: `1px solid ${(planner.color || 'var(--accent-primary)')}38`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: planner.color, boxShadow: `0 18px 36px ${(planner.color || '#00f3ff')}25` }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '13px', background: `linear-gradient(135deg, ${(planner.color || 'var(--accent-primary)')}25, rgba(255,255,255,0.06))`, border: `1px solid ${(planner.color || 'var(--accent-primary)')}38`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: planner.color, boxShadow: `0 16px 30px ${(planner.color || '#00f3ff')}20` }}>
             <Folder size={18} />
           </div>
-          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.03em' }}>{planner.title}</h1>
-          <span style={{ 
-            padding: '6px 14px', 
-            borderRadius: '50px', 
-            background: `${planner.color || 'var(--accent-primary)'}14`, 
-            border: `1px solid ${(planner.color || 'var(--accent-primary)')}36`,
-            fontSize: '0.7rem', 
-            fontWeight: 800, 
-            color: planner.color || 'var(--accent-primary)',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}>{planner.category}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', minWidth: 0 }}>
+              <h1 style={{ margin: 0, fontSize: '1.72rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.03em', lineHeight: 1.05, minWidth: 0 }}>{planner.title}</h1>
+              <span style={{ 
+                padding: '6px 14px', 
+                borderRadius: '50px', 
+                background: `${planner.color || 'var(--accent-primary)'}14`, 
+                border: `1px solid ${(planner.color || 'var(--accent-primary)')}36`,
+                fontSize: '0.72rem', 
+                fontWeight: 850, 
+                color: planner.color || 'var(--accent-primary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.09em',
+                lineHeight: 1
+              }}>{planner.category}</span>
+            </div>
+          </div>
+
+          <button 
+            className="click-press liquid-glass-hover liquid-glass-hover-cyan" 
+            onClick={() => onAddBlock(null, null)} 
+            style={{ 
+              padding: '10px 24px', 
+              fontWeight: 800, 
+              borderRadius: '999px', 
+              background: 'rgba(255, 255, 255, 0.05)', 
+              color: '#00f3ff', 
+              border: '1px solid rgba(0, 243, 255, 0.4)', 
+              backdropFilter: 'blur(10px)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              fontSize: '0.79rem', 
+              cursor: 'pointer',
+              boxShadow: '0 0 16px rgba(0,243,255,0.14), inset 0 0 9px rgba(0,243,255,0.07)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.09em',
+              transition: 'all 0.3s ease',
+              alignSelf: 'center',
+              willChange: 'transform, box-shadow'
+            }}>
+            <Plus size={15} /> AGREGAR BLOQUE
+          </button>
         </div>
         {planner.weekly_goal && (
-          <p style={{ color: 'var(--text-secondary)', marginLeft: '58px', fontSize: '0.98rem', maxWidth: '820px', lineHeight: 1.7 }}><span style={{ color: planner.color || 'var(--accent-primary)', fontWeight: 700 }}>Objetivo semanal:</span> {planner.weekly_goal}</p>
+          <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0 52px', fontSize: '0.9rem', maxWidth: '780px', lineHeight: 1.55 }}><span style={{ color: planner.color || 'var(--accent-primary)', fontWeight: 700 }}>Objetivo semanal:</span> {planner.weekly_goal}</p>
         )}
       </header>
 
       {/* Alertas inteligentes */}
       {alerts.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
           {alerts.map((alert, idx) => (
-            <div key={idx} className="glass-panel" style={{ padding: '12px 16px', borderLeft: `3px solid ${alert.type === 'warning' ? 'var(--accent-warning)' : alert.type === 'danger' ? 'var(--accent-danger)' : 'var(--accent-primary)'}`, display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            <div key={idx} className="glass-panel" style={{ padding: '8px 12px', borderLeft: `3px solid ${alert.type === 'warning' ? 'var(--accent-warning)' : alert.type === 'danger' ? 'var(--accent-danger)' : 'var(--accent-primary)'}`, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.82rem', color: 'var(--text-secondary)', borderRadius: '14px' }}>
               <span>{alert.type === 'warning' ? '⚠️' : alert.type === 'danger' ? '⛔' : 'ℹ️'}</span>
               {alert.text}
             </div>
@@ -862,39 +952,39 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
       )}
 
       {/* Resumen Inteligente Mejorado */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
-          <BarChart2 size={20} color="var(--accent-primary)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Avance</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{progress}%</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(152px, 1fr))', rowGap: '10px', columnGap: '14px', marginBottom: '22px' }}>
+        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+          <BarChart2 size={18} color="var(--accent-primary)" style={{ margin: '0 auto' }} />
+          <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Avance</div>
+          <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{progress}%</div>
         </div>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
-          <CheckCircle2 size={20} color="var(--accent-lime)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Completados</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{completedCount}</div>
+        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+          <CheckCircle2 size={18} color="var(--accent-lime)" style={{ margin: '0 auto' }} />
+          <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Completados</div>
+          <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{completedCount}</div>
         </div>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
-          <Circle size={20} color="var(--accent-warning)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Pendientes</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{pendingCount}</div>
+        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+          <Circle size={18} color="var(--accent-warning)" style={{ margin: '0 auto' }} />
+          <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Pendientes</div>
+          <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{pendingCount}</div>
         </div>
-        <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
-          <Clock size={20} color="var(--accent-purple)" style={{ margin: '0 auto' }} />
-          <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>En Proceso</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 900, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{inProcessCount}</div>
+        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+          <Clock size={18} color="var(--accent-purple)" style={{ margin: '0 auto' }} />
+          <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>En Proceso</div>
+          <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{inProcessCount}</div>
         </div>
         {busiestDay && (
-          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
-            <Calendar size={20} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
-            <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Día más ocupado</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'capitalize', color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>{DAY_LABELS[busiestDay]} ({busiestDayCount})</div>
+          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+            <Calendar size={18} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
+            <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Día más ocupado</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, textTransform: 'capitalize', color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{DAY_LABELS[busiestDay]} ({busiestDayCount})</div>
           </div>
         )}
         {totalDuration > 0 && (
-          <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
-            <Clock size={20} color="var(--accent-success)" style={{ margin: '0 auto' }} />
-            <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Duración Total</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: isLightMode ? '#0f172a' : 'var(--text-primary)' }}>
+          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+            <Clock size={18} color="var(--accent-success)" style={{ margin: '0 auto' }} />
+            <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Duración Total</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>
               {Math.floor(totalDuration / 60) > 0 
                 ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
                 : `${totalDuration}m`
@@ -902,32 +992,6 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
             </div>
           </div>
         )}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <button 
-          className="click-press liquid-glass-hover liquid-glass-hover-cyan" 
-          onClick={() => onAddBlock(null, null)} 
-          style={{ 
-            padding: '10px 24px', 
-            fontWeight: 700, 
-            borderRadius: '50px', 
-            background: 'rgba(255, 255, 255, 0.05)', 
-            color: '#00f3ff', 
-            border: '1px solid rgba(0, 243, 255, 0.4)', 
-            backdropFilter: 'blur(10px)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            fontSize: '0.85rem', 
-            cursor: 'pointer',
-            boxShadow: '0 0 15px rgba(0,243,255,0.1), inset 0 0 8px rgba(0,243,255,0.05)',
-            textTransform: 'uppercase',
-            letterSpacing: '1px',
-            transition: 'all 0.3s ease'
-          }}>
-          <Plus size={16} /> AGREGAR BLOQUE
-        </button>
       </div>
 
       <div style={{
@@ -949,8 +1013,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
           {DAYS.map(day => (
             <div key={day} style={{ 
               background: isLightMode ? 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,246,255,0.94))' : 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
-              padding: '16px 14px',
-              textAlign: 'center',
+              padding: '14px 14px 12px',
               fontWeight: 900,
               fontSize: '0.78rem',
               textTransform: 'uppercase',
@@ -958,9 +1021,14 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
               color: isLightMode ? '#0f172a' : 'var(--text-primary)',
               borderRadius: '24px',
               border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)',
-              boxShadow: isLightMode ? 'inset 0 1px 0 rgba(255,255,255,0.92)' : 'inset 0 1px 0 rgba(255,255,255,0.05)'
+              boxShadow: isLightMode ? 'inset 0 1px 0 rgba(255,255,255,0.92)' : 'inset 0 1px 0 rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              gap: '4px'
             }}>
-              <div style={{ color: planner.color || 'var(--accent-primary)', marginBottom: '4px', fontSize: '0.68rem' }}>DÍA</div>
+              <div style={{ color: planner.color || 'var(--accent-primary)', fontSize: '0.68rem', lineHeight: 1 }}>DÍA</div>
               {DAY_LABELS[day]}
             </div>
           ))}
@@ -1025,147 +1093,264 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                   </button>
                 </div>
 
-                {DAYS.map(day => (
-                  <div key={`${blockTime}-${day}`} style={{ 
-                    minHeight: '190px',
-                    padding: '14px',
-                    borderRadius: '26px',
-                    border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.07)',
-                    background: isLightMode ? `linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(244,248,255,0.98) 100%), radial-gradient(circle at top right, ${theme.accent}1a 0%, transparent 46%)` : `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(12, 15, 24, 0.78) 100%), radial-gradient(circle at top right, ${theme.accent}10 0%, transparent 42%)`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    position: 'relative',
-                    overflowY: 'auto',
-                    boxShadow: isLightMode ? 'inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 16px rgba(15,23,42,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.05)'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', width: '100%', minWidth: 0 }}>
-                      <span style={{ fontSize: '0.72rem', color: theme.accent, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', minWidth: 0, flex: '1 1 auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {DAY_LABELS[day]}
-                      </span>
-                      <span style={{ fontSize: '0.72rem', color: isLightMode ? '#1e293b' : 'var(--text-muted)', fontWeight: isLightMode ? 800 : 500, fontFamily: isLightMode ? '"JetBrains Mono", monospace' : 'inherit', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 'auto' }}>
-                        {scheduleMap[blockTime][day].length} bloques
-                      </span>
-                    </div>
+                {DAYS.map(day => {
+                  const dayBlocks = scheduleMap[blockTime][day];
+                  const sectionKey = `${blockTime}-${day}`;
+                  const isSectionExpanded = expandedSections.has(sectionKey);
+                  const visibleBlocks = isSectionExpanded ? dayBlocks : dayBlocks.slice(0, 3);
+                  const hiddenBlocksCount = Math.max(dayBlocks.length - visibleBlocks.length, 0);
 
-                    {scheduleMap[blockTime][day].map(b => {
-                      const accent = getBlockAccent(b);
-                      const statusTone = getStatusTone(b.status);
+                  return (
+                    <div key={`${blockTime}-${day}`} style={{ 
+                      minHeight: '176px',
+                      padding: '12px 12px 62px',
+                      borderRadius: '26px',
+                      border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.07)',
+                      background: isLightMode ? `linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(244,248,255,0.98) 100%), radial-gradient(circle at top right, ${theme.accent}1a 0%, transparent 46%)` : `linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(12, 15, 24, 0.78) 100%), radial-gradient(circle at top right, ${theme.accent}10 0%, transparent 42%)`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      boxShadow: isLightMode ? 'inset 0 1px 0 rgba(255,255,255,0.95), 0 8px 16px rgba(15,23,42,0.08)' : 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%', minWidth: 0, textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.76rem', color: theme.accent, fontWeight: 850, textTransform: 'uppercase', letterSpacing: '0.08em', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                          {DAY_LABELS[day]}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: isLightMode ? '#475569' : 'rgba(226,232,240,0.92)', fontWeight: 700, fontFamily: isLightMode ? '"JetBrains Mono", monospace' : 'inherit', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', lineHeight: 1.1, textAlign: 'center' }}>
+                          {dayBlocks.length} bloques
+                        </span>
+                      </div>
 
-                      return (
-                        <div key={b.id} className="hover-lift" onClick={() => onEditBlock(b)} style={{ 
-                          padding: '12px',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          border: `1px solid ${accent}30`,
-                          opacity: b.status === 'completado' ? 0.82 : 1,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                          position: 'relative',
-                          transition: 'all 0.2s',
-                          background: isLightMode ? `linear-gradient(160deg, rgba(255,255,255,0.98), rgba(241,246,255,0.95)), radial-gradient(circle at top right, ${accent}1f 0%, transparent 44%)` : `linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)), radial-gradient(circle at top right, ${accent}16 0%, transparent 42%)`,
-                          boxShadow: isLightMode ? `0 8px 16px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.98)` : `0 14px 26px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05)`
-                        }}
-                        title={b.notes || 'Sin notas'}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', minWidth: 0, flex: 1 }}>
-                              <div style={{ width: '28px', height: '28px', borderRadius: '10px', background: statusTone.glow, border: `1px solid ${statusTone.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: statusTone.color, flexShrink: 0, fontSize: '0.8rem', fontWeight: 800 }}>
-                                {statusTone.icon}
-                              </div>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ fontWeight: 800, color: isLightMode ? '#0f172a' : 'var(--text-primary)', wordBreak: 'break-word', lineHeight: 1.35 }}>{b.title}</div>
-                                
-                                {(b.task_id || b.course_id) && (
-                                  <div style={{ fontSize: '0.68rem', color: isLightMode ? '#334155' : 'var(--text-muted)', marginTop: '4px', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                    {b.task_id && <span>{tasks?.find(t => t.id === b.task_id)?.title || 'Trabajo'}</span>}
-                                    {b.task_id && b.course_id && <span>·</span>}
-                                    {b.course_id && <span>{courses?.find(c => c.id === b.course_id)?.name || 'Materia'}</span>}
+                      <AnimatePresence initial={false} mode="popLayout">
+                        {visibleBlocks.map((b, blockIndex) => {
+                          const accent = getBlockAccent(b);
+                          const statusTone = getStatusTone(b.status);
+                          const isExpanded = expandedBlockIds.has(b.id);
+                          const hasDuration = Boolean(b.duration_minutes);
+
+                          return (
+                            <motion.div
+                              key={b.id}
+                              layout
+                              initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.985 }}
+                              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+                              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.985 }}
+                              transition={{ duration: 0.28, ease: 'easeOut' }}
+                              onClick={() => toggleBlockExpanded(b.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  toggleBlockExpanded(b.id);
+                                }
+                              }}
+                              style={{
+                                padding: '11px 12px',
+                                borderRadius: '18px',
+                                fontSize: '0.75rem',
+                                border: `1px solid ${accent}2e`,
+                                opacity: b.status === 'completado' ? 0.92 : 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px',
+                                position: 'relative',
+                                cursor: 'pointer',
+                                background: isLightMode ? `linear-gradient(160deg, rgba(255,255,255,0.98), rgba(241,246,255,0.96)), radial-gradient(circle at top right, ${accent}1d 0%, transparent 44%)` : `linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)), radial-gradient(circle at top right, ${accent}16 0%, transparent 42%)`,
+                                boxShadow: isLightMode ? `0 8px 16px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.98)` : `0 14px 26px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.05)`,
+                                backdropFilter: 'blur(14px)',
+                                willChange: 'transform'
+                              }}
+                              whileHover={prefersReducedMotion ? undefined : { y: -2, scale: 1.01 }}
+                              whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
+                              title={b.notes || 'Bloque compacto'}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', minWidth: 0 }}>
+                                  <div style={{ width: '26px', height: '26px', borderRadius: '9px', background: statusTone.glow, border: `1px solid ${statusTone.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: statusTone.color, flexShrink: 0, fontSize: '0.78rem', fontWeight: 800, boxShadow: `0 0 16px ${statusTone.glow}` }}>
+                                    {statusTone.icon}
                                   </div>
-                                )}
-                                
-                                <div style={{ fontSize: '0.67rem', color: isLightMode ? '#475569' : 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                  {statusTone.label}
+                                  <div style={{ minWidth: 0, flex: 1, paddingTop: '1px' }}>
+                                    <div style={{ fontWeight: 850, color: isLightMode ? '#0f172a' : 'var(--text-primary)', lineHeight: 1.2, fontSize: '0.88rem', marginRight: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                                      {b.title}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      toggleBlockExpanded(b.id);
+                                    }}
+                                    style={{ width: '27px', height: '27px', borderRadius: '10px', border: `1px solid ${accent}2f`, background: `${accent}16`, color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, alignSelf: 'flex-start', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease, border-color 220ms ease', boxShadow: `0 0 16px ${accent}18` }}
+                                    className="click-press liquid-glass-hover"
+                                    title={isExpanded ? 'Contraer bloque' : 'Expandir bloque'}
+                                  >
+                                    <ChevronDown size={14} />
+                                  </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '6px', alignItems: 'center', minWidth: 0, overflow: 'hidden' }}>
+                                  {b.duration_minutes && (
+                                    <span style={{ padding: '4px 10px', borderRadius: '999px', background: isLightMode ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.06)', border: isLightMode ? '1px solid rgba(15,23,42,0.16)' : '1px solid rgba(255,255,255,0.06)', color: isLightMode ? '#1e293b' : 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: 800, whiteSpace: 'nowrap', lineHeight: 1.05, flex: '0 0 auto', minWidth: '68px', textAlign: 'center' }}>
+                                      ⏱ {b.duration_minutes} min
+                                    </span>
+                                  )}
+                                  <span style={{ padding: '4px 9px', borderRadius: '999px', background: `${statusTone.color}10`, border: `1px solid ${statusTone.color}28`, color: statusTone.color, fontSize: hasDuration ? '0.62rem' : '0.66rem', fontWeight: 800, textTransform: 'none', letterSpacing: '0.01em', whiteSpace: 'nowrap', lineHeight: 1.05, flex: hasDuration ? '1 1 auto' : '0 0 auto', minWidth: hasDuration ? '0' : '78px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>
+                                    {statusTone.label}
+                                  </span>
                                 </div>
                               </div>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); onEditBlock(b); }}
-                                style={{ background: 'rgba(0,194,255,0.10)', border: '1px solid rgba(0,194,255,0.22)', color: 'var(--accent-primary)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '8px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                title="Editar bloque"
-                                className="click-press liquid-glass-hover liquid-glass-hover-edit"
-                              >
-                                <Pencil size={12} />
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); onDeleteBlock(b.id); }}
-                                style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '8px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                title="Eliminar bloque"
-                                className="click-press liquid-glass-hover liquid-glass-hover-danger"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          </div>
 
-                          {b.duration_minutes && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                              <span style={{ padding: '5px 8px', borderRadius: '999px', background: isLightMode ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.05)', border: isLightMode ? '1px solid rgba(15,23,42,0.16)' : '1px solid rgba(255,255,255,0.06)', color: isLightMode ? '#1e293b' : 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: isLightMode ? 700 : 500 }}>⏱ {b.duration_minutes} min</span>
-                            </div>
-                          )}
+                              <AnimatePresence initial={false}>
+                                {isExpanded && (
+                                  <motion.div
+                                    key={`${b.id}-details`}
+                                    initial={prefersReducedMotion ? false : { opacity: 0, height: 0, y: -4 }}
+                                    animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto', y: 0 }}
+                                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, height: 0, y: -4 }}
+                                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                                    style={{ overflow: 'hidden' }}
+                                  >
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '10px', borderTop: isLightMode ? '1px solid rgba(15,23,42,0.12)' : '1px solid rgba(255,255,255,0.08)' }}>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: '8px' }}>
+                                        <div style={{ padding: '8px 10px', borderRadius: '14px', background: isLightMode ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.04)', border: isLightMode ? '1px solid rgba(15,23,42,0.10)' : '1px solid rgba(255,255,255,0.06)' }}>
+                                          <div style={{ fontSize: '0.62rem', color: isLightMode ? '#475569' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800 }}>Materia</div>
+                                          <div style={{ marginTop: '4px', fontSize: '0.8rem', color: isLightMode ? '#0f172a' : 'var(--text-primary)', fontWeight: 700, lineHeight: 1.35 }}>
+                                            {resolveBlockLinkLabel(b)}
+                                          </div>
+                                        </div>
+                                        <div style={{ padding: '8px 10px', borderRadius: '14px', background: isLightMode ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.04)', border: isLightMode ? '1px solid rgba(15,23,42,0.10)' : '1px solid rgba(255,255,255,0.06)' }}>
+                                          <div style={{ fontSize: '0.62rem', color: isLightMode ? '#475569' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800 }}>Duración</div>
+                                          <div style={{ marginTop: '4px', fontSize: '0.8rem', color: isLightMode ? '#0f172a' : 'var(--text-primary)', fontWeight: 700 }}>
+                                            {b.duration_minutes ? `${b.duration_minutes} min` : 'Sin definir'}
+                                          </div>
+                                        </div>
+                                        <div style={{ padding: '8px 10px', borderRadius: '14px', background: isLightMode ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.04)', border: isLightMode ? '1px solid rgba(15,23,42,0.10)' : '1px solid rgba(255,255,255,0.06)' }}>
+                                          <div style={{ fontSize: '0.62rem', color: isLightMode ? '#475569' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800 }}>Estado</div>
+                                          <div style={{ marginTop: '4px', fontSize: '0.8rem', color: statusTone.color, fontWeight: 800 }}>
+                                            {statusTone.label}
+                                          </div>
+                                        </div>
+                                      </div>
 
-                          {b.notes && (
-                            <div style={{ fontSize: '0.7rem', color: isLightMode ? '#334155' : 'var(--text-secondary)', lineHeight: 1.5, borderTop: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
-                              {b.notes.substring(0, 64)}{b.notes.length > 64 ? '...' : ''}
-                            </div>
-                          )}
+                                      {b.notes && (
+                                        <div style={{ padding: '10px 12px', borderRadius: '16px', background: isLightMode ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.035)', border: isLightMode ? '1px solid rgba(15,23,42,0.1)' : '1px solid rgba(255,255,255,0.06)' }}>
+                                          <div style={{ fontSize: '0.62rem', color: isLightMode ? '#475569' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, marginBottom: '6px' }}>Notas</div>
+                                          <div style={{ fontSize: '0.78rem', color: isLightMode ? '#334155' : 'var(--text-secondary)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                                            {b.notes}
+                                          </div>
+                                        </div>
+                                      )}
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '2px', borderTop: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
-                            <select 
-                              value={b.status} 
-                              onChange={(e) => onUpdateBlock(b.id, { status: e.target.value })}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ 
-                                 background: `${statusTone.color}10`, border: `1px solid ${statusTone.color}26`, color: statusTone.color, 
-                                 fontSize: '0.7rem', padding: '6px 10px', outline: 'none', cursor: 'pointer', fontWeight: 700, borderRadius: '999px'
-                              }}
-                            >
-                              <option value="pendiente">Pendiente</option>
-                              <option value="en_proceso">En Proceso</option>
-                              <option value="completado">Completado</option>
-                            </select>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: accent, boxShadow: `0 0 12px ${accent}` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    <button 
-                      onClick={() => onAddBlock(day, blockTime)} 
-                      style={{ 
-                        position: 'absolute',
-                        bottom: '12px',
-                        right: '12px',
-                        background: `linear-gradient(135deg, ${theme.accent}22, rgba(255,255,255,0.06))`,
-                        border: `1px solid ${theme.accent}36`,
-                        borderRadius: '14px',
-                        width: '38px',
-                        height: '38px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: theme.accent,
-                        cursor: 'pointer',
-                        boxShadow: `0 14px 24px ${theme.accent}18`
-                      }}
-                      className="click-press"
-                      title="Añadir a este día"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                ))}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                        <select 
+                                          value={b.status} 
+                                          onChange={(e) => onUpdateBlock(b.id, { status: e.target.value })}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          style={{ 
+                                            background: `${statusTone.color}10`, border: `1px solid ${statusTone.color}26`, color: statusTone.color, 
+                                            fontSize: '0.7rem', padding: '6px 10px', outline: 'none', cursor: 'pointer', fontWeight: 800, borderRadius: '999px'
+                                          }}
+                                        >
+                                          <option value="pendiente">Pendiente</option>
+                                          <option value="en_proceso">En Proceso</option>
+                                          <option value="completado">Completado</option>
+                                        </select>
+
+                                        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
+                                          <button 
+                                            type="button"
+                                            onClick={(event) => { event.stopPropagation(); onEditBlock(b); }}
+                                            style={{ background: 'rgba(0,194,255,0.10)', border: '1px solid rgba(0,194,255,0.22)', color: 'var(--accent-primary)', cursor: 'pointer', width: '28px', height: '28px', borderRadius: '9px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                            title="Editar bloque"
+                                            className="click-press liquid-glass-hover liquid-glass-hover-edit"
+                                          >
+                                            <Pencil size={12} />
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={(event) => { event.stopPropagation(); onDeleteBlock(b.id); }}
+                                            style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '28px', height: '28px', borderRadius: '9px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                            title="Eliminar bloque"
+                                            className="click-press liquid-glass-hover liquid-glass-hover-danger"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+
+                      {hiddenBlocksCount > 0 && (
+                        <motion.button
+                          type="button"
+                          onClick={() => toggleSectionExpanded(sectionKey)}
+                          initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                          exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                          transition={{ duration: 0.22, ease: 'easeOut' }}
+                          style={{
+                            marginTop: '2px',
+                            width: '100%',
+                            padding: '9px 12px',
+                            borderRadius: '14px',
+                            border: `1px solid ${theme.accent}26`,
+                            background: `linear-gradient(135deg, ${theme.accent}14, rgba(255,255,255,0.05))`,
+                            color: theme.accent,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            fontWeight: 800,
+                            fontSize: '0.72rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            boxShadow: `0 10px 18px ${theme.accent}12`
+                          }}
+                          className="click-press liquid-glass-hover"
+                        >
+                          <span>{isSectionExpanded ? 'Ver menos' : '+ Ver más'}</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{hiddenBlocksCount}</span>
+                        </motion.button>
+                      )}
+
+                      <button 
+                        type="button"
+                        onClick={() => onAddBlock(day, blockTime)} 
+                        style={{ 
+                          position: 'absolute',
+                          bottom: '14px',
+                          right: '14px',
+                          background: `linear-gradient(135deg, ${theme.accent}22, rgba(255,255,255,0.06))`,
+                          border: `1px solid ${theme.accent}36`,
+                          borderRadius: '14px',
+                          width: '38px',
+                          height: '38px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: theme.accent,
+                          cursor: 'pointer',
+                          boxShadow: `0 14px 24px ${theme.accent}18`
+                        }}
+                        className="click-press"
+                        title="Añadir a este día"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </React.Fragment>
             );
           })}
