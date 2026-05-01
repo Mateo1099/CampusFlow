@@ -16,7 +16,7 @@ const parseLocalDeadline = (dateStr) => {
   return new Date(`${datePart}T00:00:00`);
 };
 
-// Cálculo exácto por días calendario, contando todos los días intermedios (+ Math.ceil por margen de error)
+// C├ílculo ex├ícto por d├¡as calendario, contando todos los d├¡as intermedios (+ Math.ceil por margen de error)
 const calculateRemainingDays = (deadlineDate) => {
   const startTarget = startOfDay(deadlineDate);
   const startToday = startOfDay(new Date());
@@ -35,7 +35,7 @@ const Dashboard = () => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
 
-  // Analítica PRO -> Dashboard Integration
+  // Anal├¡tica PRO -> Dashboard Integration
   const {
     totalTasks,
     completedTasks,
@@ -68,13 +68,13 @@ const Dashboard = () => {
 
   const getSmartInsight = () => {
     const hasBlocks = (completedBlocks + pendingBlocks) > 0;
-    if (!hasBlocks && totalMinutes === 0) return 'Aún no hay planificación suficiente.';
+    if (!hasBlocks && totalMinutes === 0) return 'A├║n no hay planificaci├│n suficiente.';
     if (pendingBlocks > completedBlocks) return 'Tienes bloques pendientes esta semana.';
-    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga está en la mañana.';
-    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga está en la noche.';
-    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga está en la tarde.';
-    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecución esta semana.';
-    return 'Tu semana tiene una planificación estable.';
+    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga est├í en la ma├▒ana.';
+    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga est├í en la noche.';
+    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga est├í en la tarde.';
+    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecuci├│n esta semana.';
+    return 'Tu semana tiene una planificaci├│n estable.';
   };
 
   const totalActionsForCompliance = totalTasks + completedBlocks + pendingBlocks + totalHabits;
@@ -83,15 +83,36 @@ const Dashboard = () => {
   const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
   const metricLabelColor = isLightMode ? '#475569' : 'rgba(226,232,240,0.92)';
   const metricValueColor = isLightMode ? '#0f172a' : '#f8fafc';
-  const chipTextColor = isLightMode ? '#0f172a' : '#f8fafc';
+  // === LIGHT PREMIUM FROST ===
+  // Base glass style para cards en modo claro: blanco translúcido con borde sutil y sombra elegante.
   const lightGlassCardStyle = isLightMode ? {
-    background: 'linear-gradient(160deg, rgba(255,255,255,0.76) 0%, rgba(244,248,255,0.94) 100%)',
-    border: '1px solid rgba(148,163,184,0.26)',
+    background: 'linear-gradient(160deg, rgba(255,255,255,0.88) 0%, rgba(248,250,255,0.96) 100%)',
+    border: '1px solid rgba(226, 232, 240, 0.85)',
     borderRadius: '24px',
-    boxShadow: '0 18px 42px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.96), inset 0 0 0 1px rgba(255,255,255,0.34)',
-    backdropFilter: 'blur(18px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(18px) saturate(180%)'
+    boxShadow: '0 8px 24px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,1)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)'
   } : {};
+
+  // === LIGHT PREMIUM FROST CELLS ===
+  const lightCellCardStyle = isLightMode ? {
+    background: 'linear-gradient(160deg, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.58) 100%)',
+    border: '1px solid rgba(90, 120, 150, 0.18)',
+    borderRadius: '16px',
+    boxShadow: '0 8px 24px rgba(60, 80, 100, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)'
+  } : {};
+
+  // === SAFE RENDER HELPER ===
+  const getSafeLabel = (val) => {
+    if (!val) return 'Sin título';
+    if (typeof val === 'string' || typeof val === 'number') return String(val);
+    if (typeof val === 'object') {
+      return val.title || val.name || val.course_name || (val.course && val.course.name) || val.subject || 'Sin título';
+    }
+    return 'Sin título';
+  };
 
   const playClick = (freq = 800) => {
     try {
@@ -106,7 +127,7 @@ const Dashboard = () => {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.1);
-    } catch {}
+    } catch { }
   };
 
   const filteredCourses = useMemo(() => {
@@ -116,7 +137,7 @@ const Dashboard = () => {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Filtro por institución
+      // Filtro por instituci├│n
       if (currentFilter !== 'TODAS') {
         const course = courses.find(c => c.id === task.course_id);
         if ((course?.institution || '').toUpperCase() !== currentFilter.toUpperCase()) return false;
@@ -125,7 +146,7 @@ const Dashboard = () => {
     });
   }, [tasks, currentFilter, courses]);
 
-  // RADAR DE ENTREGAS: Próximos 14 días
+  // RADAR DE ENTREGAS: Pr├│ximos 14 d├¡as
   const upcomingTasks = useMemo(() => {
     return filteredTasks.filter(task => {
       const status = (task.status || '').toLowerCase();
@@ -134,9 +155,9 @@ const Dashboard = () => {
       try {
         const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
         const daysLeft = calculateRemainingDays(deadlineDate);
-        // Si no hay día seleccionado, mostramos el rango de 14 días habitual
+        // Si no hay d├¡a seleccionado, mostramos el rango de 14 d├¡as habitual
         if (selectedDay === null) return daysLeft >= -1 && daysLeft <= 14;
-        
+
         let day = deadlineDate.getDay(); // 0 is Sunday
         day = day === 0 ? 6 : day - 1; // Convert to 0-6 (L-D)
         return day === selectedDay;
@@ -153,27 +174,28 @@ const Dashboard = () => {
 
   const getSubjectChipStyle = (color) => {
     const baseColor = color || 'var(--accent-primary)';
-    const fillStrength = isLightMode ? '18%' : isDaltonicMode ? '16%' : '14%';
-    const borderStrength = isLightMode ? '58%' : isDaltonicMode ? '66%' : '60%';
-    const glowStrength = isLightMode ? '24%' : isDaltonicMode ? '34%' : '28%';
+    const fillStrength = isLightMode ? '12%' : isDaltonicMode ? '16%' : '14%';
+    const borderStrength = isLightMode ? '28%' : isDaltonicMode ? '66%' : '60%';
+    const glowStrength = isLightMode ? '0%' : isDaltonicMode ? '34%' : '28%';
 
     return {
       padding: '6px 12px',
       borderRadius: 'var(--radius-full)',
       border: `1px solid color-mix(in srgb, ${baseColor} ${borderStrength}, transparent)`,
-      color: baseColor,
+      // En light mode: color más oscuro para legibilidad sobre fondo blanco
+      color: isLightMode ? `color-mix(in srgb, ${baseColor} 80%, #111)` : baseColor,
       fontSize: '0.7rem',
       fontFamily: 'var(--font-display)',
       fontWeight: 850,
       textTransform: 'uppercase',
       letterSpacing: '0.065em',
-      background: `linear-gradient(135deg, color-mix(in srgb, ${baseColor} ${fillStrength}, transparent) 0%, color-mix(in srgb, ${baseColor} ${isLightMode ? '10%' : '8%'}, transparent) 100%)`,
+      background: `linear-gradient(135deg, color-mix(in srgb, ${baseColor} ${fillStrength}, transparent) 0%, color-mix(in srgb, ${baseColor} ${isLightMode ? '5%' : '8%'}, transparent) 100%)`,
       boxShadow: isLightMode
-        ? `0 10px 22px color-mix(in srgb, ${baseColor} 16%, rgba(15,23,42,0.10)), inset 0 1px 0 rgba(255,255,255,0.82)`
+        ? `0 2px 8px color-mix(in srgb, ${baseColor} 10%, rgba(15,23,42,0.04)), inset 0 1px 0 rgba(255,255,255,0.9)`
         : `0 0 18px color-mix(in srgb, ${baseColor} ${glowStrength}, transparent), inset 0 1px 0 rgba(255,255,255,0.08)`,
       backdropFilter: 'blur(14px)',
       WebkitBackdropFilter: 'blur(14px)',
-      textShadow: isLightMode ? '0 1px 0 rgba(255,255,255,0.35)' : '0 0 10px rgba(0,0,0,0.12)'
+      textShadow: 'none'
     };
   };
 
@@ -183,16 +205,17 @@ const Dashboard = () => {
     padding: '9px 18px',
     borderRadius: '999px',
     border: isLightMode
-      ? '1px solid rgba(37,99,235,0.26)'
+      ? '1px solid rgba(226, 232, 240, 0.9)'
       : isDaltonicMode
         ? '1px solid rgba(255,220,0,0.38)'
         : '1px solid rgba(0,243,255,0.24)',
     background: isLightMode
-      ? 'linear-gradient(135deg, rgba(255,255,255,0.84) 0%, rgba(241,246,255,0.96) 100%)'
+      ? 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(248,250,255,0.97) 100%)'
       : isDaltonicMode
         ? 'linear-gradient(135deg, rgba(16,20,44,0.92) 0%, rgba(25,31,66,0.82) 100%)'
         : 'linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)',
-    color: 'var(--accent-primary)',
+    // En light mode texto oscuro premium; en dark/daltonic el accent color
+    color: isLightMode ? '#1e293b' : 'var(--accent-primary)',
     fontSize: '0.72rem',
     fontWeight: 900,
     cursor: 'pointer',
@@ -206,7 +229,7 @@ const Dashboard = () => {
     backdropFilter: 'blur(16px) saturate(180%)',
     WebkitBackdropFilter: 'blur(16px) saturate(180%)',
     boxShadow: isLightMode
-      ? '0 16px 32px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.96)'
+      ? '0 4px 12px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,1)'
       : isDaltonicMode
         ? '0 0 18px rgba(255,220,0,0.16), inset 0 1px 0 rgba(255,255,255,0.08)'
         : '0 0 20px rgba(0,243,255,0.12), inset 0 1px 0 rgba(255,255,255,0.07)',
@@ -214,7 +237,7 @@ const Dashboard = () => {
     outline: 'none'
   });
 
-  // PRIORIDAD MÁXIMA: Tarea con deadline más próximo
+  // PRIORIDAD M├üXIMA: Tarea con deadline m├ís pr├│ximo
   const { bigBossTask, bigBossColor } = useMemo(() => {
     // 1. Filtrar tareas no completadas y con fecha
     const pendingWithDeadline = filteredTasks.filter(task => {
@@ -239,12 +262,12 @@ const Dashboard = () => {
         if (hoursLeft < 6) color = '#ff0033';
         else if (days < 2) color = '#ff8800';
         else color = '#00ff66';
-      } catch {}
+      } catch { }
     }
     return { bigBossTask: task, bigBossColor: color };
   }, [filteredTasks, courses]);
 
-  // MATRIZ DE ESFUERZO (Detalles de tareas por día para Células de Energía)
+  // MATRIZ DE ESFUERZO (Detalles de tareas por d├¡a para C├®lulas de Energ├¡a)
   const effortMatrixDetails = useMemo(() => {
     const matrix = [[], [], [], [], [], [], []]; // L-D
     filteredTasks.forEach(task => {
@@ -267,7 +290,7 @@ const Dashboard = () => {
             color: course?.color || '#00f3ff'
           });
         }
-      } catch {}
+      } catch { }
     });
     return matrix;
   }, [filteredTasks, courses]);
@@ -281,7 +304,7 @@ const Dashboard = () => {
   }
 
   const daysLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-  const fullDaysLabels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const fullDaysLabels = ['Lunes', 'Martes', 'Mi├®rcoles', 'Jueves', 'Viernes', 'S├íbado', 'Domingo'];
 
   const formatDateLegible = (dateStr) => {
     if (!dateStr) return '';
@@ -320,9 +343,9 @@ const Dashboard = () => {
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {['TODAS', 'UNAD', 'SENA', 'PERSONALIZADO'].map(f => {
             const isActive = currentFilter === f;
-            const neonColor = f === 'TODAS' ? '#00f3ff' : 
-                              f === 'UNAD' ? '#ffcc00' : 
-                              f === 'SENA' ? '#00ff88' : '#bc13fe';
+            const neonColor = f === 'TODAS' ? '#00f3ff' :
+              f === 'UNAD' ? '#ffcc00' :
+                f === 'SENA' ? '#00ff88' : '#bc13fe';
 
             return (
               <button
@@ -351,10 +374,10 @@ const Dashboard = () => {
                   letterSpacing: '1px'
                 }}
               >
-                <div style={{ 
-                  width: '6px', 
-                  height: '6px', 
-                  borderRadius: '50%', 
+                <div style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
                   background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
                   boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
                 }} />
@@ -365,7 +388,7 @@ const Dashboard = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.02, boxShadow: '0 0 15px rgba(0, 243, 255, 0.4)' }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
@@ -374,7 +397,7 @@ const Dashboard = () => {
           >
             <Plus size={16} /> NUEVO TRABAJO
           </motion.button>
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.02, boxShadow: '0 0 15px rgba(255, 204, 0, 0.4)' }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
@@ -389,7 +412,7 @@ const Dashboard = () => {
 
       {/* PREMIUM ANALYTICS DASHBOARD */}
       {!isAnalyticsDashboardEmpty && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -398,11 +421,18 @@ const Dashboard = () => {
           {/* Metric Cards Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             {/* Card: Total Tasks */}
-            <motion.button 
-              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(0, 243, 255, 0.25)', borderColor: 'rgba(0, 243, 255, 0.4)' }}
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(2,132,199,0.14)' : '0 10px 25px rgba(0, 243, 255, 0.25)', borderColor: isLightMode ? 'rgba(2,132,199,0.35)' : 'rgba(0, 243, 255, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/tasks'); }}
-              style={{
+              style={isLightMode ? {
+                ...lightGlassCardStyle,
+                padding: '24px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              } : {
                 padding: '24px',
                 borderRadius: '16px',
                 background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
@@ -414,31 +444,38 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(0, 243, 255, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(0, 243, 255, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(0, 243, 255, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Total de trabajos</p>
-                  <motion.h3 
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 243, 255, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Total de trabajos</p>
+                  <motion.h3
                     key={totalTasks}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: '#00f3ff', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(0, 243, 255, 0.5)' }}
+                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#0284c7' : '#00f3ff', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 243, 255, 0.5)' }}
                   >
                     {totalTasks}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Target size={24} color="#00f3ff" />
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(2,132,199,0.1)' : 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Target size={24} color={isLightMode ? '#0284c7' : '#00f3ff'} />
                 </div>
               </div>
             </motion.button>
 
-            <motion.button 
-              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(0, 255, 136, 0.25)', borderColor: 'rgba(0, 255, 136, 0.4)' }}
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(22,163,74,0.14)' : '0 10px 25px rgba(0, 255, 136, 0.25)', borderColor: isLightMode ? 'rgba(22,163,74,0.35)' : 'rgba(0, 255, 136, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/tasks'); }}
-              style={{
+              style={isLightMode ? {
+                ...lightGlassCardStyle,
+                padding: '24px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              } : {
                 padding: '24px',
                 borderRadius: '16px',
                 background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
@@ -450,31 +487,38 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(22,163,74,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(0, 255, 136, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Completados</p>
-                  <motion.h3 
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 255, 136, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Completados</p>
+                  <motion.h3
                     key={completedTasks}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: '#00ff88', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(0, 255, 136, 0.5)' }}
+                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#16a34a' : '#00ff88', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 255, 136, 0.5)' }}
                   >
                     {completedTasks}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(0, 255, 136, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Zap size={24} color="#00ff88" />
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(22,163,74,0.1)' : 'rgba(0, 255, 136, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={24} color={isLightMode ? '#16a34a' : '#00ff88'} />
                 </div>
               </div>
             </motion.button>
 
-            <motion.button 
-              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(255, 200, 0, 0.25)', borderColor: 'rgba(255, 200, 0, 0.4)' }}
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(217,119,6,0.14)' : '0 10px 25px rgba(255, 200, 0, 0.25)', borderColor: isLightMode ? 'rgba(217,119,6,0.35)' : 'rgba(255, 200, 0, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/tasks'); }}
-              style={{
+              style={isLightMode ? {
+                ...lightGlassCardStyle,
+                padding: '24px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              } : {
                 padding: '24px',
                 borderRadius: '16px',
                 background: 'linear-gradient(135deg, rgba(255, 200, 0, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
@@ -486,31 +530,38 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(255, 200, 0, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(217,119,6,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(255, 200, 0, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255, 200, 0, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Pendientes</p>
-                  <motion.h3 
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(255, 200, 0, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Pendientes</p>
+                  <motion.h3
                     key={pendingTasks}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: '#ffc800', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(255, 200, 0, 0.5)' }}
+                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#d97706' : '#ffc800', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(255, 200, 0, 0.5)' }}
                   >
                     {pendingTasks}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255, 200, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <AlertCircle size={24} color="#ffc800" />
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(217,119,6,0.1)' : 'rgba(255, 200, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <AlertCircle size={24} color={isLightMode ? '#d97706' : '#ffc800'} />
                 </div>
               </div>
             </motion.button>
 
-            <motion.button 
-              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px rgba(188, 19, 254, 0.25)', borderColor: 'rgba(188, 19, 254, 0.4)' }}
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(147,51,234,0.14)' : '0 10px 25px rgba(188, 19, 254, 0.25)', borderColor: isLightMode ? 'rgba(147,51,234,0.35)' : 'rgba(188, 19, 254, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/stats'); }}
-              style={{
+              style={isLightMode ? {
+                ...lightGlassCardStyle,
+                padding: '24px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              } : {
                 padding: '24px',
                 borderRadius: '16px',
                 background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.08) 0%, rgba(0, 243, 255, 0.04) 100%)',
@@ -522,22 +573,22 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: 'radial-gradient(circle, rgba(188, 19, 254, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(147,51,234,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(188, 19, 254, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: metricLabelColor, fontWeight: 800, fontFamily: 'var(--font-display)', textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Minutos totales</p>
-                  <motion.h3 
+                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : metricLabelColor, fontWeight: 800, fontFamily: 'var(--font-display)', textShadow: 'none' }}>Minutos totales</p>
+                  <motion.h3
                     key={totalMinutes}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '2.8rem', fontWeight: 900, margin: '0', color: '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: '0 0 20px rgba(188, 19, 254, 0.5)' }}
+                    style={{ fontSize: '2.8rem', fontWeight: 900, margin: '0', color: isLightMode ? '#7c3aed' : '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(188, 19, 254, 0.5)' }}
                   >
                     {Math.floor(totalMinutes)}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Clock3 size={24} color="#bc13fe" />
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(147,51,234,0.1)' : 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock3 size={24} color={isLightMode ? '#7c3aed' : '#bc13fe'} />
                 </div>
               </div>
             </motion.button>
@@ -546,7 +597,8 @@ const Dashboard = () => {
           {/* Metric Overlays: Compliance & Smart Summary Row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
             {/* Completion Rate Progress Bar */}
-            <motion.div 
+            <motion.div
+              className="glass-panel"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -564,7 +616,7 @@ const Dashboard = () => {
                 <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>
                   Cumplimiento
                 </p>
-                <motion.span 
+                <motion.span
                   key={completionRate}
                   initial={{ scale: 1.3, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -577,7 +629,7 @@ const Dashboard = () => {
               {/* Progress Bar Background */}
               <div style={{ width: '100%', height: '8px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(0, 243, 255, 0.1)', overflow: 'hidden', position: 'relative' }}>
                 {/* Progress Bar Fill */}
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${completionRate}%` }}
                   transition={{ duration: 1, ease: 'easeOut' }}
@@ -596,13 +648,13 @@ const Dashboard = () => {
               </p>
             </motion.div>
 
-            {/* SMART SUMMARY (ANALÍTICA PRO) */}
-            <div className="glass-panel" style={{ 
+            {/* SMART SUMMARY (ANAL├ìTICA PRO) */}
+            <div className="glass-panel" style={{
               ...lightGlassCardStyle,
-              padding: '16px 20px', 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '8px', 
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
               justifyContent: 'center'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -611,7 +663,7 @@ const Dashboard = () => {
                   Resumen Inteligente
                 </h2>
               </div>
-              
+
               {isAnalyticsEmpty ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Sin datos suficientes.</p>
               ) : (
@@ -652,306 +704,302 @@ const Dashboard = () => {
 
           {/* COLUMNA IZQUIERDA: Entregas */}
           <div className="glass-panel glass-card-hover" style={{ ...lightGlassCardStyle, gridColumn: 'span 4', padding: '24px', position: 'relative', height: '100%', maxHeight: '600px', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900 }}>
-              <Zap size={18} /> {selectedDay !== null ? `Entregas ${daysLabels[selectedDay]}:` : 'Proximas Entregas:'}
-            </h2>
-            {selectedDay !== null && (
-              <button 
-                onClick={() => setSelectedDay(null)}
-                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}
-              >
-                Reset
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900 }}>
+                <Zap size={18} /> {selectedDay !== null ? `Entregas ${daysLabels[selectedDay]}:` : 'Proximas Entregas:'}
+              </h2>
+              {selectedDay !== null && (
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {upcomingTasks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.4 }}>
+                <p style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.06em', fontSize: '0.9rem', fontWeight: 800 }}>{t.noDeliveries}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {upcomingTasks.map(task => {
+                  let days;
+                  let hoursLeft;
+                  try {
+                    const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
+                    days = calculateRemainingDays(deadlineDate);
+                    hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+                  } catch { days = 99; hoursLeft = 999; }
+
+                  // L├ôGICA DE COLORES Y ANIMACI├ôN (RADAR 2.0)
+                  let glowColor = '#00ff66'; // VERDE (Default / > 5 d├¡as)
+                  let glowSpeed = '4s';      // Brillo lento
+
+                  if (hoursLeft < 6) {
+                    glowColor = '#ff0033';   // ROJO (< 6 horas)
+                    glowSpeed = '0.8s';      // Parpadeo r├ípido
+                  } else if (days < 2) {
+                    glowColor = '#ff8800';   // NARANJA (< 2 d├¡as)
+                    glowSpeed = '2s';        // Brillo medio
+                  } else if (days <= 5) {
+                    glowColor = '#00ff66';   // VERDE (Gap 2-5 d├¡as)
+                    glowSpeed = '4s';
+                  }
+
+                  const taskCourse = courses.find(c => c.id === task.course_id);
+
+                  return (
+                    <motion.button
+                      key={task.id}
+                      whileHover={{ scale: 1.01, boxShadow: `0 0 20px ${glowColor}55`, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => { playClick(800); navigate('/tasks'); }}
+                      style={{
+                        position: 'relative',
+                        padding: '14px',
+                        paddingLeft: '18px',
+                        border: 'none',
+                        borderLeft: `3px solid ${glowColor}`,
+                        background: 'rgba(255,255,255,0.02)',
+                        borderRadius: '0 12px 12px 0',
+                        boxShadow: `0 0 15px ${glowColor}11`,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'block',
+                        width: '100%',
+                        transition: 'background 0.2s easeOut'
+                      }}
+                      animate={{
+                        boxShadow: [
+                          `0 0 5px ${glowColor}22`,
+                          `0 0 20px ${glowColor}44`,
+                          `0 0 5px ${glowColor}22`
+                        ]
+                      }}
+                      transition={{
+                        hover: { duration: 0.2 },
+                        tap: { duration: 0.1 },
+                        boxShadow: {
+                          duration: parseFloat(glowSpeed),
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }
+                      }}
+                    >
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', fontWeight: 900, color: '#fff' }}>{task.title}</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                          {taskCourse && taskCourse.name}
+                        </p>
+                        <span style={{ color: glowColor, fontWeight: 950, fontSize: '0.75rem', textShadow: `0 0 8px ${glowColor}66` }}>
+                          {days < 0 ? 'VENCIDO' : days === 0 ? 'HOY' : `${days}D`}
+                        </span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {upcomingTasks.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.4 }}>
-              <p style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.06em', fontSize: '0.9rem', fontWeight: 800 }}>{t.noDeliveries}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {upcomingTasks.map(task => {
-                let days;
-                let hoursLeft;
-                try { 
-                  const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
-                  days = calculateRemainingDays(deadlineDate);
-                  hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
-                } catch { days = 99; hoursLeft = 999; }
-                
-                // LÓGICA DE COLORES Y ANIMACIÓN (RADAR 2.0)
-                let glowColor = '#00ff66'; // VERDE (Default / > 5 días)
-                let glowSpeed = '4s';      // Brillo lento
-                
-                if (hoursLeft < 6) {
-                  glowColor = '#ff0033';   // ROJO (< 6 horas)
-                  glowSpeed = '0.8s';      // Parpadeo rápido
-                } else if (days < 2) {
-                  glowColor = '#ff8800';   // NARANJA (< 2 días)
-                  glowSpeed = '2s';        // Brillo medio
-                } else if (days <= 5) {
-                  glowColor = '#00ff66';   // VERDE (Gap 2-5 días)
-                  glowSpeed = '4s';
-                }
+          {/* COLUMNA DERECHA */}
+          <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                const taskCourse = courses.find(c => c.id === task.course_id);
-                
-                return (
-                  <motion.button 
-                    key={task.id} 
-                    whileHover={{ scale: 1.01, boxShadow: `0 0 20px ${glowColor}55`, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => { playClick(800); navigate('/tasks'); }}
-                    style={{ 
-                      position: 'relative', 
-                      padding: '14px',
-                      paddingLeft: '18px', 
-                      border: 'none',
-                      borderLeft: `3px solid ${glowColor}`,
-                      background: 'rgba(255,255,255,0.02)',
-                      borderRadius: '0 12px 12px 0',
-                      boxShadow: `0 0 15px ${glowColor}11`,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      display: 'block',
-                      width: '100%',
-                      transition: 'background 0.2s easeOut'
-                    }}
-                    animate={{
-                      boxShadow: [
-                        `0 0 5px ${glowColor}22`,
-                        `0 0 20px ${glowColor}44`,
-                        `0 0 5px ${glowColor}22`
-                      ]
-                    }}
-                    transition={{
-                      hover: { duration: 0.2 },
-                      tap: { duration: 0.1 },
-                      boxShadow: {
-                        duration: parseFloat(glowSpeed),
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }
-                    }}
-                  >
-                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', fontWeight: 900, color: '#fff' }}>{task.title}</h4>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                        {taskCourse && taskCourse.name}
-                      </p>
-                      <span style={{ color: glowColor, fontWeight: 950, fontSize: '0.75rem', textShadow: `0 0 8px ${glowColor}66` }}>
-                        {days < 0 ? 'VENCIDO' : days === 0 ? 'HOY' : `${days}D`}
-                      </span>
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* COLUMNA DERECHA */}
-        <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-          {/* MATRIZ DE ESFUERZO - Células de Energía */}
-          <div className="glass-panel" style={{ ...lightGlassCardStyle, padding: '20px 24px', height: 'max-content' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Flame size={16} color="var(--accent-secondary)" /> CARGA SEMANAL
-            </h2>
-            {selectedDay !== null && (
-              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Filtro: {fullDaysLabels[selectedDay]}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '16px' }}>
-            {effortMatrixDetails.map((dayTasks, idx) => {
-              const isActive = selectedDay === idx;
-              return (
-                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', position: 'relative' }}>
-                  <motion.div 
-                    onMouseEnter={() => setHoveredDay(idx)}
-                    onMouseLeave={() => setHoveredDay(null)}
-                    onClick={() => {
-                      playClick(900);
-                      setSelectedDay(isActive ? null : idx);
-                    }}
-                    whileHover={{ scale: 1.02, boxShadow: '0 0 15px rgba(0, 243, 255, 0.3)', backgroundColor: 'rgba(0, 243, 255, 0.08)' }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    style={{ 
-                      ...lightGlassCardStyle,
-                      width: '100%', 
-                      minHeight: '76px', 
-                      padding: '8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      maxHeight: '140px',
-                      overflowY: 'auto',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      position: 'relative',
-                      overflow: 'visible'
-                    }}
-                  >
-                    <AnimatePresence>
-                      {hoveredDay === idx && dayTasks.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                          style={{
-                            position: 'absolute',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            bottom: '45px',
-                            zIndex: 50,
-                            pointerEvents: 'auto',
-                            padding: '12px 16px',
-                            background: 'rgba(10, 10, 10, 0.95)',
-                            backdropFilter: 'blur(20px)',
-                            borderRadius: '16px',
-                            border: '1px solid rgba(0, 243, 255, 0.4)',
-                            boxShadow: '0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.2)',
-                            width: 'fit-content',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          <h4 style={{ margin: '0 0 10px', fontSize: '0.65rem', fontWeight: 900, color: '#00f3ff', textTransform: 'uppercase', letterSpacing: '2px', borderBottom: '1px solid rgba(0, 243, 255, 0.2)', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
-                            {fullDaysLabels[idx]}
-                          </h4>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', whiteSpace: 'normal' }}>
-                            {dayTasks.sort((a, b) => {
-                              const priorities = { alta: 3, media: 2, baja: 1 };
-                              return (priorities[b.priority] || 0) - (priorities[a.priority] || 0);
-                            }).map(t => (
-                              <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
-                                <div style={{ width: '6px', height: '6px', minWidth: '6px', borderRadius: '50%', background: t.color, boxShadow: `0 0 8px ${t.color}` }} />
-                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{t.title}</p>
-                                  <p style={{ margin: 0, fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{t.institution}</p>
-                                </div>
-                              </div>
+            {/* MATRIZ DE ESFUERZO - C├®lulas de Energ├¡a */}
+            <div className="glass-panel" style={{ ...lightGlassCardStyle, padding: '20px 24px', height: 'max-content' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Flame size={16} color="var(--accent-secondary)" /> CARGA SEMANAL
+                </h2>
+                {selectedDay !== null && (
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Filtro: {fullDaysLabels[selectedDay]}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '16px' }}>
+                {effortMatrixDetails.map((dayTasks, idx) => {
+                  const isActive = selectedDay === idx;
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', position: 'relative', zIndex: hoveredDay === idx ? 60 : 1 }}>
+                      <motion.div
+                        onMouseEnter={() => setHoveredDay(idx)}
+                        onMouseLeave={() => setHoveredDay(null)}
+                        onClick={() => {
+                          playClick(900);
+                          setSelectedDay(isActive ? null : idx);
+                        }}
+                        whileHover={{
+                          scale: 1.02,
+                          boxShadow: isLightMode ? '0 0 18px rgba(0, 200, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.65)' : '0 0 15px rgba(0, 243, 255, 0.3)',
+                          backgroundColor: isLightMode ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 243, 255, 0.08)',
+                          borderColor: isLightMode ? 'rgba(0, 200, 255, 0.35)' : undefined
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        style={{
+                          ...lightCellCardStyle,
+                          width: '100%',
+                          minHeight: '76px',
+                          padding: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          maxHeight: '140px',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          position: 'relative',
+                          overflow: 'visible'
+                        }}
+                      >
+                        {dayTasks.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', position: 'relative' }}>
+                            <AnimatePresence>
+                              {hoveredDay === idx && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.96, y: 4 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.96, y: 4 }}
+                                  transition={{ duration: 0.15, ease: "easeOut" }}
+                                  style={{
+                                    position: 'absolute',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    bottom: 'calc(100% + 8px)',
+                                    zIndex: 100,
+                                    pointerEvents: 'none',
+                                    padding: '12px 16px',
+                                    background: isLightMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 10, 10, 0.95)',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    borderRadius: '16px',
+                                    border: isLightMode ? '1px solid rgba(226, 232, 240, 0.9)' : '1px solid rgba(0, 243, 255, 0.4)',
+                                    boxShadow: isLightMode ? '0 15px 40px rgba(15,23,42,0.12)' : '0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 243, 255, 0.2)',
+                                    width: 'fit-content',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  <h4 style={{ margin: '0 0 10px', fontSize: '0.65rem', fontWeight: 900, color: isLightMode ? '#0284c7' : '#00f3ff', textTransform: 'uppercase', letterSpacing: '2px', borderBottom: isLightMode ? '1px solid rgba(15,23,42,0.08)' : '1px solid rgba(0, 243, 255, 0.2)', paddingBottom: '6px', whiteSpace: 'nowrap' }}>
+                                    {fullDaysLabels[idx]}
+                                  </h4>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', whiteSpace: 'normal' }}>
+                                    {dayTasks.sort((a, b) => {
+                                      const priorities = { alta: 3, media: 2, baja: 1 };
+                                      return (priorities[b.priority] || 0) - (priorities[a.priority] || 0);
+                                    }).map(t => (
+                                      <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', whiteSpace: 'nowrap' }}>
+                                        <div style={{ width: '6px', height: '6px', minWidth: '6px', borderRadius: '50%', background: t.color, boxShadow: `0 0 8px ${t.color}` }} />
+                                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                          <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: isLightMode ? '#0f172a' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{getSafeLabel(t.title)}</p>
+                                          <p style={{ margin: 0, fontSize: '0.6rem', color: isLightMode ? '#64748b' : 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 800, whiteSpace: 'nowrap' }}>{getSafeLabel(t.institution)}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                            {dayTasks.map((taskInfo, tIdx) => (
+                              <motion.div
+                                key={taskInfo.id}
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: tIdx * 0.05 }}
+                                style={{
+                                  width: '100%',
+                                  height: '14px',
+                                  borderRadius: '4px',
+                                  border: `1px solid ${taskInfo.color}`,
+                                  background: isLightMode ? taskInfo.color : `${taskInfo.color}33`,
+                                  opacity: isLightMode ? 0.95 : 1,
+                                  boxShadow: isLightMode ? `0 2px 4px ${taskInfo.color}40` : `0 0 8px ${taskInfo.color}44`,
+                                  flexShrink: 0
+                                }}
+                              />
                             ))}
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {dayTasks.map((taskInfo, tIdx) => (
-                      <motion.div 
-                        key={taskInfo.id}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: tIdx * 0.05 }}
-                        style={{
-                          width: '100%',
-                          height: '14px',
-                          borderRadius: '4px',
-                          border: `1px solid ${taskInfo.color}`,
-                          background: `${taskInfo.color}33`,
-                          boxShadow: `0 0 8px ${taskInfo.color}44`,
-                          flexShrink: 0
-                        }}
-                      />
-                    ))}
-                    {dayTasks.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', alignItems: 'stretch' }}>
-                        {dayTasks.slice(0, 2).map((taskInfo) => (
-                          <div key={`${taskInfo.id}-summary`} style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, padding: '5px 8px', borderRadius: '999px', background: isLightMode ? 'rgba(15,23,42,0.04)' : 'rgba(255,255,255,0.04)', border: isLightMode ? '1px solid rgba(15,23,42,0.10)' : '1px solid rgba(255,255,255,0.06)' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: taskInfo.color, boxShadow: `0 0 8px ${taskInfo.color}`, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.64rem', fontWeight: 800, color: isLightMode ? '#334155' : 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{taskInfo.title}</span>
-                          </div>
-                        ))}
-                        {dayTasks.length > 2 && (
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: isLightMode ? '#64748b' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', paddingLeft: '2px' }}>
-                            +{dayTasks.length - 2} más
-                          </span>
                         )}
-                      </div>
-                    )}
-                    {dayTasks.length === 0 && (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '100%', height: '100%', border: '1px dashed rgba(255,255,255,0.03)', borderRadius: '6px' }} />
-                      </div>
-                    )}
-                  </motion.div>
-                  <span style={{ fontSize: '0.7rem', color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: 800 }}>{daysLabels[idx]}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* MÉTRICAS COMPACTAS (FILA DE 3 COLUMNAS DENTRO DE DERECHA) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-
-          <motion.div 
-            whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(0, 243, 255, 0.15)' }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            onClick={() => navigate('/agenda')}
-            className="glass-panel" 
-            style={{ ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
-        >
-          <Activity color="var(--accent-primary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
-          <p style={{ color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>{t.activeSubjects}</p>
-          <h3 key={filteredCourses.length} className="animate-number-pop" style={{ fontSize: '2.5rem', fontWeight: 900, margin: '4px 0', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-primary)', display: 'inline-block' }}>
-            {String(filteredCourses.length).padStart(2, '0')}
-          </h3>
-          <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '8px', position: 'relative', borderRadius: '1px' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(filteredCourses.length * 10, 100)}%`, background: 'var(--accent-primary)', boxShadow: `0 0 8px var(--accent-primary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
-          </div>
-        </motion.div>
-
-          <motion.div 
-            whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(188, 19, 254, 0.15)' }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            onClick={() => navigate('/tasks')}
-            className="glass-panel" 
-            style={{ ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
-        >
-          <Target color="var(--accent-secondary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
-          <p style={{ color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>{t.pendingTasks}</p>
-          <h3 key={pendingCount} className="animate-number-pop" style={{ fontSize: '2.5rem', fontWeight: 900, margin: '4px 0', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-secondary)', display: 'inline-block' }}>
-            {String(pendingCount).padStart(2, '0')}
-          </h3>
-          <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '8px', position: 'relative', borderRadius: '1px' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(pendingCount * 10, 100)}%`, background: 'var(--accent-secondary)', boxShadow: `0 0 8px var(--accent-secondary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
-          </div>
-        </motion.div>
-
-          {/* PRIORIDAD MÁXIMA - Tarea más próxima */}
-          <div className="glass-panel" style={{ ...lightGlassCardStyle, padding: '20px', position: 'relative', overflow: 'hidden' }}>
-          <Flame color={bigBossColor} size={40} style={{ opacity: 0.1, position: 'absolute', bottom: '-8px', right: '-8px' }} />
-          <h2 style={{ fontSize: '0.65rem', fontWeight: 900, color: bigBossColor, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)' }}>
-            <AlertCircle size={14} /> PRIORIDAD MÁXIMA
-          </h2>
-          {bigBossTask ? (
-            <div>
-              <h4 style={{ fontSize: '1rem', fontWeight: 950, margin: '0 0 4px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bigBossTask.title}</h4>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>
-                {formatDateLegible(bigBossTask.deadline || bigBossTask.due_date)} - {courses.find(c => c.id === bigBossTask.course_id)?.name || 'Sin Materia'}
-              </p>
-              <div style={{ display: 'inline-flex', padding: '4px 10px', background: `${bigBossColor}22`, borderRadius: '4px', border: `1px solid ${bigBossColor}33` }}>
-                <span style={{ color: bigBossColor, fontWeight: 900, fontSize: '0.6rem', letterSpacing: '1px' }}>
-                  //_OBJETIVO_CRÍTICO
-                </span>
+                        {dayTasks.length === 0 && (
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '100%', height: '100%', border: '1px dashed rgba(255,255,255,0.03)', borderRadius: '6px' }} />
+                          </div>
+                        )}
+                      </motion.div>
+                      <span style={{ fontSize: '0.7rem', color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: 800 }}>{daysLabels[idx]}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>SIN AMENAZAS PRÓXIMAS</p>
-          )}
-        </div>
 
+            {/* M├ëTRICAS COMPACTAS (FILA DE 3 COLUMNAS DENTRO DE DERECHA) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+
+              <motion.div
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(0, 243, 255, 0.15)' }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                onClick={() => navigate('/agenda')}
+                className="glass-panel"
+                style={{ ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+              >
+                <Activity color="var(--accent-primary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
+                <p style={{ color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>{t.activeSubjects}</p>
+                <h3 key={filteredCourses.length} className="animate-number-pop" style={{ fontSize: '2.5rem', fontWeight: 900, margin: '4px 0', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-primary)', display: 'inline-block' }}>
+                  {String(filteredCourses.length).padStart(2, '0')}
+                </h3>
+                <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '8px', position: 'relative', borderRadius: '1px' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(filteredCourses.length * 10, 100)}%`, background: 'var(--accent-primary)', boxShadow: `0 0 8px var(--accent-primary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
+                </div>
+              </motion.div>
+
+              <motion.div
+                whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(188, 19, 254, 0.15)' }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                onClick={() => navigate('/tasks')}
+                className="glass-panel"
+                style={{ ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+              >
+                <Target color="var(--accent-secondary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
+                <p style={{ color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>{t.pendingTasks}</p>
+                <h3 key={pendingCount} className="animate-number-pop" style={{ fontSize: '2.5rem', fontWeight: 900, margin: '4px 0', fontFamily: 'var(--font-display)', lineHeight: 1, color: 'var(--accent-secondary)', display: 'inline-block' }}>
+                  {String(pendingCount).padStart(2, '0')}
+                </h3>
+                <div style={{ width: '100%', height: '2px', background: 'var(--border-glass-top)', marginTop: '8px', position: 'relative', borderRadius: '1px' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${Math.min(pendingCount * 10, 100)}%`, background: 'var(--accent-secondary)', boxShadow: `0 0 8px var(--accent-secondary)`, borderRadius: '1px', transition: 'width 0.6s var(--ease-out-expo)' }} />
+                </div>
+              </motion.div>
+
+              {/* PRIORIDAD M├üXIMA - Tarea m├ís pr├│xima */}
+              <div className="glass-panel" style={{ ...lightGlassCardStyle, padding: '20px', position: 'relative', overflow: 'hidden' }}>
+                <Flame color={bigBossColor} size={40} style={{ opacity: 0.1, position: 'absolute', bottom: '-8px', right: '-8px' }} />
+                <h2 style={{ fontSize: '0.65rem', fontWeight: 900, color: bigBossColor, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)' }}>
+                  <AlertCircle size={14} /> PRIORIDAD M├üXIMA
+                </h2>
+                {bigBossTask ? (
+                  <div>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 950, margin: '0 0 4px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bigBossTask.title}</h4>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>
+                      {formatDateLegible(bigBossTask.deadline || bigBossTask.due_date)} - {courses.find(c => c.id === bigBossTask.course_id)?.name || 'Sin Materia'}
+                    </p>
+                    <div style={{ display: 'inline-flex', padding: '4px 10px', background: `${bigBossColor}22`, borderRadius: '4px', border: `1px solid ${bigBossColor}33` }}>
+                      <span style={{ color: bigBossColor, fontWeight: 900, fontSize: '0.6rem', letterSpacing: '1px' }}>
+                  //_OBJETIVO_CR├ìTICO
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>SIN AMENAZAS PR├ôXIMAS</p>
+                )}
+              </div>
+
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
         {/* Materias filtradas (Nueva fila inferior decorativa) */}
         <div

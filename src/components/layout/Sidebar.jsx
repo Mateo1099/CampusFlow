@@ -16,6 +16,7 @@ const Sidebar = () => {
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
   const [triggerAnimation, setTriggerAnimation] = React.useState({});
   const isHorizontal = settings.sidebarPosition === 'top' || settings.sidebarPosition === 'bottom';
+  const isLightMode = settings.theme === 'light';
 
   const avatarDisplayUrl = settings.avatarUrl || null;
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${settings.name || 'Mateo'}&background=00f3ff&color=fff&font-size=0.4&bold=true`;
@@ -291,8 +292,8 @@ const Sidebar = () => {
                 fontWeight: isActive ? 800 : 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                color: isActive ? '#fff' : 'var(--text-secondary)',
-                textShadow: isActive ? '0 0 10px rgba(0, 243, 255, 0.4)' : 'none',
+                color: isActive ? (isLightMode ? 'rgba(20, 35, 50, 0.92)' : '#fff') : (isLightMode ? 'rgba(45, 60, 75, 0.72)' : 'var(--text-secondary)'),
+                textShadow: isActive ? (isLightMode ? '0 0 12px rgba(0, 210, 255, 0.15)' : '0 0 10px rgba(0, 243, 255, 0.4)') : 'none',
                 overflow: 'hidden',
                 transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
                 transform: isActive ? 'translateY(-1px) translateZ(0)' : 'translateZ(0)',
@@ -306,10 +307,10 @@ const Sidebar = () => {
                   inset: 0,
                   borderRadius: 'var(--radius-md)',
                   background: isActive 
-                    ? 'linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%)'
-                    : 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.0) 100%)',
-                  border: isActive ? '1px solid rgba(0, 243, 255, 0.3)' : '1px solid transparent',
-                  boxShadow: isActive ? 'inset 0 0 20px rgba(0, 243, 255, 0.1)' : 'none',
+                    ? (isLightMode ? 'rgba(255, 255, 255, 0.48)' : 'linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%)')
+                    : (isLightMode ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.03) 0%, rgba(15, 23, 42, 0) 100%)' : 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.0) 100%)'),
+                  border: isActive ? (isLightMode ? '1px solid rgba(0, 210, 255, 0.35)' : '1px solid rgba(0, 243, 255, 0.3)') : '1px solid transparent',
+                  boxShadow: isActive ? (isLightMode ? '0 0 18px rgba(0, 210, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.7)' : 'inset 0 0 20px rgba(0, 243, 255, 0.1)') : 'none',
                   opacity: 1,
                   transition: 'all 0.4s var(--ease-out-quint)',
                   pointerEvents: 'none',
@@ -328,7 +329,7 @@ const Sidebar = () => {
                   right: 0,
                   height: '1px',
                   background: isActive 
-                    ? 'linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.5), transparent)'
+                    ? (isLightMode ? 'linear-gradient(90deg, transparent, rgba(2, 132, 199, 0.3), transparent)' : 'linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.5), transparent)')
                     : 'transparent',
                   transition: 'background 0.3s var(--ease-out-quint)',
                   zIndex: 2,
@@ -369,9 +370,9 @@ const Sidebar = () => {
                     top: 0,
                     bottom: 0,
                     width: '4px',
-                    background: 'linear-gradient(180deg, #00f3ff 0%, var(--accent-secondary) 100%)',
+                    background: isLightMode ? 'linear-gradient(180deg, #0284c7 0%, #7c3aed 100%)' : 'linear-gradient(180deg, #00f3ff 0%, var(--accent-secondary) 100%)',
                     borderRadius: 'var(--radius-md)',
-                    boxShadow: '0 0 15px rgba(0, 243, 255, 0.8), 0 0 5px rgba(188, 19, 254, 0.5)',
+                    boxShadow: isLightMode ? '0 0 15px rgba(2, 132, 199, 0.4), 0 0 5px rgba(147, 51, 234, 0.2)' : '0 0 15px rgba(0, 243, 255, 0.8), 0 0 5px rgba(188, 19, 254, 0.5)',
                     animation: 'barIn 0.4s var(--ease-out-expo) backwards, barPulse 2s ease-in-out 0.4s infinite',
                     zIndex: 3,
                     pointerEvents: 'none'
@@ -387,8 +388,8 @@ const Sidebar = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: isActive ? '#00f3ff' : 'inherit',
-                  filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 243, 255, 0.6))' : 'none',
+                  color: isActive ? (isLightMode ? 'rgba(0, 190, 220, 0.95)' : '#00f3ff') : (isLightMode ? 'rgba(55, 75, 95, 0.68)' : 'inherit'),
+                  filter: isActive ? (isLightMode ? 'drop-shadow(0 0 6px rgba(0, 190, 220, 0.3))' : 'drop-shadow(0 0 8px rgba(0, 243, 255, 0.6))') : 'none',
                   transition: 'all 0.3s var(--ease-out-quint)',
                   ...(isActive && isTriggering && { animation: 'iconPop 0.6s var(--ease-out-expo) ease-out' })
                 }}
@@ -480,10 +481,10 @@ const Sidebar = () => {
           </div>
           {!isHorizontal && (
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.9rem', color: isLightMode ? '#0f172a' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {settings.name || 'Mateo'}
               </p>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 600 }}>{t.profile}</p>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: isLightMode ? '#0284c7' : 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 600 }}>{t.profile}</p>
             </div>
           )}
         </NavLink>
