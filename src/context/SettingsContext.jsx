@@ -33,7 +33,7 @@ export const FONT_OPTIONS = [
 export const translations = {
   es: {
     dashboard: 'Dashboard', subjects: 'Materias', tasks: 'Trabajos',
-    planner: 'PLANIFICADOR SEMANAL', pomodoro: 'Pomodoro', profile: 'Ajustes', analytics: 'Analítica',
+    planner: 'PLANIFICADOR SEMANAL', pomodoro: 'Estudio', profile: 'Ajustes', analytics: 'Analítica',
     stats: 'Estadísticas', addSubject: 'Añadir Materia', subjectName: 'Nombre del Curso', code: 'Código',
     teacher: 'Profesor', institution: 'Institución', tetherColor: 'Color Identificador', save: 'Registrar',
     delete: 'Eliminar', editColor: 'Editar Color', emptyDatabase: 'Base de Datos Vacía',
@@ -60,7 +60,7 @@ export const translations = {
   },
   en: {
     dashboard: 'Dashboard', subjects: 'Subjects', tasks: 'Tasks',
-    planner: 'Daily Planner', pomodoro: 'Pomodoro', profile: 'Settings', analytics: 'Analytics',
+    planner: 'Daily Planner', pomodoro: 'Study', profile: 'Settings', analytics: 'Analytics',
     stats: 'Statistics', addSubject: 'Add Subject', subjectName: 'Course Name', code: 'Code (Optional)',
     teacher: 'Teacher (Optional)', institution: 'Institution', tetherColor: 'Tether Color',
     save: 'Register', delete: 'Delete', editColor: 'Edit Color', emptyDatabase: 'Empty Database',
@@ -92,17 +92,17 @@ const SettingsContext = createContext();
 export function SettingsProvider({ children }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState({
-    theme: localStorage.getItem('campusflow_theme') || 'dark', 
-    language: 'es', 
-    font: 'space-grotesk', 
+    theme: localStorage.getItem('campusflow_theme') || 'dark',
+    language: 'es',
+    font: 'space-grotesk',
     name: 'Mateo',
-    experience: 0, 
-    level: 1, 
+    experience: 0,
+    level: 1,
     stats: { pomodorosCompleted: 0, tasksCompleted: 0 },
-    wallpaper: 'cyber', 
-    sidebarPosition: 'left', 
+    wallpaper: 'cyber',
+    sidebarPosition: 'left',
     fontSize: Number(localStorage.getItem('campusflow_font_size')) || 16,
-    avatarUrl: null, 
+    avatarUrl: null,
     customWallpaper: null,
     two_factor_enabled: false
   });
@@ -128,7 +128,7 @@ export function SettingsProvider({ children }) {
       }
 
       if (data) {
-        const fullAvatarUrl = data.avatar_url 
+        const fullAvatarUrl = data.avatar_url
           ? (data.avatar_url.startsWith('http') ? data.avatar_url : `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${data.avatar_url}`)
           : '';
 
@@ -163,7 +163,7 @@ export function SettingsProvider({ children }) {
     }
 
     setSettings(prev => ({ ...prev, ...processedUpdates }));
-    
+
     if (user) {
       if (processedUpdates.fontSize) {
         localStorage.setItem('campusflow_font_size', processedUpdates.fontSize);
@@ -183,7 +183,7 @@ export function SettingsProvider({ children }) {
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
       if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
       if (processedUpdates.two_factor_enabled !== undefined) cloudMapping.two_factor_enabled = processedUpdates.two_factor_enabled;
-      
+
       if (updates.wallpaper !== undefined) {
         if (updates.wallpaper === 'custom') {
           cloudMapping.custom_wallpaper = (processedUpdates.customWallpaper?.length > 10) ? processedUpdates.customWallpaper : null;

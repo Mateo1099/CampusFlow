@@ -404,7 +404,7 @@ const Dashboard = () => {
             onClick={() => { playClick(1500); navigate('/pomodoro'); }}
             style={{ padding: '10px 20px', borderRadius: '12px', background: 'rgba(255, 204, 0, 0.1)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.3)', fontWeight: 900, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', textTransform: 'uppercase' }}
           >
-            <Timer size={16} /> + POMODORO
+            <Timer size={16} /> + ESTUDIO
           </motion.button>
         </div>
       </div>
@@ -602,14 +602,28 @@ const Dashboard = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              style={{
+              style={isLightMode ? {
                 ...lightGlassCardStyle,
                 padding: '16px 20px',
                 position: 'relative',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                borderRadius: '16px'
+              } : {
+                padding: '16px 20px',
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.05) 0%, rgba(10, 15, 30, 0.5) 100%)',
+                border: '1px solid rgba(0, 243, 255, 0.15)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -649,13 +663,26 @@ const Dashboard = () => {
             </motion.div>
 
             {/* SMART SUMMARY (ANAL├ìTICA PRO) */}
-            <div className="glass-panel" style={{
+            <div className="glass-panel" style={isLightMode ? {
               ...lightGlassCardStyle,
               padding: '16px 20px',
               display: 'flex',
               flexDirection: 'column',
               gap: '8px',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              borderRadius: '16px'
+            } : {
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.05) 0%, rgba(10, 15, 30, 0.5) 100%)',
+              border: '1px solid rgba(188, 19, 254, 0.15)',
+              borderRadius: '16px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <BrainCircuit size={18} color="var(--accent-primary)" />
@@ -703,7 +730,17 @@ const Dashboard = () => {
         <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '24px', alignItems: 'stretch' }}>
 
           {/* COLUMNA IZQUIERDA: Entregas */}
-          <div className="glass-panel glass-card-hover" style={{ ...lightGlassCardStyle, gridColumn: 'span 4', padding: '24px', position: 'relative', height: '100%', maxHeight: '600px', overflowY: 'auto' }}>
+          <div className="glass-panel glass-card-hover" style={isLightMode ? {
+            ...lightGlassCardStyle, gridColumn: 'span 4', padding: '24px', position: 'relative', height: '100%', maxHeight: '600px', overflowY: 'auto'
+          } : {
+            gridColumn: 'span 4', padding: '24px', position: 'relative', height: '100%', maxHeight: '600px', overflowY: 'auto',
+            background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.04) 0%, rgba(10, 15, 30, 0.4) 100%)',
+            border: '1px solid rgba(0, 243, 255, 0.12)',
+            borderRadius: '24px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)'
+          }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900 }}>
                 <Zap size={18} /> {selectedDay !== null ? `Entregas ${daysLabels[selectedDay]}:` : 'Proximas Entregas:'}
@@ -808,7 +845,17 @@ const Dashboard = () => {
           <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
             {/* MATRIZ DE ESFUERZO - C├®lulas de Energ├¡a */}
-            <div className="glass-panel" style={{ ...lightGlassCardStyle, padding: '20px 24px', height: 'max-content' }}>
+            <div className="glass-panel" style={isLightMode ? {
+              ...lightGlassCardStyle, padding: '20px 24px', height: 'max-content'
+            } : {
+              padding: '20px 24px', height: 'max-content',
+              background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.04) 0%, rgba(10, 15, 30, 0.4) 100%)',
+              border: '1px solid rgba(188, 19, 254, 0.12)',
+              borderRadius: '24px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h2 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--text-secondary)', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Flame size={16} color="var(--accent-secondary)" /> CARGA SEMANAL
@@ -944,7 +991,17 @@ const Dashboard = () => {
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 onClick={() => navigate('/agenda')}
                 className="glass-panel"
-                style={{ ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                style={isLightMode ? {
+                  ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer', borderRadius: '16px'
+                } : {
+                  padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.05) 0%, rgba(10, 15, 30, 0.5) 100%)',
+                  border: '1px solid rgba(0, 243, 255, 0.15)',
+                  borderRadius: '16px',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)'
+                }}
               >
                 <Activity color="var(--accent-primary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
                 <p style={{ color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>{t.activeSubjects}</p>
@@ -962,7 +1019,17 @@ const Dashboard = () => {
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 onClick={() => navigate('/tasks')}
                 className="glass-panel"
-                style={{ ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
+                style={isLightMode ? {
+                  ...lightGlassCardStyle, padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer', borderRadius: '16px'
+                } : {
+                  padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.05) 0%, rgba(10, 15, 30, 0.5) 100%)',
+                  border: '1px solid rgba(188, 19, 254, 0.15)',
+                  borderRadius: '16px',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)'
+                }}
               >
                 <Target color="var(--accent-secondary)" size={24} style={{ opacity: 0.15, position: 'absolute', top: '16px', right: '16px' }} />
                 <p style={{ color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', fontFamily: 'var(--font-display)', fontWeight: 800, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>{t.pendingTasks}</p>
@@ -975,7 +1042,17 @@ const Dashboard = () => {
               </motion.div>
 
               {/* PRIORIDAD M├üXIMA - Tarea m├ís pr├│xima */}
-              <div className="glass-panel" style={{ ...lightGlassCardStyle, padding: '20px', position: 'relative', overflow: 'hidden' }}>
+              <div className="glass-panel" style={isLightMode ? {
+                ...lightGlassCardStyle, padding: '20px', position: 'relative', overflow: 'hidden', borderRadius: '16px'
+              } : {
+                padding: '20px', position: 'relative', overflow: 'hidden',
+                background: `linear-gradient(135deg, ${bigBossColor}08 0%, rgba(10, 15, 30, 0.5) 100%)`,
+                border: `1px solid ${bigBossColor}25`,
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)'
+              }}>
                 <Flame color={bigBossColor} size={40} style={{ opacity: 0.1, position: 'absolute', bottom: '-8px', right: '-8px' }} />
                 <h2 style={{ fontSize: '0.65rem', fontWeight: 900, color: bigBossColor, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)' }}>
                   <AlertCircle size={14} /> PRIORIDAD M├üXIMA
@@ -1004,11 +1081,22 @@ const Dashboard = () => {
         {/* Materias filtradas (Nueva fila inferior decorativa) */}
         <div
           className="glass-panel glass-card-hover"
-          style={{
+          style={isLightMode ? {
             ...lightGlassCardStyle,
             gridColumn: 'span 12',
             padding: '20px 22px',
-            marginTop: '-8px'
+            marginTop: '-8px',
+            borderRadius: '24px'
+          } : {
+            gridColumn: 'span 12',
+            padding: '20px 22px',
+            marginTop: '-8px',
+            background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.04) 0%, rgba(10, 15, 30, 0.4) 100%)',
+            border: '1px solid rgba(0, 243, 255, 0.12)',
+            borderRadius: '24px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '14px', marginBottom: '12px', flexWrap: 'wrap' }}>

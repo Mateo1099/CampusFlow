@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { usePlanners } from '../hooks/usePlanners';
-import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2, Trash2, ChevronDown } from 'lucide-react';
+import { Clock, Calendar, CheckCircle2, Circle, Folder, Plus, Pencil, ArrowLeft, Sun, Moon, Sunset, BarChart2, Trash2, ChevronDown, Play } from 'lucide-react';
 import { useCourses } from '../hooks/useCourses';
 import { useTasksContext } from '../context/TaskContext';
 import ColorPicker from '../components/ui/ColorPicker';
@@ -776,6 +777,7 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
 }
 
 function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBlock, onUpdateBlock, onDeleteBlock, onEditBlock }) {
+  const navigate = useNavigate();
   const DAYS = DAY_OPTIONS.map(option => option.value);
   const BLOCKS = TIME_OPTIONS.map(option => option.value);
   const DAY_LABELS = DAY_OPTIONS.reduce((acc, option) => ({ ...acc, [option.value]: option.label }), {});
@@ -953,35 +955,107 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
 
       {/* Resumen Inteligente Mejorado */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(152px, 1fr))', rowGap: '10px', columnGap: '14px', marginBottom: '22px' }}>
-        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+        <div className="glass-panel" style={isLightMode ? {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', borderRadius: '16px',
+          background: 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))',
+          border: '1px solid rgba(15,23,42,0.14)',
+          boxShadow: '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)'
+        } : {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center',
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 5%, transparent) 0%, rgba(10, 15, 30, 0.5) 100%)',
+          border: '1px solid color-mix(in srgb, var(--accent-primary) 20%, transparent)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)'
+        }}>
           <BarChart2 size={18} color="var(--accent-primary)" style={{ margin: '0 auto' }} />
           <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Avance</div>
           <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{progress}%</div>
         </div>
-        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+        <div className="glass-panel" style={isLightMode ? {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', borderRadius: '16px',
+          background: 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))',
+          border: '1px solid rgba(15,23,42,0.14)',
+          boxShadow: '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)'
+        } : {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center',
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-lime) 5%, transparent) 0%, rgba(10, 15, 30, 0.5) 100%)',
+          border: '1px solid color-mix(in srgb, var(--accent-lime) 20%, transparent)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)'
+        }}>
           <CheckCircle2 size={18} color="var(--accent-lime)" style={{ margin: '0 auto' }} />
           <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Completados</div>
           <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{completedCount}</div>
         </div>
-        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+        <div className="glass-panel" style={isLightMode ? {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', borderRadius: '16px',
+          background: 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))',
+          border: '1px solid rgba(15,23,42,0.14)',
+          boxShadow: '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)'
+        } : {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center',
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-warning) 5%, transparent) 0%, rgba(10, 15, 30, 0.5) 100%)',
+          border: '1px solid color-mix(in srgb, var(--accent-warning) 20%, transparent)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)'
+        }}>
           <Circle size={18} color="var(--accent-warning)" style={{ margin: '0 auto' }} />
           <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Pendientes</div>
           <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{pendingCount}</div>
         </div>
-        <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+        <div className="glass-panel" style={isLightMode ? {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', borderRadius: '16px',
+          background: 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))',
+          border: '1px solid rgba(15,23,42,0.14)',
+          boxShadow: '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)'
+        } : {
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center',
+          background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-purple) 5%, transparent) 0%, rgba(10, 15, 30, 0.5) 100%)',
+          border: '1px solid color-mix(in srgb, var(--accent-purple) 20%, transparent)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)'
+        }}>
           <Clock size={18} color="var(--accent-purple)" style={{ margin: '0 auto' }} />
           <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>En Proceso</div>
           <div style={{ fontSize: '1.34rem', fontWeight: 900, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{inProcessCount}</div>
         </div>
         {busiestDay && (
-          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+          <div className="glass-panel" style={isLightMode ? {
+            padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', borderRadius: '16px',
+            background: 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))',
+            border: '1px solid rgba(15,23,42,0.14)',
+            boxShadow: '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)'
+          } : {
+            padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center',
+            background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-secondary) 5%, transparent) 0%, rgba(10, 15, 30, 0.5) 100%)',
+            border: '1px solid color-mix(in srgb, var(--accent-secondary) 20%, transparent)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)'
+          }}>
             <Calendar size={18} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
             <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Día más ocupado</div>
             <div style={{ fontSize: '0.88rem', fontWeight: 700, textTransform: 'capitalize', color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>{DAY_LABELS[busiestDay]} ({busiestDayCount})</div>
           </div>
         )}
         {totalDuration > 0 && (
-          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', background: isLightMode ? 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))' : undefined, border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : undefined, boxShadow: isLightMode ? '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)' : undefined }}>
+          <div className="glass-panel" style={isLightMode ? {
+            padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center', borderRadius: '16px',
+            background: 'linear-gradient(155deg, rgba(255,255,255,0.94), rgba(242,247,255,0.96))',
+            border: '1px solid rgba(15,23,42,0.14)',
+            boxShadow: '0 10px 22px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)'
+          } : {
+            padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'center',
+            background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent-success) 5%, transparent) 0%, rgba(10, 15, 30, 0.5) 100%)',
+            border: '1px solid color-mix(in srgb, var(--accent-success) 20%, transparent)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)'
+          }}>
             <Clock size={18} color="var(--accent-success)" style={{ margin: '0 auto' }} />
             <div style={{ fontSize: '0.7rem', color: metricLabelColor, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 800, lineHeight: 1.2, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.4)' }}>Duración Total</div>
             <div style={{ fontSize: '0.88rem', fontWeight: 700, color: metricValueColor, textShadow: isLightMode ? 'none' : '0 1px 2px rgba(0,0,0,0.35)' }}>
@@ -1260,24 +1334,36 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                                           <option value="completado">Completado</option>
                                         </select>
 
-                                        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
+                                        <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
+                                          <button 
+                                            type="button"
+                                            onClick={(event) => { 
+                                              event.stopPropagation(); 
+                                              navigate('/pomodoro', { state: { sourceBlock: b } }); 
+                                            }}
+                                            style={{ background: 'var(--accent-lime)1a', border: '1px solid var(--accent-lime)40', color: 'var(--accent-lime)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}
+                                            title="Iniciar estudio"
+                                            className="click-press liquid-glass-hover"
+                                          >
+                                            <Play size={14} fill="currentColor" />
+                                          </button>
                                           <button 
                                             type="button"
                                             onClick={(event) => { event.stopPropagation(); onEditBlock(b); }}
-                                            style={{ background: 'rgba(0,194,255,0.10)', border: '1px solid rgba(0,194,255,0.22)', color: 'var(--accent-primary)', cursor: 'pointer', width: '28px', height: '28px', borderRadius: '9px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                            style={{ background: 'rgba(0,194,255,0.10)', border: '1px solid rgba(0,194,255,0.22)', color: 'var(--accent-primary)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}
                                             title="Editar bloque"
                                             className="click-press liquid-glass-hover liquid-glass-hover-edit"
                                           >
-                                            <Pencil size={12} />
+                                            <Pencil size={14} />
                                           </button>
                                           <button 
                                             type="button"
                                             onClick={(event) => { event.stopPropagation(); onDeleteBlock(b.id); }}
-                                            style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '28px', height: '28px', borderRadius: '9px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                            style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}
                                             title="Eliminar bloque"
                                             className="click-press liquid-glass-hover liquid-glass-hover-danger"
                                           >
-                                            ×
+                                            <Trash2 size={14} />
                                           </button>
                                         </div>
                                       </div>
