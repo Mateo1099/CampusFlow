@@ -1,0 +1,43 @@
+# CampusFlow — Reglas de UI/UX, Rendimiento y Animación
+
+Estas reglas aplican a todo cambio visual o de interacción en CampusFlow (React 19 + Vite + Framer Motion).
+El estilo objetivo es: **Cyber-Luxe / Glassmorphism premium**, limpio, con microinteracciones deliberadas.
+No son sugerencias — son el estándar mínimo aceptable para cualquier componente nuevo o modificado.
+
+## 1. Identidad visual (Cyber-Luxe)
+- Paleta base: fondos oscuros (`--bg-primary`, `--bg-glass`) + acentos neón (`--accent-primary` cian `#00f3ff`, `--accent-secondary`, `--accent-lime`, `--accent-danger`). Nunca introducir colores fuera de las variables CSS ya definidas en `index.css` sin justificarlo.
+- Glassmorphism real: `backdrop-filter: blur(...)` + fondo translúcido + borde de 1px sutil (`rgba(255,255,255,0.08-0.15)`) + una sombra con glow del color de acento. No usar sombras negras planas sin glow en elementos protagonistas.
+- Jerarquía tipográfica clara: los elementos principales (fotos, nombres, valores clave) deben ser notablemente más grandes que los metadatos. Evitar que todo el texto tenga el mismo peso visual.
+- Prohibido el "ruido" de UI: si un elemento no aporta información o acción real (ej. contadores decorativos sin utilidad), no ocupar espacio con él. Preferir espacio negativo elegante sobre relleno visual.
+
+## 2. Microinteracciones y estados hover
+- Ningún control interactivo debe cambiar de estado sin transición. Mínimo `transition: all 0.2s-0.3s` con easing, nunca instantáneo salvo casos de accesibilidad (`prefers-reduced-motion`).
+- Los overlays de acción (ej. iconos de cámara, editar, eliminar) deben aparecer vía **hover reveal** con opacity + blur, no como botones sólidos permanentes de color chillón, salvo que sea una acción primaria de la pantalla.
+- Usar `whileHover` / `whileTap` de Framer Motion para elementos interactivos importantes (scale sutil 1.02-1.05, nunca saltos agresivos >1.1 salvo micro-iconos).
+- Evitar curvas de easing con overshoot (`cubic-bezier` con valores >1 en el segundo parámetro) en animaciones de layout/altura — producen rebotes visualmente rotos. Reservar el overshoot únicamente para popIn de elementos pequeños (badges, iconos, toasts).
+- Curva de salida estándar del proyecto para expand/collapse y fades: `cubic-bezier(0.22, 1, 0.36, 1)` (ya definida como `--ease-out-quint`).
+
+## 3. Layout y espacio muerto
+- Antes de agregar contenido de relleno (contadores, placeholders vacíos) para "llenar" una tarjeta, rediseñar la jerarquía del contenido real para que ocupe el espacio con propósito (agrandar elemento protagonista, mejorar spacing, Flexbox/Grid con `justify-content: space-between` o `gap` generoso).
+- Usar Flexbox/Grid explícito con `gap` en lugar de márgenes manuales acumulados entre hermanos.
+- Todo contenedor con `overflow: hidden` que envuelva contenido dinámico (listas, texto largo) debe considerar el caso de contenido mínimo y máximo — probar mentalmente ambos extremos antes de fijar alturas.
+
+## 4. Rendimiento
+- Nunca mezclar la propiedad shorthand `background` con las longhand (`backgroundImage`, `backgroundSize`, `backgroundPosition`, `backgroundColor`) en el mismo objeto de estilo inline — React lo marca como advertencia y es una fuente de bugs de repintado. Usar siempre longhand cuando se necesite más de un componente de `background`.
+- Modales y overlays con `position: fixed` deben renderizarse vía `createPortal(..., document.body)` si existe cualquier ancestro con `transform`, `filter` o animación `fill-mode: both` — de lo contrario quedan atrapados en un containing block incorrecto.
+- Toda animación de apertura/cierre que cambie `height` debe evitar recalcular layout de hermanos: usar `alignItems: 'start'` en contenedores grid/flex que agrupen paneles independientes, para que un panel expandido no estire a sus vecinos.
+- Imágenes de usuario (avatar, fondos) se suben a Supabase Storage y se referencian por URL — nunca Base64 completo en la base de datos.
+- Preferir `transform`/`opacity` para animaciones sobre propiedades que disparan layout (`width`, `height`, `top`, `left`) cuando el efecto lo permita.
+
+## 5. Errores silenciosos — prohibido
+- Toda operación asíncrona que pueda fallar visiblemente para el usuario (subida de archivos, guardado de ajustes, llamadas a Supabase) debe estar en `try/catch` con feedback visible (alert, toast, mensaje inline) — nunca solo `console.error`.
+
+## 6. Consistencia de componentes
+- Antes de crear un nuevo patrón visual (dropdown, modal, slider, card), revisar si ya existe un componente equivalente en `Profile.jsx`, `WeeklyPlanner.jsx` o `index.css` y reutilizar su lenguaje visual (bordes, blur, radios, easing) en lugar de inventar uno nuevo.
+- Los sliders nativos (`<input type="range">`) deben re-estilizarse siempre (thumb + track) para eliminar el look default del navegador; nunca dejarlos sin estilizar en una UI cyber-luxe.
+- Todo array de datos/opciones que se usa en más de un componente (ej. catálogos de temas, wallpapers, fuentes) debe vivir en un único origen (`SettingsContext.jsx` u otro contexto) — nunca duplicarse localmente en una página.
+
+## 7. Antes de entregar un cambio visual
+- Verificar que el cambio compile (`npm run build`) y no introduzca warnings nuevos en consola.
+- Confirmar que el cambio respeta `prefers-reduced-motion` cuando ya exista ese patrón en el componente vecino.
+- Si el cambio es puramente estético y de alto impacto (rediseño de tarjeta, layout nuevo), dejarlo fácilmente reversible (cambios acotados a un bloque JSX identificable) para poder revertir sin tocar lógica de negocio.

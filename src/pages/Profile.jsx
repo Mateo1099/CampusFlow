@@ -1,11 +1,12 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSettings, FONT_OPTIONS } from '../context/SettingsContext';
+import { useSettings, FONT_OPTIONS, WALLPAPERS, ALERT_FREQUENCY_OPTIONS } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, AlertCircle, Smartphone, Lock, ScanLine
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine
 } from 'lucide-react';
 
 const THEMES = [
@@ -14,26 +15,23 @@ const THEMES = [
   { id: 'daltonic', labelKey: 'daltonicMode', icon: '👁️', gradient: 'linear-gradient(135deg, #0c4a6e, #075985)' },
 ];
 
-const FONT_SIZES = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24];
-
-const WALLPAPERS = [
-  { id: 'cyber', label: 'Frosted Glass', src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000' },
-  { id: 'nature', label: 'Forest Glass', src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=1000' },
-  { id: 'synth', label: 'Synthwave', src: 'https://images.unsplash.com/photo-1774848372214-3563247a592b?q=80&w=1935&auto=format&fit=crop' },
-  { id: 'space', label: 'Deep Cyber', src: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop' },
-];
-
 const NotificationRow = ({ checked, onChange, label }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <motion.div
       onClick={() => onChange(!checked)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       layout
       style={{
         width: '100%',
         borderRadius: '14px',
         cursor: 'pointer',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        transition: 'all 0.2s ease-in-out',
+        transform: isHovered ? 'translateX(3px)' : 'translateX(0px)'
       }}
       transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
     >
@@ -45,9 +43,9 @@ const NotificationRow = ({ checked, onChange, label }) => {
           inset: 0,
           background: checked
             ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%)'
-            : 'rgba(255, 255, 255, 0.02)',
+            : (isHovered ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)'),
           borderRadius: '14px',
-          transition: 'background 0.4s ease'
+          transition: 'all 0.2s ease-in-out'
         }}
       />
 
@@ -57,10 +55,10 @@ const NotificationRow = ({ checked, onChange, label }) => {
         style={{
           position: 'absolute',
           inset: 0,
-          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.06)'}`,
+          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : (isHovered ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.06)')}`,
           borderRadius: '14px',
-          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : 'none',
-          transition: 'all 0.4s ease'
+          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : (isHovered ? '0 0 14px rgba(0, 243, 255, 0.18)' : 'none'),
+          transition: 'all 0.2s ease-in-out'
         }}
       />
 
@@ -105,6 +103,124 @@ const NotificationRow = ({ checked, onChange, label }) => {
   );
 };
 
+// Fila compacta de frecuencia de insistencia por zona del semáforo de alertas
+// (Roja/Amarilla/Verde). Vive ACOPLADA dentro del mismo panel de "Notificaciones"
+// (no como sección independiente), con acordeón propio y color de acento por zona.
+// Si freq === 'personalizado', despliega un input numérico de horas in-line.
+const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customHours, onCustomHoursChange, onCommitCustomHours, isOpen, onToggle }) => {
+  const isCustom = freq === 'personalizado';
+  const currentLabel = ALERT_FREQUENCY_OPTIONS.find(o => o.id === freq)?.label || 'Diario';
+
+  return (
+    <div style={{
+      borderRadius: '12px',
+      border: `1px solid ${isOpen ? colorVar : 'rgba(255,255,255,0.06)'}`,
+      background: isOpen ? `color-mix(in srgb, ${colorVar} 7%, transparent)` : 'rgba(255,255,255,0.02)',
+      overflow: 'hidden',
+      transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+    }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '9px 12px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer'
+        }}
+      >
+        <span style={{ fontSize: '0.82rem', flexShrink: 0, lineHeight: 1 }}>{dot}</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-primary)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.03em', flex: 1, textAlign: 'left', whiteSpace: 'nowrap' }}>
+          {zoneLabel}
+        </span>
+        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: colorVar, whiteSpace: 'nowrap' }}>
+          {currentLabel}{isCustom ? ` · ${customHours}h` : ''}
+        </span>
+        <ChevronDown size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ height: { duration: 0.28, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.2 } }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{ padding: '2px 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {ALERT_FREQUENCY_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => onSelectFreq(opt.id)}
+                    style={{
+                      padding: '5px 11px',
+                      borderRadius: '20px',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      border: `1px solid ${freq === opt.id ? colorVar : 'rgba(255,255,255,0.08)'}`,
+                      background: freq === opt.id ? `color-mix(in srgb, ${colorVar} 14%, transparent)` : 'transparent',
+                      color: freq === opt.id ? colorVar : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <AnimatePresence initial={false}>
+                {isCustom && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '2px' }}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={720}
+                        value={customHours}
+                        onChange={(e) => onCustomHoursChange(e.target.value)}
+                        onBlur={onCommitCustomHours}
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                        style={{
+                          width: '58px',
+                          padding: '6px 8px',
+                          borderRadius: '8px',
+                          border: `1px solid ${colorVar}66`,
+                          background: 'rgba(0,0,0,0.3)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          textAlign: 'center',
+                          outline: 'none'
+                        }}
+                      />
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        horas de insistencia
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const LANGUAGES = [
   { id: 'es', label: 'Español', flag: '🇪🇸' },
   { id: 'en', label: 'English', flag: '🇺🇸' },
@@ -126,13 +242,13 @@ const SectionTitle = ({ icon, label }) => (
   </div>
 );
 
-const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children }) => (
+const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children, accentColor = 'var(--accent-primary)' }) => (
   <div className="glass-panel" style={{
     padding: 0,
     display: 'flex',
     flexDirection: 'column',
-    border: isOpen ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass-top)',
-    boxShadow: isOpen ? '0 0 20px rgba(0,243,255,0.1)' : 'none',
+    border: isOpen ? `1px solid ${accentColor}` : '1px solid var(--border-glass-top)',
+    boxShadow: isOpen ? `0 0 20px ${accentColor}1a` : 'none',
     transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
     overflow: 'hidden',
     position: 'relative'
@@ -145,7 +261,7 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children }) => (
         display: 'flex',
         alignItems: 'center',
         gap: '16px',
-        background: isOpen ? 'rgba(0,243,255,0.03)' : 'transparent',
+        background: isOpen ? `${accentColor}08` : 'transparent',
         border: 'none',
         cursor: 'pointer',
         transition: 'all 0.3s ease'
@@ -157,7 +273,7 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children }) => (
         if (!isOpen) e.currentTarget.style.background = 'transparent';
       }}
     >
-      <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
+      <div style={{ color: accentColor, display: 'flex', alignItems: 'center' }}>
         {icon}
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
@@ -170,18 +286,27 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children }) => (
       </div>
       <ChevronDown size={18} style={{ color: 'var(--text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
     </button>
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {isOpen && (
         <motion.div
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+          transition={{
+            height: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+            opacity: { duration: 0.22, ease: 'easeOut' }
+          }}
           style={{ overflow: 'hidden' }}
         >
-          <div style={{ padding: '0 20px 20px 20px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px', paddingTop: '16px' }}>
+          <motion.div
+            initial={{ y: -6 }}
+            animate={{ y: 0 }}
+            exit={{ y: -6 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            style={{ padding: '0 20px 20px 20px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px', paddingTop: '16px' }}
+          >
             {children}
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
@@ -219,6 +344,10 @@ const Profile = () => {
 
   const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
   const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
+  const [openAlertZone, setOpenAlertZone] = useState(null);
+  const [redCustomHoursInput, setRedCustomHoursInput] = useState(settings.redAlertCustomHours || 24);
+  const [yellowCustomHoursInput, setYellowCustomHoursInput] = useState(settings.yellowAlertCustomHours || 24);
+  const [greenCustomHoursInput, setGreenCustomHoursInput] = useState(settings.greenAlertCustomHours || 24);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [manualSecret, setManualSecret] = useState('');
   const [securityScreen, setSecurityScreen] = useState('overview');
@@ -248,12 +377,45 @@ const Profile = () => {
     setTempName(settings.name);
   }, [settings.name]);
 
+  // Sincroniza el toggle de notificaciones por correo con el valor real cargado de Supabase
+  // (fetchProfile en SettingsContext es asíncrono, así que el valor inicial del useState puede llegar tarde).
+  useEffect(() => {
+    setEmailNotif(settings.emailNotifications || false);
+  }, [settings.emailNotifications]);
+
+  useEffect(() => {
+    setRedCustomHoursInput(settings.redAlertCustomHours || 24);
+  }, [settings.redAlertCustomHours]);
+  useEffect(() => {
+    setYellowCustomHoursInput(settings.yellowAlertCustomHours || 24);
+  }, [settings.yellowAlertCustomHours]);
+  useEffect(() => {
+    setGreenCustomHoursInput(settings.greenAlertCustomHours || 24);
+  }, [settings.greenAlertCustomHours]);
+
   useEffect(() => {
     if (settings.theme) {
       document.documentElement.setAttribute('data-theme', settings.theme);
       localStorage.setItem('campusflow_theme', settings.theme);
     }
   }, [settings.theme]);
+
+  // Scroll lock: congela el scroll del fondo (.main-content + body) mientras el modal 2FA está abierto
+  useEffect(() => {
+    if (!mfaData) return;
+
+    const scrollContainer = document.querySelector('.main-content');
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousContainerOverflow = scrollContainer?.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    if (scrollContainer) scrollContainer.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      if (scrollContainer) scrollContainer.style.overflow = previousContainerOverflow;
+    };
+  }, [mfaData]);
 
   const handleProfileImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -494,15 +656,29 @@ const Profile = () => {
     }
   };
 
-  const handleWallpaperUpload = (e) => {
+  const handleWallpaperUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64 = event.target.result;
-        await updateSettings({ wallpaper: 'custom', customWallpaper: base64 });
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user) return;
+    try {
+      // Subida directa a Supabase Storage (bucket 'avatars', mismo que el avatar de perfil)
+      // en lugar de convertir la imagen a Base64 y guardarla completa en la base de datos.
+      const fileExt = file.name.split('.').pop();
+      const fileName = `wallpapers/${user.id}-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      // Obtener la URL pública del archivo recién subido
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const publicUrl = publicUrlData?.publicUrl;
+      if (!publicUrl) throw new Error('No se pudo obtener la URL pública del fondo subido.');
+
+      // Guardar solo la URL (ligera) en lugar del Base64 completo
+      await updateSettings({ wallpaper: 'custom', customWallpaper: publicUrl });
+    } catch (error) {
+      alert('Error subiendo el fondo de pantalla: ' + (error.message || 'Error desconocido. Verifica tu conexión o el peso del archivo.'));
+    } finally {
+      // Permite volver a seleccionar el mismo archivo si se quiere reintentar
+      e.target.value = '';
     }
   };
 
@@ -525,6 +701,30 @@ const Profile = () => {
     setWebNotif(newValue);
     updateSettings({ webNotifications: newValue });
     showNotification(newValue ? '🔔 Notificaciones web activadas' : '🔔 Notificaciones web desactivadas');
+  };
+
+  // Sanitiza y limita el valor de horas personalizadas antes de persistirlo.
+  const sanitizeCustomHours = (rawValue) => {
+    const n = Math.round(Number(rawValue));
+    if (!Number.isFinite(n) || n < 1) return 1;
+    if (n > 720) return 720; // tope de 30 días, evita valores absurdos
+    return n;
+  };
+
+  const handleAlertFreqSelect = (zone, freqId, zoneEmoji) => {
+    const settingKey = { rojo: 'redAlertFreq', amarillo: 'yellowAlertFreq', verde: 'greenAlertFreq' }[zone];
+    updateSettings({ [settingKey]: freqId });
+    const label = ALERT_FREQUENCY_OPTIONS.find(o => o.id === freqId)?.label || freqId;
+    showNotification(`${zoneEmoji} Frecuencia ${zone === 'rojo' ? 'Roja' : zone === 'amarillo' ? 'Amarilla' : 'Verde'}: ${label}`);
+  };
+
+  const handleCustomHoursCommit = (zone) => {
+    const settingKey = { rojo: 'redAlertCustomHours', amarillo: 'yellowAlertCustomHours', verde: 'greenAlertCustomHours' }[zone];
+    const rawValue = { rojo: redCustomHoursInput, amarillo: yellowCustomHoursInput, verde: greenCustomHoursInput }[zone];
+    const clean = sanitizeCustomHours(rawValue);
+    const setterMap = { rojo: setRedCustomHoursInput, amarillo: setYellowCustomHoursInput, verde: setGreenCustomHoursInput };
+    setterMap[zone](clean);
+    updateSettings({ [settingKey]: clean });
   };
 
   const copyToClipboard = (text) => {
@@ -794,6 +994,52 @@ const Profile = () => {
             left: 120%;
           }
         }
+
+        .font-size-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #00f3ff;
+          box-shadow: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 0 3px rgba(0, 243, 255, 0.15);
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .font-size-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.15);
+          box-shadow: 0 0 16px rgba(0, 243, 255, 0.9), 0 0 0 4px rgba(0, 243, 255, 0.2);
+        }
+
+        .font-size-slider::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #00f3ff;
+          border: none;
+          box-shadow: 0 0 10px rgba(0, 243, 255, 0.7), 0 0 0 3px rgba(0, 243, 255, 0.15);
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .font-size-slider::-moz-range-thumb:hover {
+          transform: scale(1.15);
+        }
+
+        .font-size-slider::-moz-range-track {
+          background: transparent;
+        }
+
+        @media (max-width: 720px) {
+          .identity-bar {
+            flex-direction: column;
+            align-items: stretch !important;
+          }
+          .identity-bar > div:nth-child(3) {
+            display: none;
+          }
+        }
       `}</style>
 
       {showToast && <div className="cyber-toast-backdrop" onClick={() => setShowToast(false)} />}
@@ -834,17 +1080,34 @@ const Profile = () => {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
 
-          {/* HEADER PROFILE + NOTIFICATIONS */}
-          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          {/* IDENTITY BAR — barra HUD unificada: avatar protagonista + identidad + consola de notificaciones */}
+          <div className="glass-panel identity-bar" style={{
+            gridColumn: '1 / -1',
+            padding: '30px 40px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '36px',
+            border: '1px solid var(--border-glass-top)',
+            position: 'relative',
+            overflow: 'hidden',
+            flexWrap: 'wrap'
+          }}>
+            {/* Wash ambiental de fondo, sella el look cyber-luxe de la barra completa */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(circle at 8% 30%, rgba(0,243,255,0.07) 0%, transparent 45%), radial-gradient(circle at 92% 70%, rgba(0,243,255,0.04) 0%, transparent 50%)',
+              pointerEvents: 'none'
+            }} />
 
-            {/* PANEL 1: Avatar + Name */}
-            <div className="glass-panel" style={{ padding: '32px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--border-glass-top)' }}>
+            {/* ── ZONA 1: AVATAR PROTAGONISTA + IDENTIDAD ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: '1 1 320px', minWidth: 0, position: 'relative', zIndex: 1 }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <div style={{
-                  width: '100px', height: '100px', borderRadius: '50%',
-                  overflow: 'hidden', border: '4px solid var(--accent-primary)',
+                  width: '132px', height: '132px', borderRadius: '50%',
+                  overflow: 'hidden', border: '3px solid var(--accent-primary)',
                   background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  position: 'relative'
+                  position: 'relative',
+                  boxShadow: '0 0 0 5px rgba(0,243,255,0.07), 0 18px 40px rgba(0,0,0,0.4), 0 0 34px rgba(0,243,255,0.22)'
                 }}>
                   {!avatarLoaded && (
                     <div
@@ -881,27 +1144,46 @@ const Profile = () => {
                     }}
                   />
                 </div>
-                <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '36px', height: '36px', borderRadius: '50%', background: 'var(--accent-primary)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '38px', height: '38px', borderRadius: '50%', background: 'var(--accent-primary)', border: '3px solid var(--bg-secondary)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease', boxShadow: '0 0 16px rgba(0,243,255,0.45)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                   <Camera size={16} />
                 </button>
                 <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
               </div>
 
-              <div style={{ minWidth: '0', flex: 1 }}>
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  width: 'fit-content',
-                  marginBottom: '6px',
-                  boxShadow: '0 10px 20px rgba(0,0,0,0.5), inset 0 0 15px rgba(0, 243, 255, 0.3)',
-                  transformStyle: 'preserve-3d'
-                }}>
+              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.22em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <User size={13} /> Perfil de Usuario
+                </span>
+
+                <div
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                    e.currentTarget.style.boxShadow = '0 0 14px rgba(0, 243, 255, 0.18)';
+                    const pencilIcon = e.currentTarget.querySelector('.name-pencil-icon');
+                    if (pencilIcon) { pencilIcon.style.opacity = '1'; pencilIcon.style.transform = 'scale(1.15)'; }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.boxShadow = 'none';
+                    const pencilIcon = e.currentTarget.querySelector('.name-pencil-icon');
+                    if (pencilIcon) { pencilIcon.style.opacity = '0.6'; pencilIcon.style.transform = 'scale(1)'; }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    minWidth: 0,
+                    padding: '6px 14px',
+                    marginLeft: '-14px',
+                    borderRadius: '12px',
+                    border: '1.5px solid transparent',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                >
                   {isEditingName ? (
                     <input
                       autoFocus
@@ -912,71 +1194,61 @@ const Profile = () => {
                       style={{
                         background: 'transparent',
                         border: 'none',
+                        borderBottom: '2px solid var(--accent-primary)',
                         color: 'var(--text-primary)',
-                        fontSize: '1.6rem',
+                        fontSize: '2.1rem',
                         fontWeight: 950,
                         textTransform: 'uppercase',
                         outline: 'none',
-                        maxWidth: '250px'
+                        maxWidth: '320px',
+                        padding: '0 0 2px 0'
                       }}
                     />
                   ) : (
-                    <h2 className="font-display" style={{ fontSize: '1.6rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <h2 className="font-display" style={{ fontSize: '2.1rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, textShadow: '0 0 26px rgba(0,243,255,0.2)' }}>
                       {settings.name || 'Mateo'}
                     </h2>
                   )}
                   <button
-                    onClick={() => setIsEditingName(true)}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.6, transition: 'all 0.3s ease', padding: '4px' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.15)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.transform = 'scale(1)'; }}
+                    onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }}
+                    className="name-pencil-icon"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.6, transition: 'all 0.2s ease-in-out', padding: '2px', flexShrink: 0 }}
                   >
-                    <Pencil size={16} />
+                    <Pencil size={18} />
                   </button>
                 </div>
+
                 <p style={{
                   color: 'var(--text-secondary)',
-                  opacity: 0.7,
-                  letterSpacing: '2px',
+                  opacity: 0.75,
+                  letterSpacing: '2.5px',
                   fontSize: '10px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   margin: 0,
                   textTransform: 'uppercase'
                 }}>Estudiante de CampusFlow</p>
               </div>
             </div>
 
-            {/* PANEL 2: Notifications */}
-            <div className="glass-panel" style={{
-              padding: '32px',
-              border: '1px solid var(--border-glass-top)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '24px' }}>
-                <div style={{
-                  color: 'var(--accent-primary)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>
-                  <Bell size={20} />
-                </div>
-                <h3 style={{
-                  margin: 0,
-                  fontSize: '0.9rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  fontWeight: 900,
-                  color: 'var(--text-primary)',
-                  textShadow: '0 0 15px rgba(0, 243, 255, 0.2)'
-                }}>
-                  NOTIFICACIONES
-                </h3>
-              </div>
+            {/* ── DIVISOR HUD con glow, separa identidad de la consola de notificaciones ── */}
+            <div style={{
+              width: '1px',
+              alignSelf: 'stretch',
+              minHeight: '110px',
+              background: 'linear-gradient(180deg, transparent, var(--accent-primary), transparent)',
+              opacity: 0.3,
+              flexShrink: 0,
+              position: 'relative',
+              zIndex: 1
+            }} />
 
-              <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px', margin: '0 auto' }}>
+            {/* ── ZONA 2: CONSOLA DE NOTIFICACIONES (unificada: toggles + frecuencia por zona) ── */}
+            <div style={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 1 }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.22em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Bell size={13} /> Notificaciones
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <NotificationRow
                   checked={emailNotif}
                   onChange={handleEmailNotifChange}
@@ -988,6 +1260,61 @@ const Profile = () => {
                   label="Notificaciones Web"
                 />
               </div>
+
+              {/* Consola de frecuencia acoplada: solo tiene sentido si el correo está activo */}
+              <AnimatePresence initial={false}>
+                {emailNotif && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.2 } }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.6, paddingTop: '8px' }}>
+                        Insistencia por zona de urgencia
+                      </span>
+                      <AlertFrequencyRow
+                        zoneLabel="Roja · ≤3 días"
+                        dot="🚨"
+                        colorVar="var(--accent-danger)"
+                        freq={settings.redAlertFreq}
+                        onSelectFreq={(id) => handleAlertFreqSelect('rojo', id, '🚨')}
+                        customHours={redCustomHoursInput}
+                        onCustomHoursChange={setRedCustomHoursInput}
+                        onCommitCustomHours={() => handleCustomHoursCommit('rojo')}
+                        isOpen={openAlertZone === 'rojo'}
+                        onToggle={() => setOpenAlertZone(openAlertZone === 'rojo' ? null : 'rojo')}
+                      />
+                      <AlertFrequencyRow
+                        zoneLabel="Amarilla · 4-7 días"
+                        dot="⚠️"
+                        colorVar="var(--accent-orange)"
+                        freq={settings.yellowAlertFreq}
+                        onSelectFreq={(id) => handleAlertFreqSelect('amarillo', id, '⚠️')}
+                        customHours={yellowCustomHoursInput}
+                        onCustomHoursChange={setYellowCustomHoursInput}
+                        onCommitCustomHours={() => handleCustomHoursCommit('amarillo')}
+                        isOpen={openAlertZone === 'amarillo'}
+                        onToggle={() => setOpenAlertZone(openAlertZone === 'amarillo' ? null : 'amarillo')}
+                      />
+                      <AlertFrequencyRow
+                        zoneLabel="Verde · 8-15 días"
+                        dot="✨"
+                        colorVar="var(--accent-lime)"
+                        freq={settings.greenAlertFreq}
+                        onSelectFreq={(id) => handleAlertFreqSelect('verde', id, '✨')}
+                        customHours={greenCustomHoursInput}
+                        onCustomHoursChange={setGreenCustomHoursInput}
+                        onCommitCustomHours={() => handleCustomHoursCommit('verde')}
+                        isOpen={openAlertZone === 'verde'}
+                        onToggle={() => setOpenAlertZone(openAlertZone === 'verde' ? null : 'verde')}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
           </div>
@@ -1019,7 +1346,7 @@ const Profile = () => {
             <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
               <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                {WALLPAPERS.map(wp => (
+                {WALLPAPERS.filter(wp => wp.src).map(wp => (
                   <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                     {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
                   </button>
@@ -1035,7 +1362,8 @@ const Profile = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#fff',
-                    background: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                    backgroundColor: settings.customWallpaper ? 'transparent' : 'var(--bg-panel, rgba(0,0,0,0.05))',
+                    backgroundImage: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'none',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     position: 'relative',
@@ -1231,7 +1559,8 @@ const Profile = () => {
                   MFA ACTIVATION MODAL
                   Flex layout: header fijo | body flexible | footer fijo
                   ═══════════════════════════════════════════════════ */}
-              <AnimatePresence>
+              {createPortal(
+                <AnimatePresence>
                 {mfaData && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -1247,6 +1576,7 @@ const Profile = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      overflowY: 'auto',
                       padding: '20px'
                     }}
                     onClick={() => {
@@ -1269,14 +1599,15 @@ const Profile = () => {
                         flexDirection: 'column',
                         width: '100%',
                         maxWidth: '480px',
-                        maxHeight: '92vh',
+                        maxHeight: '90vh',
+                        margin: 'auto',
                         background: 'var(--bg-glass, rgba(15, 23, 42, 0.85))',
                         backdropFilter: 'blur(25px) saturate(180%)',
                         WebkitBackdropFilter: 'blur(25px) saturate(180%)',
                         border: '1px solid rgba(255,255,255,0.08)',
                         borderRadius: '20px',
                         boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 0 1px rgba(255,255,255,0.1)',
-                        overflow: 'hidden'
+                        overflowY: 'auto'
                       }}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -1317,6 +1648,7 @@ const Profile = () => {
                         flex: 1,
                         minHeight: 0,
                         overflowY: 'auto',
+                        overscrollBehavior: 'contain',
                         padding: '24px 32px 20px 32px',
                         display: 'flex',
                         flexDirection: 'column',
@@ -1535,11 +1867,13 @@ const Profile = () => {
                     </motion.div>
                   </motion.div>
                 )}
-              </AnimatePresence>
+                </AnimatePresence>,
+                document.body
+              )}
           </div>
 
           {/* BOTTOM ROW: Language, Font, Font Size */}
-          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px', marginTop: '6px' }}>
+          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px', marginTop: '6px', alignItems: 'start' }}>
             <BottomRowMenu
               label={t.language}
               icon={<Languages size={20} />}
@@ -1583,63 +1917,53 @@ const Profile = () => {
               isOpen={openSetting === 'fontSize'}
               onToggle={() => setOpenSetting(openSetting === 'fontSize' ? null : 'fontSize')}
             >
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '8px'
-              }}>
-                {FONT_SIZES.map(size => {
-                  const rawFs = Number(settings.fontSize) || 16;
-                  const currentPx = rawFs > 0 && rawFs <= 2 ? Math.round(rawFs * 16) : Math.round(rawFs);
-                  const isSelected = currentPx === size;
-                  return (
-                    <button
-                      key={size}
-                      onClick={() => updateSettings({ fontSize: size })}
+              {(() => {
+                const rawFs = Number(settings.fontSize) || 16;
+                const currentPx = rawFs > 0 && rawFs <= 2 ? Math.round(rawFs * 16) : Math.round(rawFs);
+                const min = 12;
+                const max = 24;
+                const percent = ((currentPx - min) / (max - min)) * 100;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px 2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        Vista previa
+                      </span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-primary)', textShadow: '0 0 10px rgba(0,243,255,0.4)' }}>
+                        {currentPx}px
+                      </span>
+                    </div>
+
+                    <input
+                      type="range"
+                      min={min}
+                      max={max}
+                      step={1}
+                      value={currentPx}
+                      onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
                       style={{
-                        background: isSelected
-                          ? 'rgba(0, 243, 255, 0.22)'
-                          : 'rgba(255, 255, 255, 0.08)',
-                        border: isSelected
-                          ? '2px solid #00f3ff'
-                          : '1px solid rgba(255, 255, 255, 0.18)',
-                        color: isSelected ? '#00f3ff' : '#ffffff',
-                        padding: '10px 4px',
-                        borderRadius: '10px',
-                        fontSize: '0.85rem',
-                        fontWeight: isSelected ? 900 : 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        boxShadow: isSelected
-                          ? '0 0 14px rgba(0, 243, 255, 0.35), inset 0 0 8px rgba(0, 243, 255, 0.12)'
-                          : 'none',
-                        letterSpacing: '0.04em',
-                        textShadow: isSelected ? '0 0 8px rgba(0, 243, 255, 0.5)' : 'none',
-                        minHeight: '38px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                        width: '100%',
+                        height: '4px',
+                        borderRadius: '999px',
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        background: `linear-gradient(90deg, var(--accent-primary) ${percent}%, rgba(255,255,255,0.12) ${percent}%)`,
+                        outline: 'none',
+                        cursor: 'pointer'
                       }}
-                      onMouseEnter={e => {
-                        if (!isSelected) {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.16)';
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (!isSelected) {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                        }
-                      }}
-                    >
-                      {size}
-                    </button>
-                  );
-                })}
-              </div>
+                      className="font-size-slider"
+                    />
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6 }}>
+                      <span>{min}px</span>
+                      <span>{max}px</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </BottomRowMenu>
           </div>
+
         </div>
       </div>
     </>

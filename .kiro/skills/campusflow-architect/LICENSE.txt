@@ -1,0 +1,3 @@
+Apache License 2.0
+
+See original Apache 2.0 terms if required for redistribution and reuse.

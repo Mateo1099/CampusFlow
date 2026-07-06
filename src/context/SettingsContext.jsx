@@ -15,6 +15,17 @@ export const WALLPAPERS = [
   { id: 'space', label: 'Dark Space', src: spaceMinimal },
 ];
 
+// Frecuencias de insistencia disponibles para cada zona del semáforo de
+// alertas por correo (rojo/amarillo/verde). Deben coincidir exactamente con
+// el CHECK constraint de profiles.red_alert_freq / yellow_alert_freq /
+// green_alert_freq en migrations_email_frecuencias_independientes.sql.
+export const ALERT_FREQUENCY_OPTIONS = [
+  { id: 'cada_hora', label: 'Cada hora' },
+  { id: 'diario', label: 'Diario' },
+  { id: 'interdiario', label: 'Interdiario' },
+  { id: 'personalizado', label: 'Personalizado' },
+];
+
 export const FONT_OPTIONS = [
   { id: 'space-grotesk', label: 'Space Grotesk', css: "'Space Grotesk', sans-serif" },
   { id: 'inter', label: 'Inter', css: "'Inter', sans-serif" },
@@ -104,16 +115,23 @@ export function SettingsProvider({ children }) {
     fontSize: Number(localStorage.getItem('campusflow_font_size')) || 16,
     avatarUrl: null,
     customWallpaper: null,
-    two_factor_enabled: false
+    two_factor_enabled: false,
+    emailNotifications: false,
+    redAlertFreq: 'diario',
+    yellowAlertFreq: 'diario',
+    greenAlertFreq: 'diario',
+    redAlertCustomHours: 24,
+    yellowAlertCustomHours: 24,
+    greenAlertCustomHours: 24
   });
   const [recentXPGains, setRecentXPGains] = useState([]);
 
   const fetchProfile = useCallback(async (uid) => {
     try {
-      // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme Y two_factor_enabled
+      // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme, two_factor_enabled Y email_notifications
       let { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_hours, yellow_alert_custom_hours, green_alert_custom_hours')
         .eq('id', uid)
         .maybeSingle();
 
@@ -144,7 +162,14 @@ export function SettingsProvider({ children }) {
           wallpaper: data.custom_wallpaper ? 'custom' : (data.wallpaper_id || 'cyber'),
           customWallpaper: data.custom_wallpaper || null,
           avatarUrl: fullAvatarUrl,
-          two_factor_enabled: data.two_factor_enabled || false
+          two_factor_enabled: data.two_factor_enabled || false,
+          emailNotifications: data.email_notifications || false,
+          redAlertFreq: data.red_alert_freq || prev.redAlertFreq || 'diario',
+          yellowAlertFreq: data.yellow_alert_freq || prev.yellowAlertFreq || 'diario',
+          greenAlertFreq: data.green_alert_freq || prev.greenAlertFreq || 'diario',
+          redAlertCustomHours: Number(data.red_alert_custom_hours) || prev.redAlertCustomHours || 24,
+          yellowAlertCustomHours: Number(data.yellow_alert_custom_hours) || prev.yellowAlertCustomHours || 24,
+          greenAlertCustomHours: Number(data.green_alert_custom_hours) || prev.greenAlertCustomHours || 24
         }));
       }
     } catch (err) {
@@ -183,9 +208,24 @@ export function SettingsProvider({ children }) {
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
       if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
       if (processedUpdates.two_factor_enabled !== undefined) cloudMapping.two_factor_enabled = processedUpdates.two_factor_enabled;
+      // Preferencia real de notificaciones por correo: se persiste en profiles.email_notifications
+      // y es la fuente de verdad que consulta la Edge Function send-activity-email antes de enviar.
+      if (processedUpdates.emailNotifications !== undefined) cloudMapping.email_notifications = processedUpdates.emailNotifications;
+      // Frecuencia de insistencia por zona del semáforo de alertas (rojo/amarillo/verde),
+      // leídas de forma independiente por run_daily_deadline_range_alerts() en Supabase.
+      if (processedUpdates.redAlertFreq !== undefined) cloudMapping.red_alert_freq = processedUpdates.redAlertFreq;
+      if (processedUpdates.yellowAlertFreq !== undefined) cloudMapping.yellow_alert_freq = processedUpdates.yellowAlertFreq;
+      if (processedUpdates.greenAlertFreq !== undefined) cloudMapping.green_alert_freq = processedUpdates.greenAlertFreq;
+      // Valor numérico (en horas) que define el intervalo real cuando la frecuencia
+      // de una zona está en 'personalizado'. Ver migrations_email_frecuencias_custom_hours.sql
+      if (processedUpdates.redAlertCustomHours !== undefined) cloudMapping.red_alert_custom_hours = Number(processedUpdates.redAlertCustomHours);
+      if (processedUpdates.yellowAlertCustomHours !== undefined) cloudMapping.yellow_alert_custom_hours = Number(processedUpdates.yellowAlertCustomHours);
+      if (processedUpdates.greenAlertCustomHours !== undefined) cloudMapping.green_alert_custom_hours = Number(processedUpdates.greenAlertCustomHours);
 
       if (updates.wallpaper !== undefined) {
         if (updates.wallpaper === 'custom') {
+          // customWallpaper ahora es la URL pública de Supabase Storage (bucket 'avatars'),
+          // no un Base64. Sigue validando longitud > 10 para descartar valores vacíos/inválidos.
           cloudMapping.custom_wallpaper = (processedUpdates.customWallpaper?.length > 10) ? processedUpdates.customWallpaper : null;
         } else {
           cloudMapping.wallpaper_id = updates.wallpaper;
