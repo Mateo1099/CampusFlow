@@ -103,120 +103,89 @@ const NotificationRow = ({ checked, onChange, label }) => {
   );
 };
 
-// Fila compacta de frecuencia de insistencia por zona del semáforo de alertas
-// (Roja/Amarilla/Verde). Vive ACOPLADA dentro del mismo panel de "Notificaciones"
-// (no como sección independiente), con acordeón propio y color de acento por zona.
-// Si freq === 'personalizado', despliega un input numérico de horas in-line.
-const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customHours, onCustomHoursChange, onCommitCustomHours, isOpen, onToggle }) => {
+// Tarjeta de frecuencia de recordatorio por zona del semáforo (Roja/Amarilla/Verde).
+// REDISEÑO: la versión anterior usaba un acordeón con chips que se apretaban y
+// cortaban el texto en pantallas angostas (reportado como "se ve horrible y
+// entrecortado"). Un <select> nativo resuelve esto de raíz: nunca se corta, nunca
+// necesita animación propia (el navegador maneja la apertura), y sigue viéndose
+// cyber-luxe porque el borde y el texto usan el color de la zona.
+const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customHours, onCustomHoursChange, onCommitCustomHours }) => {
   const isCustom = freq === 'personalizado';
-  const currentLabel = ALERT_FREQUENCY_OPTIONS.find(o => o.id === freq)?.label || 'Diario';
 
   return (
     <div style={{
       borderRadius: '12px',
-      border: `1px solid ${isOpen ? colorVar : 'rgba(255,255,255,0.06)'}`,
-      background: isOpen ? `color-mix(in srgb, ${colorVar} 7%, transparent)` : 'rgba(255,255,255,0.02)',
-      overflow: 'hidden',
-      transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+      border: '1px solid rgba(255,255,255,0.06)',
+      borderLeft: `3px solid ${colorVar}`,
+      background: 'rgba(255,255,255,0.02)',
+      padding: '12px 14px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px'
     }}>
-      <button
-        onClick={onToggle}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '9px 12px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer'
-        }}
-      >
-        <span style={{ fontSize: '0.82rem', flexShrink: 0, lineHeight: 1 }}>{dot}</span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-primary)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.03em', flex: 1, textAlign: 'left', whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '0.85rem', flexShrink: 0, lineHeight: 1 }}>{dot}</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-primary)', opacity: 0.9, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {zoneLabel}
         </span>
-        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: colorVar, whiteSpace: 'nowrap' }}>
-          {currentLabel}{isCustom ? ` · ${customHours}h` : ''}
-        </span>
-        <ChevronDown size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-      </button>
+      </div>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ height: { duration: 0.28, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.2 } }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ padding: '2px 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {ALERT_FREQUENCY_OPTIONS.map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => onSelectFreq(opt.id)}
-                    style={{
-                      padding: '5px 11px',
-                      borderRadius: '20px',
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      border: `1px solid ${freq === opt.id ? colorVar : 'rgba(255,255,255,0.08)'}`,
-                      background: freq === opt.id ? `color-mix(in srgb, ${colorVar} 14%, transparent)` : 'transparent',
-                      color: freq === opt.id ? colorVar : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <select
+          value={freq}
+          onChange={(e) => onSelectFreq(e.target.value)}
+          style={{
+            flex: '1 1 auto',
+            minWidth: '110px',
+            padding: '7px 10px',
+            borderRadius: '8px',
+            border: `1px solid ${colorVar}55`,
+            background: 'rgba(0,0,0,0.35)',
+            color: colorVar,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            outline: 'none',
+            cursor: 'pointer',
+            appearance: 'auto'
+          }}
+        >
+          {ALERT_FREQUENCY_OPTIONS.map(opt => (
+            <option key={opt.id} value={opt.id} style={{ background: '#0a0a0f', color: '#f5f5f7' }}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
 
-              <AnimatePresence initial={false}>
-                {isCustom && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '2px' }}>
-                      <input
-                        type="number"
-                        min={1}
-                        max={720}
-                        value={customHours}
-                        onChange={(e) => onCustomHoursChange(e.target.value)}
-                        onBlur={onCommitCustomHours}
-                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                        style={{
-                          width: '58px',
-                          padding: '6px 8px',
-                          borderRadius: '8px',
-                          border: `1px solid ${colorVar}66`,
-                          background: 'rgba(0,0,0,0.3)',
-                          color: 'var(--text-primary)',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          outline: 'none'
-                        }}
-                      />
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                        horas de insistencia
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
+        {isCustom && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <input
+              type="number"
+              min={1}
+              max={720}
+              value={customHours}
+              onChange={(e) => onCustomHoursChange(e.target.value)}
+              onBlur={onCommitCustomHours}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              style={{
+                width: '52px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: `1px solid ${colorVar}66`,
+                background: 'rgba(0,0,0,0.3)',
+                color: 'var(--text-primary)',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                textAlign: 'center',
+                outline: 'none'
+              }}
+            />
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              hrs {/* traductor humano en vivo: nadie piensa en "72 horas" sino en "3 días" */}
+              {Number(customHours) >= 24 && ` (≈${Math.round((Number(customHours) / 24) * 10) / 10}d)`}
+            </span>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };
@@ -344,7 +313,6 @@ const Profile = () => {
 
   const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
   const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
-  const [openAlertZone, setOpenAlertZone] = useState(null);
   const [redCustomHoursInput, setRedCustomHoursInput] = useState(settings.redAlertCustomHours || 24);
   const [yellowCustomHoursInput, setYellowCustomHoursInput] = useState(settings.yellowAlertCustomHours || 24);
   const [greenCustomHoursInput, setGreenCustomHoursInput] = useState(settings.greenAlertCustomHours || 24);
@@ -382,6 +350,18 @@ const Profile = () => {
   useEffect(() => {
     setEmailNotif(settings.emailNotifications || false);
   }, [settings.emailNotifications]);
+
+  // Si SettingsContext no pudo guardar un cambio en Supabase (RLS, red, permisos), revierte
+  // el estado local y avisa aquí con un toast de error, en vez de dejar la UI desincronizada
+  // de la base de datos en silencio (ver comentario en SettingsContext.updateSettings).
+  useEffect(() => {
+    const handleSaveError = (e) => {
+      showNotification(`⚠️ No se guardó el cambio: ${e.detail?.message || 'Error de conexión'}`);
+    };
+    window.addEventListener('campusflow:settings-save-error', handleSaveError);
+    return () => window.removeEventListener('campusflow:settings-save-error', handleSaveError);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setRedCustomHoursInput(settings.redAlertCustomHours || 24);
@@ -725,6 +705,12 @@ const Profile = () => {
     const setterMap = { rojo: setRedCustomHoursInput, amarillo: setYellowCustomHoursInput, verde: setGreenCustomHoursInput };
     setterMap[zone](clean);
     updateSettings({ [settingKey]: clean });
+    // Confirmación explícita de que el NÚMERO se guardó (no solo la palabra "Personalizado"),
+    // para que Mateo tenga certeza de que su valor exacto quedó persistido.
+    const zoneEmoji = { rojo: '🚨', amarillo: '⚠️', verde: '✨' }[zone];
+    const zoneName = { rojo: 'Roja', amarillo: 'Amarilla', verde: 'Verde' }[zone];
+    const humanTime = clean < 24 ? `${clean}h` : `${Math.round((clean / 24) * 10) / 10}d`;
+    showNotification(`${zoneEmoji} Intervalo ${zoneName} guardado: cada ${humanTime}`);
   };
 
   const copyToClipboard = (text) => {
@@ -771,15 +757,15 @@ const Profile = () => {
         @keyframes popIn {
           0% {
             opacity: 0;
-            transform: scale(0.8);
+            transform: translate(-50%, -50%) scale(0.8);
           }
           50% {
             opacity: 1;
-            transform: scale(1.05);
+            transform: translate(-50%, -50%) scale(1.05);
           }
           100% {
             opacity: 1;
-            transform: scale(1);
+            transform: translate(-50%, -50%) scale(1);
           }
         }
 
@@ -1260,63 +1246,62 @@ const Profile = () => {
                   label="Notificaciones Web"
                 />
               </div>
-
-              {/* Consola de frecuencia acoplada: solo tiene sentido si el correo está activo */}
-              <AnimatePresence initial={false}>
-                {emailNotif && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.2 } }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px' }}>
-                      <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.6, paddingTop: '8px' }}>
-                        Insistencia por zona de urgencia
-                      </span>
-                      <AlertFrequencyRow
-                        zoneLabel="Roja · ≤3 días"
-                        dot="🚨"
-                        colorVar="var(--accent-danger)"
-                        freq={settings.redAlertFreq}
-                        onSelectFreq={(id) => handleAlertFreqSelect('rojo', id, '🚨')}
-                        customHours={redCustomHoursInput}
-                        onCustomHoursChange={setRedCustomHoursInput}
-                        onCommitCustomHours={() => handleCustomHoursCommit('rojo')}
-                        isOpen={openAlertZone === 'rojo'}
-                        onToggle={() => setOpenAlertZone(openAlertZone === 'rojo' ? null : 'rojo')}
-                      />
-                      <AlertFrequencyRow
-                        zoneLabel="Amarilla · 4-7 días"
-                        dot="⚠️"
-                        colorVar="var(--accent-orange)"
-                        freq={settings.yellowAlertFreq}
-                        onSelectFreq={(id) => handleAlertFreqSelect('amarillo', id, '⚠️')}
-                        customHours={yellowCustomHoursInput}
-                        onCustomHoursChange={setYellowCustomHoursInput}
-                        onCommitCustomHours={() => handleCustomHoursCommit('amarillo')}
-                        isOpen={openAlertZone === 'amarillo'}
-                        onToggle={() => setOpenAlertZone(openAlertZone === 'amarillo' ? null : 'amarillo')}
-                      />
-                      <AlertFrequencyRow
-                        zoneLabel="Verde · 8-15 días"
-                        dot="✨"
-                        colorVar="var(--accent-lime)"
-                        freq={settings.greenAlertFreq}
-                        onSelectFreq={(id) => handleAlertFreqSelect('verde', id, '✨')}
-                        customHours={greenCustomHoursInput}
-                        onCustomHoursChange={setGreenCustomHoursInput}
-                        onCommitCustomHours={() => handleCustomHoursCommit('verde')}
-                        isOpen={openAlertZone === 'verde'}
-                        onToggle={() => setOpenAlertZone(openAlertZone === 'verde' ? null : 'verde')}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
+          </div>
+
+          {/* CONSOLA DE FRECUENCIA POR ZONA — fila propia de ancho completo, separada de la
+              barra de identidad. Antes vivía apretada dentro de la columna de 380px de
+              Notificaciones y los chips de frecuencia se cortaban (Cada hora/Diario/
+              Interdiario/Personalizado no entraban). Ahora cada zona es una tarjeta con
+              su propio espacio para respirar, en una fila de 3 columnas iguales. */}
+          <div style={{
+            gridColumn: '1 / -1',
+            display: 'grid',
+            gridTemplateRows: emailNotif ? '1fr' : '0fr',
+            transition: 'grid-template-rows 0.3s ease-out',
+            overflow: 'hidden',
+            marginTop: '-8px'
+          }}>
+            <div style={{ minHeight: 0 }}>
+              <div className="glass-panel" style={{ padding: '22px 26px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.2em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Bell size={13} /> ¿Cada cuánto te recordamos cada trabajo?
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                  <AlertFrequencyRow
+                    zoneLabel="Roja · ≤3 días"
+                    dot="🚨"
+                    colorVar="var(--accent-danger)"
+                    freq={settings.redAlertFreq}
+                    onSelectFreq={(id) => handleAlertFreqSelect('rojo', id, '🚨')}
+                    customHours={redCustomHoursInput}
+                    onCustomHoursChange={setRedCustomHoursInput}
+                    onCommitCustomHours={() => handleCustomHoursCommit('rojo')}
+                  />
+                  <AlertFrequencyRow
+                    zoneLabel="Amarilla · 4-7 días"
+                    dot="⚠️"
+                    colorVar="var(--accent-orange)"
+                    freq={settings.yellowAlertFreq}
+                    onSelectFreq={(id) => handleAlertFreqSelect('amarillo', id, '⚠️')}
+                    customHours={yellowCustomHoursInput}
+                    onCustomHoursChange={setYellowCustomHoursInput}
+                    onCommitCustomHours={() => handleCustomHoursCommit('amarillo')}
+                  />
+                  <AlertFrequencyRow
+                    zoneLabel="Verde · 8-15 días"
+                    dot="✨"
+                    colorVar="var(--accent-lime)"
+                    freq={settings.greenAlertFreq}
+                    onSelectFreq={(id) => handleAlertFreqSelect('verde', id, '✨')}
+                    customHours={greenCustomHoursInput}
+                    onCustomHoursChange={setGreenCustomHoursInput}
+                    onCommitCustomHours={() => handleCustomHoursCommit('verde')}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>

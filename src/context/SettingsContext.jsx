@@ -187,6 +187,11 @@ export function SettingsProvider({ children }) {
       processedUpdates.customWallpaper = null;
     }
 
+    // Snapshot del valor previo (antes del optimistic update), para poder revertir
+    // la UI si Supabase rechaza el guardado y así nunca quede desincronizada de la nube.
+    const settingsSnapshotBeforeUpdate = {};
+    Object.keys(processedUpdates).forEach(key => { settingsSnapshotBeforeUpdate[key] = settings[key]; });
+
     setSettings(prev => ({ ...prev, ...processedUpdates }));
 
     if (user) {
@@ -247,6 +252,17 @@ export function SettingsProvider({ children }) {
           if (error) throw error;
         } catch (dbErr) {
           console.error("Error en persistencia:", dbErr.message);
+          // CRÍTICO: si Supabase rechaza el guardado (RLS, red, permisos), la UI NO debe
+          // quedarse mostrando el valor optimista como si se hubiera guardado. Antes este
+          // catch solo hacía console.error, así que un toggle podía verse "activado" en
+          // pantalla para siempre mientras la base de datos seguía en false/null. Ahora se
+          // revierte el estado local a lo que en verdad hay en la nube y se avisa al usuario.
+          setSettings(prev => ({ ...prev, ...settingsSnapshotBeforeUpdate }));
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('campusflow:settings-save-error', {
+              detail: { message: dbErr.message || 'No se pudo guardar el cambio.' }
+            }));
+          }
         }
       }
     }
