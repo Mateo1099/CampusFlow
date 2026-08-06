@@ -50,12 +50,20 @@ export function TaskProvider({ children }) {
     return { totalTasks, completedTasks, totalXP, totalHabits, completedHabits, productivity };
   }, [tasks, dailyPlan]);
 
-  const value = {
+  // Memoizado: sin esto, el Provider crea un objeto `value` nuevo en cada render,
+  // forzando a re-renderizar TODOS los componentes que usan useTasksContext()
+  // (Dashboard, TaskBoard, Agenda, Sidebar) aunque el cambio no les afecte.
+  const value = useMemo(() => ({
     tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading,
     courses, addCourse, updateCourse, deleteCourse, coursesLoading,
     dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
     analytics
-  };
+  }), [
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading,
+    courses, addCourse, updateCourse, deleteCourse, coursesLoading,
+    dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
+    analytics
+  ]);
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
 }

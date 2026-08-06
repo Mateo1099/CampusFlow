@@ -43,7 +43,7 @@ const NotificationRow = ({ checked, onChange, label }) => {
           inset: 0,
           background: checked
             ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%)'
-            : (isHovered ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)'),
+            : 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)',
           borderRadius: '14px',
           transition: 'all 0.2s ease-in-out'
         }}
@@ -55,9 +55,9 @@ const NotificationRow = ({ checked, onChange, label }) => {
         style={{
           position: 'absolute',
           inset: 0,
-          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : (isHovered ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.06)')}`,
+          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
           borderRadius: '14px',
-          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : (isHovered ? '0 0 14px rgba(0, 243, 255, 0.18)' : 'none'),
+          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : '0 0 20px rgba(239, 68, 68, 0.12)',
           transition: 'all 0.2s ease-in-out'
         }}
       />
@@ -74,10 +74,10 @@ const NotificationRow = ({ checked, onChange, label }) => {
         <span style={{
           fontSize: '0.8rem',
           fontWeight: 700,
-          color: checked ? 'var(--text-primary)' : 'var(--text-secondary)',
+          color: checked ? '#22c55e' : '#ef4444',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          opacity: checked ? 1 : 0.5,
+          opacity: 1,
           transition: 'all 0.3s ease'
         }}>
           {label}
@@ -86,9 +86,9 @@ const NotificationRow = ({ checked, onChange, label }) => {
         {/* Status dot */}
         <motion.div
           animate={{
-            background: checked ? '#22c55e' : 'rgba(255,255,255,0.15)',
-            boxShadow: checked ? '0 0 10px rgba(34, 197, 94, 0.5)' : 'none',
-            scale: checked ? 1 : 0.8
+            background: checked ? '#22c55e' : '#ef4444',
+            boxShadow: checked ? '0 0 10px rgba(34, 197, 94, 0.5)' : '0 0 10px rgba(239, 68, 68, 0.5)',
+            scale: 1
           }}
           transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
           style={{
@@ -103,120 +103,89 @@ const NotificationRow = ({ checked, onChange, label }) => {
   );
 };
 
-// Fila compacta de frecuencia de insistencia por zona del semáforo de alertas
-// (Roja/Amarilla/Verde). Vive ACOPLADA dentro del mismo panel de "Notificaciones"
-// (no como sección independiente), con acordeón propio y color de acento por zona.
-// Si freq === 'personalizado', despliega un input numérico de horas in-line.
-const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customHours, onCustomHoursChange, onCommitCustomHours, isOpen, onToggle }) => {
+// Tarjeta de frecuencia de recordatorio por zona del semáforo (Roja/Amarilla/Verde).
+// REDISEÑO v2: la versión anterior usaba un acordeón con chips que se apretaban y
+// cortaban el texto en pantallas angostas (reportado como "se ve horrible y
+// entrecortado"). Un <select> nativo resuelve esto de raíz: nunca se corta, nunca
+// necesita animación propia (el navegador maneja la apertura), y sigue viéndose
+// cyber-luxe porque el borde y el texto usan el color de la zona. El input numérico
+// cambió de horas (1-720) a DÍAS (1-30) para ser más intuitivo.
+const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customDays, onCustomDaysChange, onCommitCustomDays }) => {
   const isCustom = freq === 'personalizado';
-  const currentLabel = ALERT_FREQUENCY_OPTIONS.find(o => o.id === freq)?.label || 'Diario';
 
   return (
     <div style={{
       borderRadius: '12px',
-      border: `1px solid ${isOpen ? colorVar : 'rgba(255,255,255,0.06)'}`,
-      background: isOpen ? `color-mix(in srgb, ${colorVar} 7%, transparent)` : 'rgba(255,255,255,0.02)',
-      overflow: 'hidden',
-      transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+      border: '1px solid rgba(255,255,255,0.06)',
+      borderLeft: `3px solid ${colorVar}`,
+      background: 'rgba(255,255,255,0.02)',
+      padding: '12px 14px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px'
     }}>
-      <button
-        onClick={onToggle}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '9px 12px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer'
-        }}
-      >
-        <span style={{ fontSize: '0.82rem', flexShrink: 0, lineHeight: 1 }}>{dot}</span>
-        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-primary)', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.03em', flex: 1, textAlign: 'left', whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '0.85rem', flexShrink: 0, lineHeight: 1 }}>{dot}</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-primary)', opacity: 0.9, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {zoneLabel}
         </span>
-        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: colorVar, whiteSpace: 'nowrap' }}>
-          {currentLabel}{isCustom ? ` · ${customHours}h` : ''}
-        </span>
-        <ChevronDown size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-      </button>
+      </div>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ height: { duration: 0.28, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.2 } }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ padding: '2px 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {ALERT_FREQUENCY_OPTIONS.map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => onSelectFreq(opt.id)}
-                    style={{
-                      padding: '5px 11px',
-                      borderRadius: '20px',
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      border: `1px solid ${freq === opt.id ? colorVar : 'rgba(255,255,255,0.08)'}`,
-                      background: freq === opt.id ? `color-mix(in srgb, ${colorVar} 14%, transparent)` : 'transparent',
-                      color: freq === opt.id ? colorVar : 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <select
+          value={freq}
+          onChange={(e) => onSelectFreq(e.target.value)}
+          style={{
+            flex: '1 1 auto',
+            minWidth: '110px',
+            padding: '7px 10px',
+            borderRadius: '8px',
+            border: `1px solid ${colorVar}55`,
+            background: 'rgba(0,0,0,0.35)',
+            color: colorVar,
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            outline: 'none',
+            cursor: 'pointer',
+            appearance: 'auto'
+          }}
+        >
+          {ALERT_FREQUENCY_OPTIONS.map(opt => (
+            <option key={opt.id} value={opt.id} style={{ background: '#0a0a0f', color: '#f5f5f7' }}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
 
-              <AnimatePresence initial={false}>
-                {isCustom && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '2px' }}>
-                      <input
-                        type="number"
-                        min={1}
-                        max={720}
-                        value={customHours}
-                        onChange={(e) => onCustomHoursChange(e.target.value)}
-                        onBlur={onCommitCustomHours}
-                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                        style={{
-                          width: '58px',
-                          padding: '6px 8px',
-                          borderRadius: '8px',
-                          border: `1px solid ${colorVar}66`,
-                          background: 'rgba(0,0,0,0.3)',
-                          color: 'var(--text-primary)',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          textAlign: 'center',
-                          outline: 'none'
-                        }}
-                      />
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                        horas de insistencia
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
+        {isCustom && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={customDays}
+              onChange={(e) => onCustomDaysChange(e.target.value)}
+              onBlur={onCommitCustomDays}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              style={{
+                width: '52px',
+                padding: '6px 8px',
+                borderRadius: '8px',
+                border: `1px solid ${colorVar}66`,
+                background: 'rgba(0,0,0,0.3)',
+                color: 'var(--text-primary)',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                textAlign: 'center',
+                outline: 'none'
+              }}
+            />
+            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              día{Number(customDays) > 1 ? 's' : ''}
+            </span>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };
@@ -343,11 +312,9 @@ const Profile = () => {
   const [disableMfaError, setDisableMfaError] = useState('');
 
   const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
-  const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
-  const [openAlertZone, setOpenAlertZone] = useState(null);
-  const [redCustomHoursInput, setRedCustomHoursInput] = useState(settings.redAlertCustomHours || 24);
-  const [yellowCustomHoursInput, setYellowCustomHoursInput] = useState(settings.yellowAlertCustomHours || 24);
-  const [greenCustomHoursInput, setGreenCustomHoursInput] = useState(settings.greenAlertCustomHours || 24);
+  const [redCustomDaysInput, setRedCustomDaysInput] = useState(settings.redAlertCustomDays || 1);
+  const [yellowCustomDaysInput, setYellowCustomDaysInput] = useState(settings.yellowAlertCustomDays || 1);
+  const [greenCustomDaysInput, setGreenCustomDaysInput] = useState(settings.greenAlertCustomDays || 1);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [manualSecret, setManualSecret] = useState('');
   const [securityScreen, setSecurityScreen] = useState('overview');
@@ -378,20 +345,30 @@ const Profile = () => {
   }, [settings.name]);
 
   // Sincroniza el toggle de notificaciones por correo con el valor real cargado de Supabase
-  // (fetchProfile en SettingsContext es asíncrono, así que el valor inicial del useState puede llegar tarde).
+  // REMOVIDO: useEffect que causaba doble-clic. El estado local se actualiza correctamente
+  // en handleEmailNotifChange sin necesidad de un useEffect que cause race conditions.
+
+  // Si SettingsContext no pudo guardar un cambio en Supabase (RLS, red, permisos), revierte
+  // el estado local y avisa aquí con un toast de error, en vez de dejar la UI desincronizada
+  // de la base de datos en silencio (ver comentario en SettingsContext.updateSettings).
   useEffect(() => {
-    setEmailNotif(settings.emailNotifications || false);
-  }, [settings.emailNotifications]);
+    const handleSaveError = (e) => {
+      showNotification(`⚠️ No se guardó el cambio: ${e.detail?.message || 'Error de conexión'}`);
+    };
+    window.addEventListener('campusflow:settings-save-error', handleSaveError);
+    return () => window.removeEventListener('campusflow:settings-save-error', handleSaveError);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    setRedCustomHoursInput(settings.redAlertCustomHours || 24);
-  }, [settings.redAlertCustomHours]);
+    setRedCustomDaysInput(settings.redAlertCustomDays || 1);
+  }, [settings.redAlertCustomDays]);
   useEffect(() => {
-    setYellowCustomHoursInput(settings.yellowAlertCustomHours || 24);
-  }, [settings.yellowAlertCustomHours]);
+    setYellowCustomDaysInput(settings.yellowAlertCustomDays || 1);
+  }, [settings.yellowAlertCustomDays]);
   useEffect(() => {
-    setGreenCustomHoursInput(settings.greenAlertCustomHours || 24);
-  }, [settings.greenAlertCustomHours]);
+    setGreenCustomDaysInput(settings.greenAlertCustomDays || 1);
+  }, [settings.greenAlertCustomDays]);
 
   useEffect(() => {
     if (settings.theme) {
@@ -692,22 +669,43 @@ const Profile = () => {
   };
 
   const handleEmailNotifChange = (newValue) => {
+    // Actualizar UI al instante (optimistic update)
     setEmailNotif(newValue);
-    updateSettings({ emailNotifications: newValue });
-    showNotification(newValue ? '📧 Notificaciones por email activadas' : '📧 Notificaciones por email desactivadas');
+    
+    // Toast con confirmación visual inmediata
+    if (newValue) {
+      showNotification('✅ 📧 NOTIFICACIONES POR EMAIL ACTIVADAS');
+    } else {
+      showNotification('❌ 📧 NOTIFICACIONES POR EMAIL DESACTIVADAS');
+    }
+    
+    // Guardar en paralelo sin bloquear la UI
+    updateSettings({ emailNotifications: newValue })
+      .then(() => {
+        // Éxito silencioso - el toast ya confirmó el cambio
+        console.log('[PROFILE] Email notifications guardado exitosamente:', newValue);
+      })
+      .catch(err => {
+        // Si falla, revertir el estado y mostrar error
+        console.error('[PROFILE] Error al guardar notificaciones:', err.message);
+        setEmailNotif(!newValue);
+        showNotification('⚠️ Error al guardar, intenta de nuevo');
+      });
   };
 
-  const handleWebNotifChange = (newValue) => {
-    setWebNotif(newValue);
-    updateSettings({ webNotifications: newValue });
-    showNotification(newValue ? '🔔 Notificaciones web activadas' : '🔔 Notificaciones web desactivadas');
-  };
+  // NOTA: el toggle "Notificaciones Web" se eliminó a propósito. Era un control muerto:
+  // `webNotifications` no existía en el estado de SettingsContext, no estaba en su
+  // cloudMapping y no había columna en la tabla profiles. El usuario lo activaba, veía
+  // el toast de éxito y nada se persistía; al recargar volvía a apagarse. Además fallaba
+  // en silencio absoluto (con cloudMapping vacío nunca se entra al try/catch, así que el
+  // toast de error de campusflow:settings-save-error jamás se disparaba). Si algún día se
+  // reactiva, requiere columna en profiles + permiso del navegador vía Notification API.
 
-  // Sanitiza y limita el valor de horas personalizadas antes de persistirlo.
-  const sanitizeCustomHours = (rawValue) => {
+  // Sanitiza y limita el valor de días personalizados antes de persistirlo.
+  const sanitizeCustomDays = (rawValue) => {
     const n = Math.round(Number(rawValue));
     if (!Number.isFinite(n) || n < 1) return 1;
-    if (n > 720) return 720; // tope de 30 días, evita valores absurdos
+    if (n > 30) return 30; // tope de 30 días, evita valores absurdos
     return n;
   };
 
@@ -718,13 +716,18 @@ const Profile = () => {
     showNotification(`${zoneEmoji} Frecuencia ${zone === 'rojo' ? 'Roja' : zone === 'amarillo' ? 'Amarilla' : 'Verde'}: ${label}`);
   };
 
-  const handleCustomHoursCommit = (zone) => {
-    const settingKey = { rojo: 'redAlertCustomHours', amarillo: 'yellowAlertCustomHours', verde: 'greenAlertCustomHours' }[zone];
-    const rawValue = { rojo: redCustomHoursInput, amarillo: yellowCustomHoursInput, verde: greenCustomHoursInput }[zone];
-    const clean = sanitizeCustomHours(rawValue);
-    const setterMap = { rojo: setRedCustomHoursInput, amarillo: setYellowCustomHoursInput, verde: setGreenCustomHoursInput };
+  const handleCustomDaysCommit = (zone) => {
+    const settingKey = { rojo: 'redAlertCustomDays', amarillo: 'yellowAlertCustomDays', verde: 'greenAlertCustomDays' }[zone];
+    const rawValue = { rojo: redCustomDaysInput, amarillo: yellowCustomDaysInput, verde: greenCustomDaysInput }[zone];
+    const clean = sanitizeCustomDays(rawValue);
+    const setterMap = { rojo: setRedCustomDaysInput, amarillo: setYellowCustomDaysInput, verde: setGreenCustomDaysInput };
     setterMap[zone](clean);
     updateSettings({ [settingKey]: clean });
+    // Confirmación explícita de que el NÚMERO se guardó (no solo la palabra "Personalizado"),
+    // para que Mateo tenga certeza de que su valor exacto quedó persistido.
+    const zoneEmoji = { rojo: '🚨', amarillo: '⚠️', verde: '✨' }[zone];
+    const zoneName = { rojo: 'Roja', amarillo: 'Amarilla', verde: 'Verde' }[zone];
+    showNotification(`${zoneEmoji} Intervalo ${zoneName} guardado: cada ${clean} día${clean > 1 ? 's' : ''}`);
   };
 
   const copyToClipboard = (text) => {
@@ -771,15 +774,15 @@ const Profile = () => {
         @keyframes popIn {
           0% {
             opacity: 0;
-            transform: scale(0.8);
+            transform: translate(-50%, -50%) scale(0.8);
           }
           50% {
             opacity: 1;
-            transform: scale(1.05);
+            transform: translate(-50%, -50%) scale(1.05);
           }
           100% {
             opacity: 1;
-            transform: scale(1);
+            transform: translate(-50%, -50%) scale(1);
           }
         }
 
@@ -812,14 +815,32 @@ const Profile = () => {
           animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
           padding: 24px 32px;
           backdrop-filter: blur(20px);
-          background: linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%);
-          border: 2px solid rgba(0, 243, 255, 1);
           border-radius: 16px;
-          color: #00f3ff;
           font-weight: 900;
           letter-spacing: 0.1em;
           text-transform: uppercase;
           font-size: 0.95rem;
+          transition: all 0.3s ease;
+        }
+
+        .cyber-toast.success {
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.05) 100%);
+          border: 2px solid rgba(34, 197, 94, 1);
+          color: #22c55e;
+          box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.5), 0 0 30px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.6);
+        }
+
+        .cyber-toast.error {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(248, 113, 113, 0.05) 100%);
+          border: 2px solid rgba(239, 68, 68, 1);
+          color: #ef4444;
+          box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.5), 0 0 30px rgba(239, 68, 68, 0.8), 0 0 60px rgba(239, 68, 68, 0.6);
+        }
+
+        .cyber-toast.info {
+          background: linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%);
+          border: 2px solid rgba(0, 243, 255, 1);
+          color: #00f3ff;
           box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
         }
 
@@ -1043,9 +1064,17 @@ const Profile = () => {
       `}</style>
 
       {showToast && <div className="cyber-toast-backdrop" onClick={() => setShowToast(false)} />}
-      {showToast && <div className="cyber-toast">{toastMessage}</div>}
+      {showToast && (
+        <div className={`cyber-toast ${
+          toastMessage?.includes('❌') ? 'error' : 
+          toastMessage?.includes('✅') ? 'success' : 
+          'info'
+        }`}>
+          {toastMessage}
+        </div>
+      )}
 
-      <div className="animate-fade-in" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+      <div className="animate-fade-in profile-page" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         <header style={{ marginBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <h1 style={{
             fontSize: '2.6rem',
@@ -1254,69 +1283,63 @@ const Profile = () => {
                   onChange={handleEmailNotifChange}
                   label="Correo Electrónico"
                 />
-                <NotificationRow
-                  checked={webNotif}
-                  onChange={handleWebNotifChange}
-                  label="Notificaciones Web"
-                />
               </div>
-
-              {/* Consola de frecuencia acoplada: solo tiene sentido si el correo está activo */}
-              <AnimatePresence initial={false}>
-                {emailNotif && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.2 } }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: '4px' }}>
-                      <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.15em', opacity: 0.6, paddingTop: '8px' }}>
-                        Insistencia por zona de urgencia
-                      </span>
-                      <AlertFrequencyRow
-                        zoneLabel="Roja · ≤3 días"
-                        dot="🚨"
-                        colorVar="var(--accent-danger)"
-                        freq={settings.redAlertFreq}
-                        onSelectFreq={(id) => handleAlertFreqSelect('rojo', id, '🚨')}
-                        customHours={redCustomHoursInput}
-                        onCustomHoursChange={setRedCustomHoursInput}
-                        onCommitCustomHours={() => handleCustomHoursCommit('rojo')}
-                        isOpen={openAlertZone === 'rojo'}
-                        onToggle={() => setOpenAlertZone(openAlertZone === 'rojo' ? null : 'rojo')}
-                      />
-                      <AlertFrequencyRow
-                        zoneLabel="Amarilla · 4-7 días"
-                        dot="⚠️"
-                        colorVar="var(--accent-orange)"
-                        freq={settings.yellowAlertFreq}
-                        onSelectFreq={(id) => handleAlertFreqSelect('amarillo', id, '⚠️')}
-                        customHours={yellowCustomHoursInput}
-                        onCustomHoursChange={setYellowCustomHoursInput}
-                        onCommitCustomHours={() => handleCustomHoursCommit('amarillo')}
-                        isOpen={openAlertZone === 'amarillo'}
-                        onToggle={() => setOpenAlertZone(openAlertZone === 'amarillo' ? null : 'amarillo')}
-                      />
-                      <AlertFrequencyRow
-                        zoneLabel="Verde · 8-15 días"
-                        dot="✨"
-                        colorVar="var(--accent-lime)"
-                        freq={settings.greenAlertFreq}
-                        onSelectFreq={(id) => handleAlertFreqSelect('verde', id, '✨')}
-                        customHours={greenCustomHoursInput}
-                        onCustomHoursChange={setGreenCustomHoursInput}
-                        onCommitCustomHours={() => handleCustomHoursCommit('verde')}
-                        isOpen={openAlertZone === 'verde'}
-                        onToggle={() => setOpenAlertZone(openAlertZone === 'verde' ? null : 'verde')}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
+          </div>
+
+          {/* CONSOLA DE FRECUENCIA POR ZONA — fila propia de ancho completo, separada de la
+              barra de identidad. Antes vivía apretada dentro de la columna de 380px de
+              Notificaciones y los chips de frecuencia se cortaban (Cada hora/Diario/
+              Interdiario/Personalizado no entraban). Ahora cada zona es una tarjeta con
+              su propio espacio para respirar, en una fila de 3 columnas iguales. */}
+          <div style={{
+            gridColumn: '1 / -1',
+            display: 'grid',
+            gridTemplateRows: emailNotif ? '1fr' : '0fr',
+            transition: 'grid-template-rows 0.3s ease-out',
+            overflow: 'hidden',
+            marginTop: '-8px'
+          }}>
+            <div style={{ minHeight: 0 }}>
+              <div className="glass-panel" style={{ padding: '22px 26px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.2em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Bell size={13} /> ¿Cada cuánto te recordamos cada trabajo?
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                  <AlertFrequencyRow
+                    zoneLabel="Roja · ≤3 días"
+                    dot="🚨"
+                    colorVar="var(--accent-danger)"
+                    freq={settings.redAlertFreq}
+                    onSelectFreq={(id) => handleAlertFreqSelect('rojo', id, '🚨')}
+                    customDays={redCustomDaysInput}
+                    onCustomDaysChange={setRedCustomDaysInput}
+                    onCommitCustomDays={() => handleCustomDaysCommit('rojo')}
+                  />
+                  <AlertFrequencyRow
+                    zoneLabel="Amarilla · 4-7 días"
+                    dot="⚠️"
+                    colorVar="var(--accent-orange)"
+                    freq={settings.yellowAlertFreq}
+                    onSelectFreq={(id) => handleAlertFreqSelect('amarillo', id, '⚠️')}
+                    customDays={yellowCustomDaysInput}
+                    onCustomDaysChange={setYellowCustomDaysInput}
+                    onCommitCustomDays={() => handleCustomDaysCommit('amarillo')}
+                  />
+                  <AlertFrequencyRow
+                    zoneLabel="Verde · 8-15 días"
+                    dot="✨"
+                    colorVar="var(--accent-lime)"
+                    freq={settings.greenAlertFreq}
+                    onSelectFreq={(id) => handleAlertFreqSelect('verde', id, '✨')}
+                    customDays={greenCustomDaysInput}
+                    onCustomDaysChange={setGreenCustomDaysInput}
+                    onCommitCustomDays={() => handleCustomDaysCommit('verde')}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
@@ -1385,7 +1408,6 @@ const Profile = () => {
             </div>
 
             <motion.div
-              layout
               className="glass-panel"
               style={{
                 padding: '24px',
@@ -1397,7 +1419,6 @@ const Profile = () => {
                 position: 'relative',
                 cursor: securityScreen === 'overview' ? 'pointer' : 'default'
               }}
-              transition={{ layout: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] } }}
               onClick={() => securityScreen === 'overview' && setSecurityScreen('detail')}
             >
               <AnimatePresence mode="wait">
@@ -1407,9 +1428,9 @@ const Profile = () => {
                     key="security-overview"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', position: 'absolute', inset: 0, padding: 'inherit' }}
                   >
                     <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1449,10 +1470,11 @@ const Profile = () => {
                 {securityScreen === 'detail' && (
                   <motion.div
                     key="security-detail"
-                    initial={{ opacity: 0, x: 30 }}
+                    initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 30 }}
-                    transition={{ duration: 0.3 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'absolute', inset: 0, padding: 'inherit' }}
                     style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
                     onClick={(e) => e.stopPropagation()}
                   >

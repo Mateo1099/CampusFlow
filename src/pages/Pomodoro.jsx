@@ -213,7 +213,7 @@ const Pomodoro = () => {
   const color = modeConfig[mode].color;
 
   return (
-    <div className="animate-fade-in" style={{ 
+    <div className="animate-fade-in pomodoro-page" style={{ 
       height: '100%', 
       minHeight: '80vh',
       display: 'flex', 
@@ -548,11 +548,17 @@ const Pomodoro = () => {
 
                 {isTaskDropdownOpen && (
                   <div className="animate-fade-in" style={{
-                    marginTop: '8px', position: 'absolute', width: '100%', zIndex: 50,
-                    background: 'var(--bg-glass)', backdropFilter: 'blur(20px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(0, 243, 255, 0.2)', 
-                    borderRadius: 'var(--radius-md)', boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 243, 255, 0.06)',
-                    padding: '6px', maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px'
+                    marginTop: '8px',
+                    // Siempre 'relative' (nunca 'absolute'): así el desplegable empuja el widget
+                    // de Ambiente Sonoro hacia abajo en vez de flotar encima y tapándolo. Esto no
+                    // depende de detectar el tamaño de pantalla, funciona igual en cualquier viewport.
+                    position: 'relative',
+                    width: '100%',
+                    zIndex: 60,
+                    background: 'rgba(8, 10, 18, 0.98)', backdropFilter: 'blur(20px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(0, 243, 255, 0.3)', 
+                    borderRadius: 'var(--radius-md)', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 12px rgba(0, 243, 255, 0.06)',
+                    padding: '6px', maxHeight: 'min(260px, 45vh)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px'
                   }}>
                     {pendingTasks.length === 0 ? (
                       <div style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -563,19 +569,19 @@ const Pomodoro = () => {
                         <button
                           onClick={() => { setSelectedTaskId(''); setIsTaskDropdownOpen(false); }}
                           style={{
-                            width: '100%', padding: '10px 12px', border: 'none', borderRadius: '8px',
-                            background: selectedTaskId === '' ? 'rgba(0, 243, 255, 0.08)' : 'transparent',
-                            color: selectedTaskId === '' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                            fontSize: '0.85rem', fontFamily: 'var(--font-body)', fontWeight: selectedTaskId === '' ? 700 : 500,
+                            width: '100%', padding: '12px 14px', border: 'none', borderRadius: '8px',
+                            background: selectedTaskId === '' ? 'rgba(0, 243, 255, 0.14)' : 'transparent',
+                            color: selectedTaskId === '' ? '#00f3ff' : 'rgba(255, 255, 255, 0.75)',
+                            fontSize: '0.88rem', fontFamily: 'var(--font-body)', fontWeight: selectedTaskId === '' ? 800 : 600,
                             cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             transition: 'all 0.2s ease', outline: 'none',
-                            border: selectedTaskId === '' ? '1px solid rgba(0, 243, 255, 0.2)' : '1px solid transparent'
+                            border: selectedTaskId === '' ? '1px solid rgba(0, 243, 255, 0.35)' : '1px solid transparent'
                           }}
-                          onMouseEnter={e => { if (selectedTaskId !== '') e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                          onMouseEnter={e => { if (selectedTaskId !== '') e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
                           onMouseLeave={e => { if (selectedTaskId !== '') e.currentTarget.style.background = 'transparent'; }}
                         >
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎯 Sin objetivo</span>
-                          {selectedTaskId === '' && <Check size={16} style={{ opacity: 0.9, flexShrink: 0 }} />}
+                          {selectedTaskId === '' && <Check size={16} style={{ color: '#00f3ff', flexShrink: 0 }} />}
                         </button>
 
                         {pendingTasks.map(t => (
@@ -583,41 +589,44 @@ const Pomodoro = () => {
                             key={t.id}
                             onClick={() => { setSelectedTaskId(t.id); setIsTaskDropdownOpen(false); }}
                             style={{
-                              width: '100%', padding: '10px 12px', border: 'none', borderRadius: '8px',
-                              background: selectedTaskId === t.id ? 'rgba(0, 243, 255, 0.08)' : 'transparent',
-                              color: selectedTaskId === t.id ? 'var(--accent-primary)' : 'var(--text-primary)',
+                              width: '100%', padding: '12px 14px', border: 'none', borderRadius: '8px',
+                              background: selectedTaskId === t.id ? 'rgba(0, 243, 255, 0.14)' : 'transparent',
+                              color: selectedTaskId === t.id ? '#ffffff' : 'var(--text-primary)',
                               cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
                               transition: 'all 0.2s ease', outline: 'none',
-                              border: selectedTaskId === t.id ? '1px solid rgba(0, 243, 255, 0.2)' : '1px solid transparent'
+                              border: selectedTaskId === t.id ? '1px solid rgba(0, 243, 255, 0.35)' : '1px solid transparent'
                             }}
-                            onMouseEnter={e => { if (selectedTaskId !== t.id) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                            onMouseEnter={e => { if (selectedTaskId !== t.id) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
                             onMouseLeave={e => { if (selectedTaskId !== t.id) e.currentTarget.style.background = 'transparent'; }}
                           >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden', flex: 1 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden', flex: 1 }}>
                               <span style={{ 
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', 
-                                fontSize: '0.85rem', fontWeight: selectedTaskId === t.id ? 700 : 500, fontFamily: 'var(--font-body)',
-                                color: selectedTaskId === t.id ? 'var(--accent-primary)' : 'var(--text-primary)'
+                                fontSize: '0.9rem', fontWeight: selectedTaskId === t.id ? 800 : 600, fontFamily: 'var(--font-body)',
+                                color: selectedTaskId === t.id ? '#00f3ff' : 'rgba(255, 255, 255, 0.92)'
                               }}>
                                 {t.title}
                               </span>
                               
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 500, opacity: 0.85, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 700, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                                 {t.courses?.name && (
                                   <>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: t.courses.color || 'var(--text-muted)' }}>
+                                    {/* Punto de color de la materia como acento visual, sin usar el color en el texto
+                                        (algunos colores de materia son oscuros/cian y quedaban ilegibles como texto). */}
+                                    <span style={{ width: '6px', height: '6px', minWidth: '6px', borderRadius: '50%', background: t.courses.color || 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgba(255, 255, 255, 0.68)' }}>
                                       {t.courses.name}
                                     </span>
-                                    <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>·</span>
+                                    <span style={{ color: 'rgba(255, 255, 255, 0.35)', flexShrink: 0 }}>·</span>
                                   </>
                                 )}
-                                <span style={{ color: t.status === 'en proceso' ? 'var(--accent-primary)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                <span style={{ color: t.status === 'en proceso' ? '#00f3ff' : 'rgba(255, 255, 255, 0.68)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                   {t.status}
                                 </span>
                               </div>
                             </div>
                             {selectedTaskId === t.id && (
-                              <Check size={16} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                              <Check size={16} style={{ color: '#00f3ff', flexShrink: 0 }} />
                             )}
                           </button>
                         ))}
@@ -629,11 +638,16 @@ const Pomodoro = () => {
               {!isTaskDropdownOpen && selectedTaskId !== '' && pendingTasks.find(t => t.id === selectedTaskId) && (() => {
                 const t = pendingTasks.find(t => t.id === selectedTaskId);
                 return (
-                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '-4px', padding: '12px', background: 'rgba(0,0,0,0.15)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
-                    {t.courses?.name && <div style={{ fontSize: '0.75rem', color: t.courses?.color || 'var(--accent-primary)', fontWeight: 800, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.courses.name}</div>}
-                    {(t.deadline || t.due_date) && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Límite: {new Date(t.deadline || t.due_date).toLocaleDateString('es-CO')}</div>}
-                    <div style={{ fontSize: '0.7rem', color: t.status === 'en proceso' ? 'var(--accent-primary)' : 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Estado: {t.status}</div>
+                  <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '-4px', padding: '14px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.95)', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                    {t.courses?.name && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                        <span style={{ width: '6px', height: '6px', minWidth: '6px', borderRadius: '50%', background: t.courses.color || 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.72)', fontWeight: 700, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.courses.name}</span>
+                      </div>
+                    )}
+                    {(t.deadline || t.due_date) && <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.55)' }}>Límite: {new Date(t.deadline || t.due_date).toLocaleDateString('es-CO')}</div>}
+                    <div style={{ fontSize: '0.72rem', color: t.status === 'en proceso' ? '#00f3ff' : 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase', fontWeight: 700 }}>Estado: {t.status}</div>
                   </div>
                 );
               })()}
@@ -718,14 +732,17 @@ const Pomodoro = () => {
           {isSoundDropdownOpen && (
             <div className="animate-fade-in" style={{
               marginTop: '8px',
-              background: 'var(--bg-glass)',
+              position: 'relative',
+              width: '100%',
+              zIndex: 60,
+              background: 'rgba(8, 10, 18, 0.98)',
               backdropFilter: 'blur(20px) saturate(180%)',
               WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-              border: '1px solid rgba(0, 243, 255, 0.2)',
+              border: '1px solid rgba(0, 243, 255, 0.3)',
               borderRadius: 'var(--radius-md)',
-              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(0, 243, 255, 0.06)',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 12px rgba(0, 243, 255, 0.06)',
               padding: '6px',
-              maxHeight: '260px',
+              maxHeight: 'min(260px, 45vh)',
               overflowY: 'auto'
             }}>
               {/* Sin Sonido */}

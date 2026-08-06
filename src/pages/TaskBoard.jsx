@@ -5,6 +5,9 @@ import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter,
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBreakpoint } from '../hooks/useMediaQuery';
+import InstitutionFilterPills from '../components/ui/InstitutionFilterPills';
+import CustomSelect from '../components/ui/CustomSelect';
 
 // GSAP IMPORTS
 import { gsap } from "gsap";
@@ -75,7 +78,10 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
             border: `1px solid ${accentColor}33`, maxWidth: '100%', overflow: 'hidden'
           }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-            <span style={{ fontSize: '0.75rem', color: accentColor, fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            {/* El color de la materia solo se usa en el punto de acento (arriba), nunca como color
+                de texto: algunos colores de materia son oscuros/cian y quedaban ilegibles como texto
+                (mismo bug de contraste ya corregido en Pomodoro.jsx). */}
+            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
               {courseObj?.name || 'General'}
             </span>
           </div>
@@ -153,6 +159,7 @@ const TaskBoard = () => {
   const { t } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isMobile } = useBreakpoint();
   const [showModal, setShowModal] = useState(false);
 
   React.useEffect(() => {
@@ -341,7 +348,7 @@ const TaskBoard = () => {
   if (tasksLoading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--accent-primary)' }}><div className="animate-pulse font-display" style={{ fontWeight: 900, fontSize: '1.2rem' }}>//_SINCRONIZANDO...</div></div>;
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', padding: '32px 48px', minHeight: '100%' }}>
+    <div className="animate-fade-in task-board-page" style={{ display: 'flex', flexDirection: 'column', padding: '32px 48px', minHeight: '100%' }}>
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
         <div>
           <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>TRABAJOS</h1>
@@ -390,58 +397,7 @@ const TaskBoard = () => {
 
       {/* FILTROS NEON-PILLS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {['TODAS', 'UNAD', 'SENA', 'PERSONALIZADO'].map(f => {
-            const getNeonColor = (filter) => {
-              switch(filter) {
-                case 'TODAS': return '#00f3ff'; // Cyan
-                case 'UNAD': return '#ffcc00';  // Yellow
-                case 'SENA': return '#00ff88';  // Green
-                case 'PERSONALIZADO': return '#bc13fe'; // Purple
-                default: return '#00f3ff';
-              }
-            };
-            const neonColor = getNeonColor(f);
-            const isActive = currentFilter === f;
-
-            return (
-              <button
-                key={f}
-                onClick={() => {
-                  setCurrentFilter(f);
-                  const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
-                  playClick(freqs[f] || 800);
-                }}
-                style={{
-                  padding: '10px 24px',
-                  borderRadius: '50px',
-                  border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
-                  background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
-                  color: isActive ? neonColor : 'var(--text-muted)',
-                  fontSize: '0.8rem',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}
-              >
-                <div style={{ 
-                  width: '6px', 
-                  height: '6px', 
-                  borderRadius: '50%', 
-                  background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
-                  boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
-                }} />
-                {f}
-              </button>
-            );
-          })}
-        </div>
+        <InstitutionFilterPills activeFilter={currentFilter} onSelect={setCurrentFilter} />
 
         <div style={{ position: 'relative' }}>
           <button 
@@ -514,22 +470,43 @@ const TaskBoard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '32px', flex: 1, paddingBottom: '24px', minWidth: 'fit-content' }}>
-        {COLUMNS.map(col => (
-          <div key={col.id} ref={el => columnRefs.current[col.id] = el} style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderBottom: `2px solid ${col.accent}`, marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{col.label}</h3>
-              <span className={`badge ${col.badgeClass}`} style={{ fontWeight: 950 }}>{filteredTasks.filter(t => t.status === col.id).length}</span>
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? '20px' : '32px',
+        flex: isMobile ? 'none' : 1,
+        paddingBottom: '24px',
+        minWidth: isMobile ? '0' : 'fit-content'
+      }}>
+        {COLUMNS.map(col => {
+          const colTasks = filteredTasks.filter(t => t.status === col.id);
+          return (
+            <div
+              key={col.id}
+              ref={el => columnRefs.current[col.id] = el}
+              style={{
+                flex: isMobile ? 'none' : '1',
+                minWidth: isMobile ? '100%' : '300px',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderBottom: `2px solid ${col.accent}`, marginBottom: isMobile ? '10px' : '20px' }}>
+                <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{col.label}</h3>
+                <span className={`badge ${col.badgeClass}`} style={{ fontWeight: 950 }}>{colTasks.length}</span>
+              </div>
+              {(!isMobile || colTasks.length > 0) && (
+                <div style={{ display: 'flex', flexDirection: 'column', flex: isMobile ? 'none' : 1, minHeight: isMobile ? '0' : '200px' }}>
+                  <AnimatePresence>
+                    {colTasks.map(task => (
+                      <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '200px' }}>
-              <AnimatePresence>
-                {filteredTasks.filter(t => t.status === col.id).map(task => (
-                  <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {showModal && (
@@ -554,8 +531,9 @@ const TaskBoard = () => {
               className="glass-panel gamer-glow" 
               style={{ 
                 width: '90%', 
-                maxWidth: '520px', 
-                padding: '40px', 
+                maxWidth: '520px',
+                minWidth: 'min(320px, 90vw)',
+                padding: 'clamp(20px, 5vw, 40px)', 
                 background: 'rgba(15, 15, 20, 0.85)', 
                 backdropFilter: 'blur(30px)',
                 border: '1px solid rgba(0, 243, 255, 0.25)',
@@ -567,8 +545,8 @@ const TaskBoard = () => {
                 overflowY: 'auto'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)' }}>{isEditing ? 'EDITAR TRABAJO' : 'NUEVO TRABAJO'}</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'clamp(20px, 4vw, 32px)', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <h2 style={{ fontSize: 'clamp(1.2rem, 3.5vw, 1.8rem)', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)', margin: 0 }}>{isEditing ? 'EDITAR TRABAJO' : 'NUEVO TRABAJO'}</h2>
               <button 
                 onClick={handleClose} 
                 style={{ 
@@ -588,34 +566,80 @@ const TaskBoard = () => {
             </div>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <input className="input" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="TÍTULO DEL TRABAJO *" style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }} />
-              <select 
-                className="select" 
+              <CustomSelect
+                value={formData.courseId}
+                onChange={(val) => setFormData({ ...formData, courseId: val })}
+                options={[
+                  { value: '', label: 'Selecciona materia...' },
+                  ...courses.map(c => ({ value: c.id, label: c.name }))
+                ]}
+                placeholder="Selecciona materia..."
                 required
-                value={formData.courseId} 
-                onChange={e => setFormData({ ...formData, courseId: e.target.value })} 
-                style={{ 
-                  background: '#121212', 
-                  color: '#fff',
-                  padding: '14px', 
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  appearance: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="" style={{ background: '#121212', color: '#fff' }}>Selecciona materia...</option>
-                {courses.map(c => (
-                  <option key={c.id} value={c.id} style={{ background: '#121212', color: '#fff' }}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div onClick={() => setActivePicker('start')} className="input" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }}>{(formData.startDate || '').split('T')[0] || 'FECHA...'} <CalendarIcon size={16} color="#00f3ff" /></div>
-                <div onClick={() => setActivePicker('due')} className="input" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }}>{(formData.dueDate || '').split('T')[0] || 'LÍMITE...'} <CalendarIcon size={16} color="#00f3ff" /></div>
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* FECHA INICIO */}
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.65rem', 
+                    fontWeight: 800, 
+                    color: 'rgba(255, 255, 255, 0.5)', 
+                    marginBottom: '6px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em'
+                  }}>
+                    FECHA INICIO
+                  </label>
+                  <div onClick={() => setActivePicker('start')} className="input" style={{ 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    background: 'rgba(255,255,255,0.03)', 
+                    padding: '14px 12px', 
+                    borderRadius: '10px', 
+                    minWidth: 0 
+                  }}>
+                    <span style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                      {(formData.startDate || '').split('T')[0] || 'Selecciona...'}
+                    </span>
+                    <CalendarIcon size={16} color="#fff" style={{ flexShrink: 0, marginLeft: '8px', opacity: 0.6 }} />
+                  </div>
+                </div>
+
+                {/* FECHA LÍMITE (destacada con cyan) */}
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.65rem', 
+                    fontWeight: 800, 
+                    color: '#00f3ff', 
+                    marginBottom: '6px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em'
+                  }}>
+                    FECHA LÍMITE *
+                  </label>
+                  <div onClick={() => setActivePicker('due')} className="input" style={{ 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    background: 'rgba(255,255,255,0.03)', 
+                    padding: '14px 12px', 
+                    borderRadius: '10px', 
+                    minWidth: 0,
+                    border: '1px solid rgba(0, 243, 255, 0.2)'
+                  }}>
+                    <span style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                      {(formData.dueDate || '').split('T')[0] || 'Selecciona...'}
+                    </span>
+                    <CalendarIcon size={16} color="#00f3ff" style={{ flexShrink: 0, marginLeft: '8px' }} />
+                  </div>
+                </div>
               </div>
               {activePicker && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10002 }}><CustomCalendar selectedDate={activePicker === 'start' ? formData.startDate : formData.dueDate} onDateSelect={(d) => { setFormData({ ...formData, [activePicker === 'start' ? 'startDate' : 'dueDate']: d.split('T')[0] }); setActivePicker(null); }} onClose={() => setActivePicker(null)} /></div>}
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: 'clamp(12px, 2vw, 16px)', justifyContent: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
                 <ModalButton label="CANCELAR" onClick={handleClose} variant="cancel" />
                 <ModalButton 
                   label="GUARDAR" 
@@ -657,15 +681,15 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       whileTap={!disabled ? { scale: 0.98 } : {}}
       transition={{ hover: { duration: 0.2, ease: "easeOut" }, tap: { duration: 0.1 } }}
       style={{ 
-        width: '180px', 
-        height: '48px', 
-        padding: '0 24px', 
+        width: 'clamp(140px, 40vw, 180px)', 
+        height: 'clamp(42px, 10vw, 48px)', 
+        padding: '0 clamp(16px, 4vw, 24px)', 
         borderRadius: '12px', 
         background: variant === 'save' ? 'rgba(0, 243, 255, 0.08)' : 'rgba(255, 77, 77, 0.08)', 
         border: variant === 'save' ? '1px solid rgba(0, 243, 255, 0.3)' : '1px solid rgba(255, 77, 77, 0.3)', 
         color: variant === 'save' ? '#00f3ff' : '#ff4d4d', 
         fontWeight: 800, 
-        fontSize: '0.9rem', 
+        fontSize: 'clamp(0.75rem, 2vw, 0.9rem)', 
         cursor: disabled ? 'not-allowed' : 'pointer', 
         display: 'flex', 
         alignItems: 'center', 

@@ -43,7 +43,9 @@ export const useCourses = (userId) => {
     fetchCourses();
   }, [fetchCourses]);
 
-  const addCourse = async (course) => {
+  // useCallback: identidad estable entre renders, necesaria para que TaskContext
+  // pueda memoizar de verdad su `value` (ver comentario en TaskContext.jsx).
+  const addCourse = useCallback(async (course) => {
     try {
       const newCourse = await coursesService.createCourse(userId, course);
       // Aplicar misma normalización al insertar
@@ -62,9 +64,9 @@ export const useCourses = (userId) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
-  const updateCourse = async (id, updates) => {
+  const updateCourse = useCallback(async (id, updates) => {
     try {
       const updatedCourse = await coursesService.updateCourse(id, updates);
       setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updatedCourse } : c));
@@ -74,9 +76,9 @@ export const useCourses = (userId) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
-  const deleteCourse = async (id) => {
+  const deleteCourse = useCallback(async (id) => {
     try {
       await coursesService.deleteCourse(id);
       setCourses(prev => prev.filter(c => c.id !== id));
@@ -85,7 +87,7 @@ export const useCourses = (userId) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
   return {
     courses,

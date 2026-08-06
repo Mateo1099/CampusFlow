@@ -1,11 +1,14 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import BottomNavigation from './BottomNavigation';
 import { useSettings, WALLPAPERS } from '../../context/SettingsContext';
+import { useBreakpoint } from '../../hooks/useMediaQuery';
 import { resumeAudio } from '../../lib/audioService';
 
 const Layout = () => {
   const { settings, recentXPGains } = useSettings();
+  const { isMobile } = useBreakpoint();
 
   React.useEffect(() => {
     const handleGesture = () => {
@@ -46,20 +49,38 @@ const Layout = () => {
         }} 
       />
       <div id="grain-overlay" />
-      <div className="app-container" style={{
+      <div className={`app-container${isMobile ? ' mobile-layout' : ''}`} style={{
         flexDirection: settings.sidebarPosition === 'right' ? 'row-reverse' : 
                        settings.sidebarPosition === 'top' ? 'column' : 
                        settings.sidebarPosition === 'bottom' ? 'column-reverse' : 'row',
         transition: 'flex-direction 0.5s var(--ease-out-quint)'
       }}>
-        <Sidebar />
-        <main className="main-content" style={{ position: 'relative', zIndex: 1 }}>
+        {/* Mostrar Sidebar solo en desktop */}
+        {!isMobile && <Sidebar />}
+        
+        <main 
+          className="main-content" 
+          style={{ 
+            position: 'relative', 
+            zIndex: 1,
+            paddingBottom: isMobile ? '64px' : '0', // Espacio para bottom nav en móvil
+          }}
+        >
           <Outlet />
         </main>
       </div>
 
+      {/* Bottom Navigation (solo en móvil) */}
+      {isMobile && <BottomNavigation />}
+
       {/* XP Notifications Overlay (Delight Moment) */}
-      <div style={{ position: 'fixed', bottom: '40px', right: '40px', zIndex: 1000, pointerEvents: 'none' }}>
+      <div style={{ 
+        position: 'fixed', 
+        bottom: isMobile ? '80px' : '40px', // Más arriba en móvil para no ocluir bottom nav
+        right: '40px', 
+        zIndex: 999, 
+        pointerEvents: 'none' 
+      }}>
         {recentXPGains.map(gain => (
           <div 
             key={gain.id} 

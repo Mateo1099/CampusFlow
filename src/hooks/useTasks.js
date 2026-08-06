@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { tasksService } from '../lib/tasksService';
 import { dataStoreService } from '../lib/dataStoreService';
 
@@ -6,6 +6,13 @@ export const useTasks = (userId, addXP, incrementStat) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Ref espejo de `tasks`: permite que updateTaskStatus/updateTaskSchedule lean
+  // el valor más reciente sin depender de `tasks` en su useCallback, así
+  // mantienen identidad estable entre renders (necesario para que la
+  // memoización de TaskContext.value tenga efecto real).
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
 
   const fetchTasks = useCallback(async () => {
     if (!userId) {
@@ -27,7 +34,11 @@ export const useTasks = (userId, addXP, incrementStat) => {
     fetchTasks();
   }, [fetchTasks]);
 
-  const addTask = async (task) => {
+  // Todas las funciones de mutación se envuelven en useCallback para que mantengan
+  // identidad estable entre renders. Sin esto, TaskContext no puede memoizar de
+  // verdad su `value` (cada render seguiría creando funciones nuevas, invalidando
+  // el useMemo aguas arriba y re-renderizando toda la app igual que antes).
+  const addTask = useCallback(async (task) => {
     try {
       const newTask = await tasksService.createTask(userId, task);
       setTasks(prev => [newTask, ...prev]);
@@ -37,9 +48,9 @@ export const useTasks = (userId, addXP, incrementStat) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
-  const updateTask = async (id, updates) => {
+  const updateTask = useCallback(async (id, updates) => {
     try {
       const updatedTask = await tasksService.updateTask(id, updates);
       setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
@@ -49,11 +60,11 @@ export const useTasks = (userId, addXP, incrementStat) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
-  const updateTaskStatus = async (id, newStatus) => {
+  const updateTaskStatus = useCallback(async (id, newStatus) => {
     try {
-      const task = tasks.find(t => String(t.id) === String(id));
+      const task = tasksRef.current.find(t => String(t.id) === String(id));
       if (!task) return;
 
       const oldStatus = task.status;
@@ -80,9 +91,9 @@ export const useTasks = (userId, addXP, incrementStat) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [addXP, incrementStat, userId]);
 
-  const deleteTask = async (id) => {
+  const deleteTask = useCallback(async (id) => {
     try {
       await tasksService.deleteTask(id);
       setTasks(prev => prev.filter(t => t.id !== id));
@@ -91,11 +102,11 @@ export const useTasks = (userId, addXP, incrementStat) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
-  const updateTaskSchedule = async (id, day, block) => {
+  const updateTaskSchedule = useCallback(async (id, day, block) => {
     try {
-      const task = tasks.find(t => t.id === id);
+      const task = tasksRef.current.find(t => t.id === id);
       if (!task) return;
 
       const updatedTask = await tasksService.updateTask(id, { ...task, day, block });
@@ -106,7 +117,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
   return {
     tasks,

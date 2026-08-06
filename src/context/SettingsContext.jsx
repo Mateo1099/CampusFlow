@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 
@@ -16,11 +16,9 @@ export const WALLPAPERS = [
 ];
 
 // Frecuencias de insistencia disponibles para cada zona del semáforo de
-// alertas por correo (rojo/amarillo/verde). Deben coincidir exactamente con
-// el CHECK constraint de profiles.red_alert_freq / yellow_alert_freq /
-// green_alert_freq en migrations_email_frecuencias_independientes.sql.
+// alertas por correo (rojo/amarillo/verde). 'cada_hora' se eliminó porque
+// es incompatible con el tope de 1 correo consolidado al día por estudiante.
 export const ALERT_FREQUENCY_OPTIONS = [
-  { id: 'cada_hora', label: 'Cada hora' },
   { id: 'diario', label: 'Diario' },
   { id: 'interdiario', label: 'Interdiario' },
   { id: 'personalizado', label: 'Personalizado' },
@@ -120,18 +118,25 @@ export function SettingsProvider({ children }) {
     redAlertFreq: 'diario',
     yellowAlertFreq: 'diario',
     greenAlertFreq: 'diario',
-    redAlertCustomHours: 24,
-    yellowAlertCustomHours: 24,
-    greenAlertCustomHours: 24
+    redAlertCustomDays: 1,
+    yellowAlertCustomDays: 1,
+    greenAlertCustomDays: 1
   });
   const [recentXPGains, setRecentXPGains] = useState([]);
+
+  // Ref espejo de `settings`, para que updateSettings pueda leer el valor más
+  // reciente sin necesitar `settings` en su lista de dependencias de useCallback
+  // (eso mantiene su identidad estable entre renders, en vez de recrearse cada
+  // vez que cambia cualquier ajuste).
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const fetchProfile = useCallback(async (uid) => {
     try {
       // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme, two_factor_enabled Y email_notifications
       let { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_hours, yellow_alert_custom_hours, green_alert_custom_hours')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days')
         .eq('id', uid)
         .maybeSingle();
 
@@ -167,9 +172,9 @@ export function SettingsProvider({ children }) {
           redAlertFreq: data.red_alert_freq || prev.redAlertFreq || 'diario',
           yellowAlertFreq: data.yellow_alert_freq || prev.yellowAlertFreq || 'diario',
           greenAlertFreq: data.green_alert_freq || prev.greenAlertFreq || 'diario',
-          redAlertCustomHours: Number(data.red_alert_custom_hours) || prev.redAlertCustomHours || 24,
-          yellowAlertCustomHours: Number(data.yellow_alert_custom_hours) || prev.yellowAlertCustomHours || 24,
-          greenAlertCustomHours: Number(data.green_alert_custom_hours) || prev.greenAlertCustomHours || 24
+          redAlertCustomDays: Number(data.red_alert_custom_days) || prev.redAlertCustomDays || 1,
+          yellowAlertCustomDays: Number(data.yellow_alert_custom_days) || prev.yellowAlertCustomDays || 1,
+          greenAlertCustomDays: Number(data.green_alert_custom_days) || prev.greenAlertCustomDays || 1
         }));
       }
     } catch (err) {
@@ -181,11 +186,19 @@ export function SettingsProvider({ children }) {
     if (user) fetchProfile(user.id);
   }, [user, fetchProfile]);
 
-  const updateSettings = async (updates) => {
+  const updateSettings = useCallback(async (updates) => {
     let processedUpdates = { ...updates };
     if (updates.wallpaper && updates.wallpaper !== 'custom') {
       processedUpdates.customWallpaper = null;
     }
+
+    // Snapshot del valor previo (antes del optimistic update), para poder revertir
+    // la UI si Supabase rechaza el guardado y así nunca quede desincronizada de la nube.
+    // Se lee de settingsRef (no de `settings` directo) para que esta función mantenga
+    // una identidad estable entre renders y no obligue a recrear el value del Provider.
+    const currentSettings = settingsRef.current;
+    const settingsSnapshotBeforeUpdate = {};
+    Object.keys(processedUpdates).forEach(key => { settingsSnapshotBeforeUpdate[key] = currentSettings[key]; });
 
     setSettings(prev => ({ ...prev, ...processedUpdates }));
 
@@ -216,11 +229,11 @@ export function SettingsProvider({ children }) {
       if (processedUpdates.redAlertFreq !== undefined) cloudMapping.red_alert_freq = processedUpdates.redAlertFreq;
       if (processedUpdates.yellowAlertFreq !== undefined) cloudMapping.yellow_alert_freq = processedUpdates.yellowAlertFreq;
       if (processedUpdates.greenAlertFreq !== undefined) cloudMapping.green_alert_freq = processedUpdates.greenAlertFreq;
-      // Valor numérico (en horas) que define el intervalo real cuando la frecuencia
-      // de una zona está en 'personalizado'. Ver migrations_email_frecuencias_custom_hours.sql
-      if (processedUpdates.redAlertCustomHours !== undefined) cloudMapping.red_alert_custom_hours = Number(processedUpdates.redAlertCustomHours);
-      if (processedUpdates.yellowAlertCustomHours !== undefined) cloudMapping.yellow_alert_custom_hours = Number(processedUpdates.yellowAlertCustomHours);
-      if (processedUpdates.greenAlertCustomHours !== undefined) cloudMapping.green_alert_custom_hours = Number(processedUpdates.greenAlertCustomHours);
+      // Valor numérico (en DÍAS, 1-30) que define el intervalo real cuando la frecuencia
+      // de una zona está en 'personalizado'. Ver migrations_email_mailgun_v5.sql
+      if (processedUpdates.redAlertCustomDays !== undefined) cloudMapping.red_alert_custom_days = Number(processedUpdates.redAlertCustomDays);
+      if (processedUpdates.yellowAlertCustomDays !== undefined) cloudMapping.yellow_alert_custom_days = Number(processedUpdates.yellowAlertCustomDays);
+      if (processedUpdates.greenAlertCustomDays !== undefined) cloudMapping.green_alert_custom_days = Number(processedUpdates.greenAlertCustomDays);
 
       if (updates.wallpaper !== undefined) {
         if (updates.wallpaper === 'custom') {
@@ -247,10 +260,21 @@ export function SettingsProvider({ children }) {
           if (error) throw error;
         } catch (dbErr) {
           console.error("Error en persistencia:", dbErr.message);
+          // CRÍTICO: si Supabase rechaza el guardado (RLS, red, permisos), la UI NO debe
+          // quedarse mostrando el valor optimista como si se hubiera guardado. Antes este
+          // catch solo hacía console.error, así que un toggle podía verse "activado" en
+          // pantalla para siempre mientras la base de datos seguía en false/null. Ahora se
+          // revierte el estado local a lo que en verdad hay en la nube y se avisa al usuario.
+          setSettings(prev => ({ ...prev, ...settingsSnapshotBeforeUpdate }));
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('campusflow:settings-save-error', {
+              detail: { message: dbErr.message || 'No se pudo guardar el cambio.' }
+            }));
+          }
         }
       }
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -287,9 +311,13 @@ export function SettingsProvider({ children }) {
 
   const t = translations[settings.language] || translations.es;
 
-  const value = {
+  // Memoizado: sin esto, el Provider crea un objeto `value` nuevo en cada render,
+  // lo que fuerza a re-renderizar TODOS los componentes que usan useSettings()
+  // en toda la app, aunque el cambio no les afecte (ej. cambiar recentXPGains
+  // re-renderizaría el Sidebar entero aunque él solo lea `settings.theme`).
+  const value = useMemo(() => ({
     settings, updateSettings, t, addXP, incrementStat, recentXPGains
-  };
+  }), [settings, updateSettings, t, addXP, incrementStat, recentXPGains]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
