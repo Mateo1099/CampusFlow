@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
@@ -98,7 +98,7 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const checkMFAStatus = async (userId) => {
+  const checkMFAStatus = useCallback(async (userId) => {
     try {
       console.log(`[AUTH] Verificando MFA status para user ${userId}...`);
 
@@ -170,20 +170,20 @@ export function AuthProvider({ children }) {
       setMfaRequired(false);
       return false;
     }
-  };
+  }, []);
 
-  const login = (userData) => {
+  const login = useCallback((userData) => {
     setUser(userData);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setAal('aal1');
     setMfaRequired(false);
-  };
+  }, []);
 
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     try {
       console.log('[AUTH] Refrescando sesión...');
       
@@ -218,9 +218,9 @@ export function AuthProvider({ children }) {
       console.error('[AUTH] Exception al refrescar sesión:', err);
       return false;
     }
-  };
+  }, [aal, checkMFAStatus]);
 
-  const refreshSessionAfterMFA = async () => {
+  const refreshSessionAfterMFA = useCallback(async () => {
     try {
       // Obtener la sesión actualizada después de MFA
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -243,9 +243,13 @@ export function AuthProvider({ children }) {
       console.error('Error refreshing session after MFA:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const value = {
+  // Memoizado: sin esto, el Provider crea un objeto `value` nuevo en cada render
+  // (y AuthContext cambia de estado a menudo: loading, user, aal, mfaRequired),
+  // forzando a re-renderizar TODOS los componentes que usan useAuth() en toda la
+  // app (Sidebar, rutas protegidas, Dashboard, etc.) aunque no les afecte el cambio.
+  const value = useMemo(() => ({
     user,
     loading,
     aal, // AAL1 = apenas autenticado, AAL2 = con MFA
@@ -258,21 +262,23 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     needsMFAChallenge: aal === 'aal1' && mfaRequired, // True si necesita pasar MFA
     checkMFAStatus
-  };
+  }), [user, loading, aal, mfaRequired, sessionId, login, logout, refreshSession, refreshSessionAfterMFA, checkMFAStatus]);
 
-  // DEBUG: Log estado justo antes de retornar
-  console.log(
-    `[AUTH-DEBUG] ${loading ? '⏳ LOADING' : '✅ READY'}`,
-    { 
-      loading, 
-      'user?': !!user,
-      'user.email': user?.email,
-      aal, 
-      mfaRequired,
-      'isAuthenticated': !!user,
-      'needsMFAChallenge': aal === 'aal1' && mfaRequired
-    }
-  );
+  // DEBUG: solo en desarrollo, para no generar overhead ni ruido en producción.
+  if (import.meta.env.DEV) {
+    console.log(
+      `[AUTH-DEBUG] ${loading ? '⏳ LOADING' : '✅ READY'}`,
+      { 
+        loading, 
+        'user?': !!user,
+        'user.email': user?.email,
+        aal, 
+        mfaRequired,
+        'isAuthenticated': !!user,
+        'needsMFAChallenge': aal === 'aal1' && mfaRequired
+      }
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

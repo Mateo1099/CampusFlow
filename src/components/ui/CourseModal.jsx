@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import ColorPicker from './ColorPicker';
 import CustomCalendar from './CustomCalendar';
+import CustomSelect from './CustomSelect';
 
 const INSTITUTIONS = ['UNAD', 'SENA'];
 
@@ -97,6 +98,7 @@ const CourseModal = ({
           }}>
             <motion.div 
               key="course-modal"
+              className="course-modal"
               ref={modalPanelRef} 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
@@ -167,26 +169,15 @@ const CourseModal = ({
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>INSTITUCIÓN</label>
-              <select 
-                className="select" 
-                value={formData.institution} 
-                onChange={e => handleInstitutionChange(e.target.value)}
-                style={{ 
-                  background: 'rgba(255,255,255,0.04)', 
-                  color: '#fff',
-                  padding: '14px 16px', 
-                  borderRadius: '14px',
-                  border: '1px solid rgba(0, 243, 255, 0.15)',
-                  appearance: 'none',
-                  cursor: 'pointer',
-                  width: '100%',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                {INSTITUTIONS.map(inst => <option key={inst} value={inst} style={{ background: '#121212' }}>{inst}</option>)}
-                <option value="PERSONALIZADO" style={{ background: '#121212' }}>PERSONALIZADO</option>
-              </select>
+              <CustomSelect
+                value={formData.institution}
+                onChange={(val) => handleInstitutionChange(val)}
+                options={[
+                  ...INSTITUTIONS.map(inst => ({ value: inst, label: inst })),
+                  { value: 'PERSONALIZADO', label: 'PERSONALIZADO' }
+                ]}
+                placeholder="Selecciona institución..."
+              />
             </div>
           </div>
 
@@ -262,7 +253,7 @@ const CourseModal = ({
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px' }}>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
             <ModalButton label="CANCELAR" onClick={handleClose} variant="cancel" />
             <ModalButton 
               label={isEditing ? "GUARDAR CAMBIOS" : "REGISTRAR"} 
@@ -320,9 +311,9 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       whileTap={!disabled ? { scale: 0.98 } : {}}
       transition={{ hover: { duration: 0.2, ease: "easeOut" }, tap: { duration: 0.1 } }}
       style={{ 
-        padding: '12px 32px',
+        padding: 'clamp(10px, 3vw, 12px) clamp(18px, 5vw, 32px)',
         borderRadius: '12px',
-        fontSize: '0.85rem',
+        fontSize: 'clamp(0.72rem, 2.2vw, 0.85rem)',
         fontWeight: 900,
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.3s ease',
@@ -334,7 +325,11 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
         letterSpacing: '1px',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '8px',
+        flex: '1 1 140px',
+        minWidth: '0',
+        whiteSpace: 'nowrap',
         boxShadow: variant === 'save' 
           ? '0 0 20px rgba(0, 243, 255, 0.15)' 
           : '0 0 20px rgba(255, 77, 77, 0.1)'

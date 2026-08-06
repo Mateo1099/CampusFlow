@@ -43,7 +43,7 @@ const NotificationRow = ({ checked, onChange, label }) => {
           inset: 0,
           background: checked
             ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%)'
-            : (isHovered ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)'),
+            : 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)',
           borderRadius: '14px',
           transition: 'all 0.2s ease-in-out'
         }}
@@ -55,9 +55,9 @@ const NotificationRow = ({ checked, onChange, label }) => {
         style={{
           position: 'absolute',
           inset: 0,
-          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : (isHovered ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.06)')}`,
+          border: `1.5px solid ${checked ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
           borderRadius: '14px',
-          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : (isHovered ? '0 0 14px rgba(0, 243, 255, 0.18)' : 'none'),
+          boxShadow: checked ? '0 0 20px rgba(34, 197, 94, 0.12)' : '0 0 20px rgba(239, 68, 68, 0.12)',
           transition: 'all 0.2s ease-in-out'
         }}
       />
@@ -74,10 +74,10 @@ const NotificationRow = ({ checked, onChange, label }) => {
         <span style={{
           fontSize: '0.8rem',
           fontWeight: 700,
-          color: checked ? 'var(--text-primary)' : 'var(--text-secondary)',
+          color: checked ? '#22c55e' : '#ef4444',
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
-          opacity: checked ? 1 : 0.5,
+          opacity: 1,
           transition: 'all 0.3s ease'
         }}>
           {label}
@@ -86,9 +86,9 @@ const NotificationRow = ({ checked, onChange, label }) => {
         {/* Status dot */}
         <motion.div
           animate={{
-            background: checked ? '#22c55e' : 'rgba(255,255,255,0.15)',
-            boxShadow: checked ? '0 0 10px rgba(34, 197, 94, 0.5)' : 'none',
-            scale: checked ? 1 : 0.8
+            background: checked ? '#22c55e' : '#ef4444',
+            boxShadow: checked ? '0 0 10px rgba(34, 197, 94, 0.5)' : '0 0 10px rgba(239, 68, 68, 0.5)',
+            scale: 1
           }}
           transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
           style={{
@@ -104,12 +104,13 @@ const NotificationRow = ({ checked, onChange, label }) => {
 };
 
 // Tarjeta de frecuencia de recordatorio por zona del semáforo (Roja/Amarilla/Verde).
-// REDISEÑO: la versión anterior usaba un acordeón con chips que se apretaban y
+// REDISEÑO v2: la versión anterior usaba un acordeón con chips que se apretaban y
 // cortaban el texto en pantallas angostas (reportado como "se ve horrible y
 // entrecortado"). Un <select> nativo resuelve esto de raíz: nunca se corta, nunca
 // necesita animación propia (el navegador maneja la apertura), y sigue viéndose
-// cyber-luxe porque el borde y el texto usan el color de la zona.
-const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customHours, onCustomHoursChange, onCommitCustomHours }) => {
+// cyber-luxe porque el borde y el texto usan el color de la zona. El input numérico
+// cambió de horas (1-720) a DÍAS (1-30) para ser más intuitivo.
+const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customDays, onCustomDaysChange, onCommitCustomDays }) => {
   const isCustom = freq === 'personalizado';
 
   return (
@@ -161,10 +162,10 @@ const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, custo
             <input
               type="number"
               min={1}
-              max={720}
-              value={customHours}
-              onChange={(e) => onCustomHoursChange(e.target.value)}
-              onBlur={onCommitCustomHours}
+              max={30}
+              value={customDays}
+              onChange={(e) => onCustomDaysChange(e.target.value)}
+              onBlur={onCommitCustomDays}
               onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
               style={{
                 width: '52px',
@@ -180,8 +181,7 @@ const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, custo
               }}
             />
             <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-              hrs {/* traductor humano en vivo: nadie piensa en "72 horas" sino en "3 días" */}
-              {Number(customHours) >= 24 && ` (≈${Math.round((Number(customHours) / 24) * 10) / 10}d)`}
+              día{Number(customDays) > 1 ? 's' : ''}
             </span>
           </div>
         )}
@@ -312,10 +312,9 @@ const Profile = () => {
   const [disableMfaError, setDisableMfaError] = useState('');
 
   const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
-  const [webNotif, setWebNotif] = useState(settings.webNotifications || false);
-  const [redCustomHoursInput, setRedCustomHoursInput] = useState(settings.redAlertCustomHours || 24);
-  const [yellowCustomHoursInput, setYellowCustomHoursInput] = useState(settings.yellowAlertCustomHours || 24);
-  const [greenCustomHoursInput, setGreenCustomHoursInput] = useState(settings.greenAlertCustomHours || 24);
+  const [redCustomDaysInput, setRedCustomDaysInput] = useState(settings.redAlertCustomDays || 1);
+  const [yellowCustomDaysInput, setYellowCustomDaysInput] = useState(settings.yellowAlertCustomDays || 1);
+  const [greenCustomDaysInput, setGreenCustomDaysInput] = useState(settings.greenAlertCustomDays || 1);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [manualSecret, setManualSecret] = useState('');
   const [securityScreen, setSecurityScreen] = useState('overview');
@@ -346,10 +345,8 @@ const Profile = () => {
   }, [settings.name]);
 
   // Sincroniza el toggle de notificaciones por correo con el valor real cargado de Supabase
-  // (fetchProfile en SettingsContext es asíncrono, así que el valor inicial del useState puede llegar tarde).
-  useEffect(() => {
-    setEmailNotif(settings.emailNotifications || false);
-  }, [settings.emailNotifications]);
+  // REMOVIDO: useEffect que causaba doble-clic. El estado local se actualiza correctamente
+  // en handleEmailNotifChange sin necesidad de un useEffect que cause race conditions.
 
   // Si SettingsContext no pudo guardar un cambio en Supabase (RLS, red, permisos), revierte
   // el estado local y avisa aquí con un toast de error, en vez de dejar la UI desincronizada
@@ -364,14 +361,14 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    setRedCustomHoursInput(settings.redAlertCustomHours || 24);
-  }, [settings.redAlertCustomHours]);
+    setRedCustomDaysInput(settings.redAlertCustomDays || 1);
+  }, [settings.redAlertCustomDays]);
   useEffect(() => {
-    setYellowCustomHoursInput(settings.yellowAlertCustomHours || 24);
-  }, [settings.yellowAlertCustomHours]);
+    setYellowCustomDaysInput(settings.yellowAlertCustomDays || 1);
+  }, [settings.yellowAlertCustomDays]);
   useEffect(() => {
-    setGreenCustomHoursInput(settings.greenAlertCustomHours || 24);
-  }, [settings.greenAlertCustomHours]);
+    setGreenCustomDaysInput(settings.greenAlertCustomDays || 1);
+  }, [settings.greenAlertCustomDays]);
 
   useEffect(() => {
     if (settings.theme) {
@@ -672,22 +669,43 @@ const Profile = () => {
   };
 
   const handleEmailNotifChange = (newValue) => {
+    // Actualizar UI al instante (optimistic update)
     setEmailNotif(newValue);
-    updateSettings({ emailNotifications: newValue });
-    showNotification(newValue ? '📧 Notificaciones por email activadas' : '📧 Notificaciones por email desactivadas');
+    
+    // Toast con confirmación visual inmediata
+    if (newValue) {
+      showNotification('✅ 📧 NOTIFICACIONES POR EMAIL ACTIVADAS');
+    } else {
+      showNotification('❌ 📧 NOTIFICACIONES POR EMAIL DESACTIVADAS');
+    }
+    
+    // Guardar en paralelo sin bloquear la UI
+    updateSettings({ emailNotifications: newValue })
+      .then(() => {
+        // Éxito silencioso - el toast ya confirmó el cambio
+        console.log('[PROFILE] Email notifications guardado exitosamente:', newValue);
+      })
+      .catch(err => {
+        // Si falla, revertir el estado y mostrar error
+        console.error('[PROFILE] Error al guardar notificaciones:', err.message);
+        setEmailNotif(!newValue);
+        showNotification('⚠️ Error al guardar, intenta de nuevo');
+      });
   };
 
-  const handleWebNotifChange = (newValue) => {
-    setWebNotif(newValue);
-    updateSettings({ webNotifications: newValue });
-    showNotification(newValue ? '🔔 Notificaciones web activadas' : '🔔 Notificaciones web desactivadas');
-  };
+  // NOTA: el toggle "Notificaciones Web" se eliminó a propósito. Era un control muerto:
+  // `webNotifications` no existía en el estado de SettingsContext, no estaba en su
+  // cloudMapping y no había columna en la tabla profiles. El usuario lo activaba, veía
+  // el toast de éxito y nada se persistía; al recargar volvía a apagarse. Además fallaba
+  // en silencio absoluto (con cloudMapping vacío nunca se entra al try/catch, así que el
+  // toast de error de campusflow:settings-save-error jamás se disparaba). Si algún día se
+  // reactiva, requiere columna en profiles + permiso del navegador vía Notification API.
 
-  // Sanitiza y limita el valor de horas personalizadas antes de persistirlo.
-  const sanitizeCustomHours = (rawValue) => {
+  // Sanitiza y limita el valor de días personalizados antes de persistirlo.
+  const sanitizeCustomDays = (rawValue) => {
     const n = Math.round(Number(rawValue));
     if (!Number.isFinite(n) || n < 1) return 1;
-    if (n > 720) return 720; // tope de 30 días, evita valores absurdos
+    if (n > 30) return 30; // tope de 30 días, evita valores absurdos
     return n;
   };
 
@@ -698,19 +716,18 @@ const Profile = () => {
     showNotification(`${zoneEmoji} Frecuencia ${zone === 'rojo' ? 'Roja' : zone === 'amarillo' ? 'Amarilla' : 'Verde'}: ${label}`);
   };
 
-  const handleCustomHoursCommit = (zone) => {
-    const settingKey = { rojo: 'redAlertCustomHours', amarillo: 'yellowAlertCustomHours', verde: 'greenAlertCustomHours' }[zone];
-    const rawValue = { rojo: redCustomHoursInput, amarillo: yellowCustomHoursInput, verde: greenCustomHoursInput }[zone];
-    const clean = sanitizeCustomHours(rawValue);
-    const setterMap = { rojo: setRedCustomHoursInput, amarillo: setYellowCustomHoursInput, verde: setGreenCustomHoursInput };
+  const handleCustomDaysCommit = (zone) => {
+    const settingKey = { rojo: 'redAlertCustomDays', amarillo: 'yellowAlertCustomDays', verde: 'greenAlertCustomDays' }[zone];
+    const rawValue = { rojo: redCustomDaysInput, amarillo: yellowCustomDaysInput, verde: greenCustomDaysInput }[zone];
+    const clean = sanitizeCustomDays(rawValue);
+    const setterMap = { rojo: setRedCustomDaysInput, amarillo: setYellowCustomDaysInput, verde: setGreenCustomDaysInput };
     setterMap[zone](clean);
     updateSettings({ [settingKey]: clean });
     // Confirmación explícita de que el NÚMERO se guardó (no solo la palabra "Personalizado"),
     // para que Mateo tenga certeza de que su valor exacto quedó persistido.
     const zoneEmoji = { rojo: '🚨', amarillo: '⚠️', verde: '✨' }[zone];
     const zoneName = { rojo: 'Roja', amarillo: 'Amarilla', verde: 'Verde' }[zone];
-    const humanTime = clean < 24 ? `${clean}h` : `${Math.round((clean / 24) * 10) / 10}d`;
-    showNotification(`${zoneEmoji} Intervalo ${zoneName} guardado: cada ${humanTime}`);
+    showNotification(`${zoneEmoji} Intervalo ${zoneName} guardado: cada ${clean} día${clean > 1 ? 's' : ''}`);
   };
 
   const copyToClipboard = (text) => {
@@ -798,14 +815,32 @@ const Profile = () => {
           animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
           padding: 24px 32px;
           backdrop-filter: blur(20px);
-          background: linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%);
-          border: 2px solid rgba(0, 243, 255, 1);
           border-radius: 16px;
-          color: #00f3ff;
           font-weight: 900;
           letter-spacing: 0.1em;
           text-transform: uppercase;
           font-size: 0.95rem;
+          transition: all 0.3s ease;
+        }
+
+        .cyber-toast.success {
+          background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.05) 100%);
+          border: 2px solid rgba(34, 197, 94, 1);
+          color: #22c55e;
+          box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.5), 0 0 30px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.6);
+        }
+
+        .cyber-toast.error {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(248, 113, 113, 0.05) 100%);
+          border: 2px solid rgba(239, 68, 68, 1);
+          color: #ef4444;
+          box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.5), 0 0 30px rgba(239, 68, 68, 0.8), 0 0 60px rgba(239, 68, 68, 0.6);
+        }
+
+        .cyber-toast.info {
+          background: linear-gradient(135deg, rgba(0, 243, 255, 0.15) 0%, rgba(188, 19, 254, 0.05) 100%);
+          border: 2px solid rgba(0, 243, 255, 1);
+          color: #00f3ff;
           box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.5), 0 0 30px rgba(0, 243, 255, 0.8), 0 0 60px rgba(0, 243, 255, 0.6);
         }
 
@@ -1029,9 +1064,17 @@ const Profile = () => {
       `}</style>
 
       {showToast && <div className="cyber-toast-backdrop" onClick={() => setShowToast(false)} />}
-      {showToast && <div className="cyber-toast">{toastMessage}</div>}
+      {showToast && (
+        <div className={`cyber-toast ${
+          toastMessage?.includes('❌') ? 'error' : 
+          toastMessage?.includes('✅') ? 'success' : 
+          'info'
+        }`}>
+          {toastMessage}
+        </div>
+      )}
 
-      <div className="animate-fade-in" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+      <div className="animate-fade-in profile-page" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         <header style={{ marginBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <h1 style={{
             fontSize: '2.6rem',
@@ -1240,11 +1283,6 @@ const Profile = () => {
                   onChange={handleEmailNotifChange}
                   label="Correo Electrónico"
                 />
-                <NotificationRow
-                  checked={webNotif}
-                  onChange={handleWebNotifChange}
-                  label="Notificaciones Web"
-                />
               </div>
             </div>
 
@@ -1275,9 +1313,9 @@ const Profile = () => {
                     colorVar="var(--accent-danger)"
                     freq={settings.redAlertFreq}
                     onSelectFreq={(id) => handleAlertFreqSelect('rojo', id, '🚨')}
-                    customHours={redCustomHoursInput}
-                    onCustomHoursChange={setRedCustomHoursInput}
-                    onCommitCustomHours={() => handleCustomHoursCommit('rojo')}
+                    customDays={redCustomDaysInput}
+                    onCustomDaysChange={setRedCustomDaysInput}
+                    onCommitCustomDays={() => handleCustomDaysCommit('rojo')}
                   />
                   <AlertFrequencyRow
                     zoneLabel="Amarilla · 4-7 días"
@@ -1285,9 +1323,9 @@ const Profile = () => {
                     colorVar="var(--accent-orange)"
                     freq={settings.yellowAlertFreq}
                     onSelectFreq={(id) => handleAlertFreqSelect('amarillo', id, '⚠️')}
-                    customHours={yellowCustomHoursInput}
-                    onCustomHoursChange={setYellowCustomHoursInput}
-                    onCommitCustomHours={() => handleCustomHoursCommit('amarillo')}
+                    customDays={yellowCustomDaysInput}
+                    onCustomDaysChange={setYellowCustomDaysInput}
+                    onCommitCustomDays={() => handleCustomDaysCommit('amarillo')}
                   />
                   <AlertFrequencyRow
                     zoneLabel="Verde · 8-15 días"
@@ -1295,9 +1333,9 @@ const Profile = () => {
                     colorVar="var(--accent-lime)"
                     freq={settings.greenAlertFreq}
                     onSelectFreq={(id) => handleAlertFreqSelect('verde', id, '✨')}
-                    customHours={greenCustomHoursInput}
-                    onCustomHoursChange={setGreenCustomHoursInput}
-                    onCommitCustomHours={() => handleCustomHoursCommit('verde')}
+                    customDays={greenCustomDaysInput}
+                    onCustomDaysChange={setGreenCustomDaysInput}
+                    onCommitCustomDays={() => handleCustomDaysCommit('verde')}
                   />
                 </div>
               </div>
@@ -1370,7 +1408,6 @@ const Profile = () => {
             </div>
 
             <motion.div
-              layout
               className="glass-panel"
               style={{
                 padding: '24px',
@@ -1382,7 +1419,6 @@ const Profile = () => {
                 position: 'relative',
                 cursor: securityScreen === 'overview' ? 'pointer' : 'default'
               }}
-              transition={{ layout: { duration: 0.4, ease: [0.34, 1.56, 0.64, 1] } }}
               onClick={() => securityScreen === 'overview' && setSecurityScreen('detail')}
             >
               <AnimatePresence mode="wait">
@@ -1392,9 +1428,9 @@ const Profile = () => {
                     key="security-overview"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', position: 'absolute', inset: 0, padding: 'inherit' }}
                   >
                     <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1434,10 +1470,11 @@ const Profile = () => {
                 {securityScreen === 'detail' && (
                   <motion.div
                     key="security-detail"
-                    initial={{ opacity: 0, x: 30 }}
+                    initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 30 }}
-                    transition={{ duration: 0.3 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'absolute', inset: 0, padding: 'inherit' }}
                     style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
                     onClick={(e) => e.stopPropagation()}
                   >

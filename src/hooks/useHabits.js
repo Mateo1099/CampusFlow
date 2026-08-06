@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { habitsService } from '../lib/habitsService';
 import { dataStoreService } from '../lib/dataStoreService';
 
@@ -34,7 +34,9 @@ export const useHabits = (userId, addXP, incrementStat) => {
     fetchHabitsAndLogs();
   }, [fetchHabitsAndLogs]);
 
-  const addHabit = async (activity) => {
+  // useCallback: identidad estable entre renders, necesaria para que TaskContext
+  // pueda memoizar de verdad su `value` (ver comentario en TaskContext.jsx).
+  const addHabit = useCallback(async (activity) => {
     try {
       const habitData = {
         name: activity.title,
@@ -50,9 +52,9 @@ export const useHabits = (userId, addXP, incrementStat) => {
       setError(err.message);
       throw err;
     }
-  };
+  }, [userId]);
 
-  const toggleHabitLog = async (habitId) => {
+  const toggleHabitLog = useCallback(async (habitId) => {
     try {
       const now = new Date().toISOString();
       const result = await habitsService.logHabit(userId, habitId, now);
@@ -69,9 +71,9 @@ export const useHabits = (userId, addXP, incrementStat) => {
     } catch (err) {
       console.error("Error toggling habit:", err);
     }
-  };
+  }, [userId, addXP, incrementStat]);
 
-  const deleteHabit = async (id) => {
+  const deleteHabit = useCallback(async (id) => {
     try {
       await habitsService.deleteHabit(id);
       setHabits(prev => prev.filter(h => h.id !== id));
@@ -81,15 +83,17 @@ export const useHabits = (userId, addXP, incrementStat) => {
     } catch (err) {
       console.error("Error deleting habit:", err);
     }
-  };
+  }, [userId]);
 
-  const dailyPlan = habits.map(h => ({
+  // useMemo: sin esto, .map() crea un array nuevo en cada render aunque habits/logs
+  // no hayan cambiado, invalidando la memoización de TaskContext.value aguas arriba.
+  const dailyPlan = useMemo(() => habits.map(h => ({
     id: h.id,
     title: h.name,
     startTime: h.start_time || '00:00',
     durationMinutes: h.duration_minutes || 30,
     completed: logs.some(l => l.habit_id === h.id)
-  }));
+  })), [habits, logs]);
 
   return {
     habits,

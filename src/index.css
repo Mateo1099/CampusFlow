@@ -1211,3 +1211,667 @@ h5,
   animation: arrowLevitate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite,
     arrowPulse 2s ease-in-out infinite !important;
 }
+
+
+/* ========== MOBILE APP LAYOUT (<= 640px) ========== */
+/* These rules deliberately change only the small-screen composition. Desktop keeps
+   its existing 12-column dashboard, Kanban board, and spacious glass surfaces. */
+@media (max-width: 640px) {
+  .app-container {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    gap: 0;
+  }
+
+  .main-content {
+    padding: 0 0 calc(80px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden;
+  }
+
+  .dashboard-page,
+  .task-board-page,
+  .agenda-page,
+  .profile-page {
+    padding: 20px 16px 28px !important;
+  }
+
+  .pomodoro-page {
+    min-height: 100%;
+    height: auto !important;
+    justify-content: flex-start !important;
+    padding: 20px 16px 28px !important;
+  }
+
+  .dashboard-page .page-header,
+  .task-board-page .page-header,
+  .agenda-page .page-header {
+    margin-bottom: 24px !important;
+    padding-bottom: 20px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 16px;
+  }
+
+  .dashboard-page .page-title,
+  .task-board-page .page-header h1,
+  .agenda-page .page-header h1 {
+    font-size: clamp(1.65rem, 8vw, 2.2rem) !important;
+    line-height: 1.05;
+  }
+
+  .task-board-page .page-header > button,
+  .agenda-page .page-header > button {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    padding: 10px 16px !important;
+  }
+
+  /* Dashboard: toolbar, metrics, two-column analysis, and 12-column layout. */
+  .dashboard-page > header + div {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .dashboard-page > header + div > div:first-child,
+  .task-board-page > .page-header + div > div:first-child,
+  .agenda-page > .page-header + div {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  .dashboard-page > header + div button,
+  .task-board-page > .page-header + div > div:first-child button,
+  .agenda-page > .page-header + div button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    padding: 8px 6px !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .dashboard-page > header + div > div:last-child {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .dashboard-page > header + div > div:last-child button {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    padding: 10px 8px !important;
+  }
+
+  .dashboard-page > header + div + div > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-page > header + div + div > div > * {
+    min-width: 0;
+    padding: 16px !important;
+  }
+
+  .dashboard-page > .animate-stagger {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .dashboard-page > .animate-stagger > div,
+  .dashboard-page > .animate-stagger > div > div:last-child > div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .dashboard-page > .animate-stagger > div > div {
+    grid-column: 1 / -1 !important;
+    min-width: 0;
+    max-height: none !important;
+  }
+
+  .dashboard-page > .animate-stagger > div > div:last-child {
+    gap: 16px !important;
+  }
+
+  .dashboard-page > .animate-stagger > div > div:last-child > div:first-child > div:last-child {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  .dashboard-page .glass-panel {
+    border-radius: 20px;
+  }
+
+  /* Task board: filter/sort toolbar and four Kanban columns become vertical. */
+  .task-board-page > .page-header + div {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .task-board-page > .page-header + div > div:last-child,
+  .task-board-page > .page-header + div > div:last-child > button {
+    width: 100%;
+  }
+
+  .task-board-page > .page-header + div > div:last-child > button {
+    min-height: 44px;
+    justify-content: space-between;
+  }
+
+  .task-board-page > .page-header + div + div {
+    flex-direction: column !important;
+    min-width: 0 !important;
+    gap: 16px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .task-board-page > .page-header + div + div > div {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .task-board-page .gamer-glow {
+    width: min(92vw, 500px) !important;
+    min-width: 0 !important;
+    padding: 20px !important;
+    border-radius: 20px !important;
+  }
+
+  .task-board-page .gamer-glow form {
+    gap: 16px !important;
+  }
+
+  .task-board-page .gamer-glow form > div {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Agenda and its modal: a single readable card/form column. */
+  .agenda-page > .page-header + div {
+    margin-bottom: 24px !important;
+  }
+
+  .agenda-page > .page-header + div + div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .agenda-page .glass-card-hover {
+    padding: 20px !important;
+    min-height: 148px !important;
+  }
+
+  .course-modal {
+    width: min(92vw, 480px) !important;
+    max-width: 92vw !important;
+    padding: 20px !important;
+    border-radius: 20px !important;
+  }
+
+  .course-modal > div:first-child {
+    margin-bottom: 20px !important;
+    gap: 8px !important;
+  }
+
+  .course-modal h2 {
+    font-size: clamp(1.15rem, 5vw, 1.5rem) !important;
+    gap: 8px !important;
+  }
+
+  .course-modal form {
+    gap: 18px !important;
+  }
+
+  .course-modal form > div:nth-child(2) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  /* Pomodoro: preserve the hourglass while removing oversized panel spacing. */
+  .pomodoro-page > .glass-panel:first-child,
+  .pomodoro-page .glass-panel {
+    padding: 16px !important;
+  }
+
+  .pomodoro-page > .glass-panel:nth-of-type(2) {
+    width: 100%;
+    max-width: 460px;
+    overflow-x: auto;
+  }
+
+  .pomodoro-page svg[viewBox="0 0 240 320"] {
+    width: min(240px, 72vw);
+    height: auto;
+  }
+
+  .pomodoro-page .ambient-widget {
+    margin-top: 0 !important;
+  }
+
+  /* Profile: prevent its desktop identity HUD and card grid from overflowing. */
+  .profile-page > header {
+    margin-bottom: 28px !important;
+  }
+
+  .profile-page > header h1 {
+    font-size: clamp(1.55rem, 8vw, 2.2rem) !important;
+  }
+
+  .profile-page > header > div {
+    width: min(180px, 62vw) !important;
+  }
+
+  .profile-page > div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .profile-page .identity-bar {
+    padding: 20px !important;
+    gap: 20px !important;
+  }
+
+  .profile-page .identity-bar > div:not(:first-child) {
+    flex-basis: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .profile-page .identity-bar h2 {
+    font-size: clamp(1.4rem, 7vw, 2rem) !important;
+  }
+
+  .profile-page .identity-bar [style*="width: 132px"] {
+    width: 96px !important;
+    height: 96px !important;
+  }
+
+  .profile-page select {
+    min-width: 0 !important;
+  }
+
+  .profile-page .glass-panel {
+    border-radius: 20px;
+  }
+
+  .cyber-toast {
+    width: min(90vw, 420px);
+    padding: 18px 20px !important;
+    font-size: 0.75rem !important;
+    text-align: center;
+  }
+}
+
+
+@media (max-width: 640px) {
+  /* The identity panel must prioritize the name's full width over a desktop row. */
+  .profile-page .identity-bar > div:nth-of-type(2) {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .profile-page .identity-bar > div:nth-of-type(2) > div:last-child {
+    width: 100%;
+  }
+}
+
+
+@media (max-width: 640px) {
+  /* Reset desktop 12-column span declarations when the parent becomes one column. */
+  .dashboard-page > .animate-stagger > div {
+    grid-column: 1 / -1 !important;
+    min-width: 0;
+  }
+}
+
+
+/* ========== MOBILE LAYOUT — ACTIVATED BY REACT ========== */
+/* Layout adds .mobile-layout only when useBreakpoint().isMobile is true. This
+   intentionally does not depend on the browser's emulated CSS media query. */
+.app-container.mobile-layout {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.app-container.mobile-layout .main-content {
+  padding: 0 0 calc(80px + env(safe-area-inset-bottom)) !important;
+  overflow-x: hidden !important;
+}
+
+.app-container.mobile-layout .dashboard-page,
+.app-container.mobile-layout .task-board-page,
+.app-container.mobile-layout .agenda-page,
+.app-container.mobile-layout .profile-page {
+  padding: 20px 16px 80px !important;
+}
+
+.app-container.mobile-layout .pomodoro-page {
+  height: auto !important;
+  min-height: 100% !important;
+  justify-content: flex-start !important;
+  padding: 20px 16px 80px !important;
+}
+
+/* Shared mobile page headers */
+.app-container.mobile-layout .dashboard-page .page-header,
+.app-container.mobile-layout .task-board-page .page-header,
+.app-container.mobile-layout .agenda-page .page-header {
+  margin-bottom: 24px !important;
+  padding-bottom: 20px !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 16px !important;
+}
+
+.app-container.mobile-layout .dashboard-page .page-title,
+.app-container.mobile-layout .task-board-page .page-header h1,
+.app-container.mobile-layout .agenda-page .page-header h1 {
+  font-size: clamp(1.65rem, 8vw, 2.2rem) !important;
+  line-height: 1.05 !important;
+}
+
+.app-container.mobile-layout .task-board-page .page-header > button,
+.app-container.mobile-layout .agenda-page .page-header > button {
+  width: 100% !important;
+  min-height: 48px !important;
+  justify-content: center !important;
+  padding: 10px 16px !important;
+}
+
+/* Dashboard: all desktop grids collapse into readable mobile sections. */
+.app-container.mobile-layout .dashboard-page > header + div {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 16px !important;
+  margin-bottom: 20px !important;
+}
+
+.app-container.mobile-layout .dashboard-page > header + div > div:first-child,
+.app-container.mobile-layout .task-board-page > .page-header + div > div:first-child,
+.app-container.mobile-layout .agenda-page > .page-header + div {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  width: 100% !important;
+  gap: 8px !important;
+}
+
+.app-container.mobile-layout .dashboard-page > header + div button,
+.app-container.mobile-layout .task-board-page > .page-header + div > div:first-child button,
+.app-container.mobile-layout .agenda-page > .page-header + div button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 44px !important;
+  justify-content: center !important;
+  padding: 8px 6px !important;
+  font-size: 0.65rem !important;
+  letter-spacing: 0.04em !important;
+}
+
+.app-container.mobile-layout .dashboard-page > header + div > div:last-child {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  width: 100% !important;
+}
+
+.app-container.mobile-layout .dashboard-page > header + div + div > div {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+.app-container.mobile-layout .dashboard-page > header + div + div > div > * {
+  min-width: 0 !important;
+  padding: 16px !important;
+}
+
+.app-container.mobile-layout .dashboard-page > .animate-stagger,
+.app-container.mobile-layout .dashboard-page > .animate-stagger > div,
+.app-container.mobile-layout .dashboard-page > .animate-stagger > div > div:last-child > div {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+}
+
+.app-container.mobile-layout .dashboard-page > .animate-stagger > div,
+.app-container.mobile-layout .dashboard-page > .animate-stagger > div > div {
+  grid-column: auto !important;
+  min-width: 0 !important;
+  max-height: none !important;
+}
+
+/* Keep the weekly seven-day matrix compact rather than turning it into a long list. */
+.app-container.mobile-layout .dashboard-page > .animate-stagger > div > div:last-child > div:first-child > div:last-child {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+}
+
+/* Task board: one Kanban column at a time, with a full-width toolbar. */
+.app-container.mobile-layout .task-board-page > .page-header + div {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 14px !important;
+  margin-bottom: 24px !important;
+}
+
+.app-container.mobile-layout .task-board-page > .page-header + div > div:last-child,
+.app-container.mobile-layout .task-board-page > .page-header + div > div:last-child > button {
+  width: 100% !important;
+}
+
+.app-container.mobile-layout .task-board-page > .page-header + div + div {
+  flex-direction: column !important;
+  min-width: 0 !important;
+  gap: 16px !important;
+  padding-bottom: 0 !important;
+}
+
+.app-container.mobile-layout .task-board-page > .page-header + div + div > div {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.app-container.mobile-layout .task-board-page .gamer-glow {
+  width: min(92vw, 500px) !important;
+  min-width: 0 !important;
+  padding: 20px !important;
+  border-radius: 20px !important;
+}
+
+.app-container.mobile-layout .task-board-page .gamer-glow form,
+.app-container.mobile-layout .course-modal form {
+  gap: 16px !important;
+}
+
+.app-container.mobile-layout .task-board-page .gamer-glow form > div,
+.app-container.mobile-layout .course-modal form > div:nth-child(2) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* Agenda and course modal. */
+.app-container.mobile-layout .agenda-page > .page-header + div {
+  margin-bottom: 24px !important;
+}
+
+.app-container.mobile-layout .agenda-page > .page-header + div + div {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+}
+
+.app-container.mobile-layout .agenda-page .glass-card-hover {
+  padding: 20px !important;
+  min-height: 148px !important;
+}
+
+.app-container.mobile-layout .course-modal {
+  width: min(92vw, 480px) !important;
+  max-width: 92vw !important;
+  padding: 20px !important;
+  border-radius: 20px !important;
+  max-height: 88vh !important;
+}
+
+.app-container.mobile-layout .course-modal > div:first-child {
+  margin-bottom: 16px !important;
+}
+
+.app-container.mobile-layout .course-modal h2 {
+  font-size: clamp(1.05rem, 5vw, 1.3rem) !important;
+  gap: 8px !important;
+}
+
+.app-container.mobile-layout .course-modal form {
+  gap: 16px !important;
+}
+
+.app-container.mobile-layout .course-modal form > div:nth-child(2) {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 14px !important;
+}
+
+/* Every field label + input inside the modal gets a tighter, mobile-appropriate rhythm
+   instead of the desktop 28px form gap and 10px label margin, which read as oversized
+   whitespace on a 360-412px screen. */
+.app-container.mobile-layout .course-modal form > div label,
+.app-container.mobile-layout .task-board-page .gamer-glow form label {
+  margin-bottom: 6px !important;
+  font-size: 0.68rem !important;
+}
+
+.app-container.mobile-layout .course-modal .input,
+.app-container.mobile-layout .course-modal select.select {
+  padding: 12px 14px !important;
+}
+
+.app-container.mobile-layout .course-modal form > div:last-child {
+  margin-top: 12px !important;
+  gap: 10px !important;
+}
+
+/* Pomodoro preserves its signature hourglass while reducing empty spacing. */
+.app-container.mobile-layout .pomodoro-page .glass-panel {
+  padding: 16px !important;
+}
+
+.app-container.mobile-layout .pomodoro-page > .glass-panel:nth-of-type(2) {
+  width: 100% !important;
+  max-width: 460px !important;
+  overflow-x: auto !important;
+}
+
+.app-container.mobile-layout .pomodoro-page svg[viewBox="0 0 240 320"] {
+  width: min(240px, 72vw) !important;
+  height: auto !important;
+}
+
+/* Profile: identity is first, email notifications are a clear full-width second section. */
+.app-container.mobile-layout .profile-page > header {
+  margin-bottom: 28px !important;
+}
+
+.app-container.mobile-layout .profile-page > header h1 {
+  font-size: clamp(1.55rem, 8vw, 2.2rem) !important;
+}
+
+.app-container.mobile-layout .profile-page > header > div {
+  width: min(180px, 62vw) !important;
+}
+
+.app-container.mobile-layout .profile-page > div {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+}
+
+.app-container.mobile-layout .profile-page .identity-bar {
+  padding: 20px !important;
+  gap: 20px !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.app-container.mobile-layout .profile-page .identity-bar > div:nth-child(2),
+.app-container.mobile-layout .profile-page .identity-bar > div:nth-child(4) {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.app-container.mobile-layout .profile-page .identity-bar > div:nth-child(3) {
+  display: none !important;
+}
+
+.app-container.mobile-layout .profile-page .identity-bar > div:nth-child(4) {
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 243, 255, 0.16);
+}
+
+.app-container.mobile-layout .profile-page .identity-bar h2 {
+  font-size: clamp(1.4rem, 7vw, 2rem) !important;
+}
+
+.app-container.mobile-layout .profile-page .identity-bar [style*="width: 132px"] {
+  width: 96px !important;
+  height: 96px !important;
+}
+
+.app-container.mobile-layout .profile-page .identity-bar + div > div > div > div:last-child {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+.app-container.mobile-layout .profile-page > div > div:last-child {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px !important;
+}
+
+.app-container.mobile-layout .profile-page select {
+  min-width: 0 !important;
+}
+
+.app-container.mobile-layout .profile-page .glass-panel {
+  border-radius: 20px;
+}
+
+.app-container.mobile-layout .cyber-toast {
+  width: min(90vw, 420px) !important;
+  padding: 18px 20px !important;
+  font-size: 0.75rem !important;
+  text-align: center;
+}
+
+
+/* Selects nativos: asegurar que el fondo y texto sean legibles tanto en el estado
+   cerrado como en las opciones del dropdown nativo del OS (que hereda estos estilos
+   en Chrome/Android). Sin esto, el fondo queda blanco/azul del sistema. */
+.app-container.mobile-layout select,
+.app-container.mobile-layout .gamer-glow select,
+.app-container.mobile-layout .course-modal select {
+  background-color: #121212 !important;
+  color: #fff !important;
+  border: 1px solid rgba(0, 243, 255, 0.2) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  font-size: 0.85rem !important;
+  min-height: 48px !important;
+}
+
+.app-container.mobile-layout select option {
+  background: #121212;
+  color: #fff;
+  padding: 12px;
+}
+
+/* Seguridad: evitar layout shift al volver de la pantalla de detalle.
+   El contenedor tiene animación de Framer Motion que causa un resize durante
+   la transición. Fijar min-height evita el salto visual del escudo/texto. */
+.app-container.mobile-layout .profile-page .glass-panel[style*="minHeight: '235px'"] {
+  min-height: 235px !important;
+  transition: none !important;
+}

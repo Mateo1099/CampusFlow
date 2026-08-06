@@ -282,6 +282,7 @@ const Sidebar = () => {
               style={{
                 position: 'relative',
                 padding: isHorizontal ? '10px 16px' : '14px 18px',
+                minHeight: isHorizontal ? 'auto' : '48px',
                 fontSize: isHorizontal ? '0.75rem' : '0.85rem',
                 borderRadius: 'var(--radius-md)',
                 textDecoration: 'none',

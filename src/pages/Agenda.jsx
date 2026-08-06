@@ -7,7 +7,7 @@ import CourseModal from '../components/ui/CourseModal';
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { motion, AnimatePresence } from 'framer-motion';
-
+import InstitutionFilterPills from '../components/ui/InstitutionFilterPills';
 import { playClick } from '../lib/audioService';
 
 const INSTITUTIONS = ['UNAD', 'SENA'];
@@ -31,8 +31,12 @@ const CourseCard = ({ course, onDelete, onEdit, t }) => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: '0.68rem', color: displayColor, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px', fontWeight: 800 }}>
-            <Hash size={10} /> {course.code || 'S/C'}
+          {/* El color de la materia se conserva como acento (barra lateral e ícono),
+              pero el texto usa un tono fijo de alto contraste: algunos colores de
+              materia son oscuros/cian y quedaban ilegibles como texto sobre el
+              glass-panel (mismo bug de contraste ya corregido en Pomodoro.jsx). */}
+          <span style={{ fontSize: '0.68rem', color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px', fontWeight: 800 }}>
+            <Hash size={10} style={{ color: displayColor }} /> {course.code || 'S/C'}
           </span>
           <h3 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', lineHeight: 1.2, wordBreak: 'break-word', fontWeight: 900 }}>{displayName}</h3>
 
@@ -202,15 +206,9 @@ const Agenda = () => {
     }
   };
 
-  const filterOptions = [
-    { id: 'TODAS', color: 'var(--accent-primary)' },
-    { id: 'UNAD', color: '#ffcc00' },
-    { id: 'SENA', color: '#00ff66' },
-    { id: 'PERSONALIZADO', color: '#cc00ff' }
-  ];
 
   return (
-    <div className="animate-fade-in" style={{ padding: '32px 48px' }}>
+    <div className="animate-fade-in agenda-page" style={{ padding: '32px 48px' }}>
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
         <div>
           <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>MATERIAS</h1>
@@ -258,51 +256,11 @@ const Agenda = () => {
       </header>
 
       {/* FILTROS NEON-PILLS */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap' }}>
-        {filterOptions.map(opt => {
-          const isActive = filtroActivo === opt.id;
-          const neonColor = opt.id === 'TODAS' ? '#00f3ff' :
-            opt.id === 'UNAD' ? '#ffcc00' :
-              opt.id === 'SENA' ? '#00ff88' : '#bc13fe';
-
-          return (
-            <button
-              key={opt.id}
-              onClick={() => {
-                setFiltroActivo(opt.id);
-                const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
-                playClick(freqs[opt.id] || 800);
-              }}
-              style={{
-                padding: '10px 24px',
-                borderRadius: '50px',
-                border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
-                background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
-                color: isActive ? neonColor : 'var(--text-muted)',
-                fontSize: '0.8rem',
-                fontWeight: 900,
-                cursor: 'pointer',
-                transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
-                textTransform: 'uppercase',
-                letterSpacing: '1px'
-              }}
-            >
-              <div style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
-                boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
-              }} />
-              {opt.id}
-            </button>
-          );
-        })}
-      </div>
+      <InstitutionFilterPills
+        activeFilter={filtroActivo}
+        onSelect={setFiltroActivo}
+        style={{ marginBottom: '40px' }}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
         {filteredCourses.length === 0 ? (

@@ -7,6 +7,8 @@ import { startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight, BrainCircuit, Clock3, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useBreakpoint } from '../hooks/useMediaQuery';
+import InstitutionFilterPills from '../components/ui/InstitutionFilterPills';
 
 const parseLocalDeadline = (dateStr) => {
   if (!dateStr) return new Date();
@@ -31,6 +33,7 @@ const Dashboard = () => {
   const isLightMode = settings?.theme === 'light';
   const isDaltonicMode = settings?.theme === 'daltonic';
   const navigate = useNavigate();
+  const { isMobile } = useBreakpoint();
   const [currentFilter, setCurrentFilter] = useState('TODAS');
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
@@ -199,7 +202,27 @@ const Dashboard = () => {
     };
   };
 
-  const getSubjectActionStyle = () => ({
+  const getSubjectActionStyle = () => (isMobile ? {
+    // En móvil: enlace de texto ligero, coherente con la etiqueta "MATERIAS" al lado
+    // en vez del pill pesado de escritorio (que se veía desproporcionado en pantallas angostas).
+    minWidth: 'auto',
+    minHeight: 'auto',
+    padding: '4px 2px',
+    border: 'none',
+    background: 'transparent',
+    color: isLightMode ? '#0284c7' : 'var(--accent-primary)',
+    fontSize: '0.72rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    whiteSpace: 'nowrap',
+    boxShadow: 'none',
+  } : {
     minWidth: '156px',
     minHeight: '40px',
     padding: '9px 18px',
@@ -315,7 +338,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="animate-fade-in" style={{ padding: '32px 48px', position: 'relative', overflow: 'visible', minHeight: '100%' }}>
+    <div className="animate-fade-in dashboard-page" style={{ padding: '32px 48px', position: 'relative', overflow: 'visible', minHeight: '100%' }}>
       {/* Watermark gigante */}
       <div style={{ position: 'absolute', top: '-60px', left: '-20px', fontSize: '14rem', fontWeight: 900, color: 'rgba(255,255,255,0.02)', zIndex: -1, fontFamily: 'var(--font-display)', userSelect: 'none', pointerEvents: 'none' }}>
         HUB
@@ -340,52 +363,13 @@ const Dashboard = () => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px' }}>
         {/* FILTROS NEON-PILLS */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {['TODAS', 'UNAD', 'SENA', 'PERSONALIZADO'].map(f => {
-            const isActive = currentFilter === f;
-            const neonColor = f === 'TODAS' ? '#00f3ff' :
-              f === 'UNAD' ? '#ffcc00' :
-                f === 'SENA' ? '#00ff88' : '#bc13fe';
-
-            return (
-              <button
-                key={f}
-                onClick={() => {
-                  setCurrentFilter(f);
-                  setSelectedDay(null); // Reset day filter on institution change
-                  const freqs = { TODAS: 800, UNAD: 1000, SENA: 1200, PERSONALIZADO: 1500 };
-                  playClick(freqs[f] || 800);
-                }}
-                style={{
-                  padding: '10px 24px',
-                  borderRadius: '50px',
-                  border: isActive ? `2px solid ${neonColor}` : '2px solid rgba(255,255,255,0.05)',
-                  background: isActive ? `${neonColor}15` : 'rgba(255,255,255,0.02)',
-                  color: isActive ? neonColor : 'var(--text-muted)',
-                  fontSize: '0.8rem',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  transition: 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: isActive ? `0 0 20px ${neonColor}33, inset 0 0 10px ${neonColor}11` : 'none',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}
-              >
-                <div style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: isActive ? neonColor : 'rgba(255,255,255,0.2)',
-                  boxShadow: isActive ? `0 0 10px ${neonColor}` : 'none'
-                }} />
-                {f}
-              </button>
-            );
-          })}
-        </div>
+        <InstitutionFilterPills
+          activeFilter={currentFilter}
+          onSelect={(f) => {
+            setCurrentFilter(f);
+            setSelectedDay(null); // Reset day filter on institution change
+          }}
+        />
 
         <div style={{ display: 'flex', gap: '12px' }}>
           <motion.button
