@@ -47,11 +47,12 @@ const Sidebar = () => {
   const sidebarStyles = {
     width: isHorizontal ? '100%' : '260px',
     height: isHorizontal ? 'auto' : '100%',
-    padding: isHorizontal ? '12px 24px' : '28px 20px',
+    minHeight: 0,
+    padding: isHorizontal ? '12px 24px' : '16px',
     display: 'flex',
     flexDirection: isHorizontal ? 'row' : 'column',
     alignItems: isHorizontal ? 'center' : 'stretch',
-    gap: isHorizontal ? '32px' : '24px',
+    gap: isHorizontal ? '32px' : '12px',
     borderRadius: 'var(--radius-lg)',
     flexShrink: 0,
     border: '1px solid var(--border-glass-top)',
@@ -62,19 +63,19 @@ const Sidebar = () => {
   return (
     <aside className="sidebar glass-panel" style={sidebarStyles}>
       {/* Branding */}
-      <div style={{ 
+      <div className={isHorizontal ? undefined : 'sidebar-top-block'} style={{ 
         display: 'flex', 
         alignItems: 'center', 
         gap: '14px', 
-        paddingBottom: isHorizontal ? '0' : '24px', 
-        marginBottom: isHorizontal ? '0' : '8px', 
+        paddingBottom: isHorizontal ? '0' : '12px', 
+        marginBottom: isHorizontal ? '0' : '2px', 
         borderBottom: isHorizontal ? 'none' : '1px solid var(--border-glass-top)',
         borderRight: isHorizontal ? '1px solid var(--border-glass-top)' : 'none',
         paddingRight: isHorizontal ? '24px' : '0'
       }}>
         <div style={{
           position: 'relative',
-          width: isHorizontal ? '50px' : '70px', height: isHorizontal ? '50px' : '70px',
+          width: isHorizontal ? '50px' : '56px', height: isHorizontal ? '50px' : '56px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
@@ -103,23 +104,42 @@ const Sidebar = () => {
         </div>
         {!isHorizontal && (
           <div style={{ marginLeft: '6px' }}>
-            <h2 style={{ 
-              fontFamily: 'var(--font-display)', 
-              fontSize: '1.8rem', 
-              fontWeight: 950, 
-              margin: 0, 
-              letterSpacing: '-0.06em', 
-              color: '#fff',
-              display: 'flex', 
-              alignItems: 'center',
-              textShadow: '0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(255,255,255,0.2)',
-              filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.3))'
-            }}>
-              <span style={{ 
-                background: 'linear-gradient(to bottom, #ffffff, #a1a1a1)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>ampusFlow</span>
+            {/* El logo en diamante hace de letra "C", por eso el texto visible
+                empieza en "ampusFlow". Se expone el nombre completo vía
+                aria-label para que lectores de pantalla y buscadores lean
+                "CampusFlow" y no "ampusFlow". */}
+            <h2
+              aria-label="CampusFlow"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '1.8rem',
+                fontWeight: 950,
+                margin: 0,
+                letterSpacing: '-0.06em',
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                /* El halo blanco solo tiene sentido sobre fondo oscuro; en tema
+                   claro desaparecería el texto contra el panel. */
+                textShadow: isLightMode
+                  ? '0 1px 2px rgba(15, 23, 42, 0.12)'
+                  : '0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(255,255,255,0.2)',
+                filter: isLightMode
+                  ? 'none'
+                  : 'drop-shadow(0 1px 1px rgba(255,255,255,0.3))'
+              }}
+            >
+              {/* Texto plano con el token del tema. El degradado recortado
+                  (background-clip: text) se pintaba como un bloque sólido gris
+                  encima del texto cuando el navegador ignoraba el recorte, y
+                  dejaba el logo "censurado". */}
+              <span
+                aria-hidden="true"
+                style={{
+                  color: isLightMode ? '#101828' : '#ffffff',
+                  background: 'none',
+                }}
+              >ampusFlow</span>
             </h2>
           </div>
         )}
@@ -127,17 +147,17 @@ const Sidebar = () => {
 
       {/* Gamification HUD - Cyber Luxe Level Display */}
       {!isHorizontal && (
-        <div style={{ 
-          padding: '16px', 
+        <div className="sidebar-top-block" style={{ 
+          padding: '10px 14px', 
           position: 'relative',
           background: 'var(--bg-glass)',
           backdropFilter: 'blur(10px)',
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-glass-top)',
-          margin: '0 -4px 10px',
-          boxShadow: 'inset 0 0 20px rgba(0, 122, 255, 0.05)'
+          margin: 0,
+          boxShadow: 'inset 0 0 20px rgba(0, 243, 255, 0.05)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ 
               fontSize: '0.65rem', 
               color: 'var(--text-secondary)', 
@@ -160,10 +180,10 @@ const Sidebar = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 position: 'relative',
-                width: '32px', height: '32px',
-                borderRadius: '10px',
+                width: '26px', height: '26px',
+                borderRadius: '8px',
                 background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)',
-                boxShadow: '0 4px 12px rgba(0, 122, 255, 0.3)',
+                boxShadow: '0 4px 12px rgba(0, 243, 255, 0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: '1px solid rgba(255,255,255,0.2)',
                 transform: 'rotate(-5deg) translateZ(0)'
@@ -177,7 +197,7 @@ const Sidebar = () => {
               </div>
               <div style={{ position: 'relative' }}>
                 <span style={{ 
-                  fontSize: '1.8rem', 
+                  fontSize: '1.35rem', 
                   color: 'var(--text-primary)', 
                   fontFamily: 'var(--font-display)', 
                   fontWeight: 950, 
@@ -202,7 +222,7 @@ const Sidebar = () => {
           {/* Barra de Progreso Minimalista */}
           <div style={{ 
             width: '100%', 
-            height: '8px', 
+            height: '6px', 
             background: 'rgba(255,255,255,0.05)', 
             borderRadius: 'var(--radius-full)', 
             overflow: 'hidden',
@@ -230,8 +250,8 @@ const Sidebar = () => {
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            marginTop: '10px',
-            fontSize: '0.6rem',
+            marginTop: '6px',
+            fontSize: '0.58rem',
             fontFamily: 'var(--font-display)',
             fontWeight: 700,
             letterSpacing: '0.05em'
@@ -243,11 +263,12 @@ const Sidebar = () => {
       ) /* End Gamification HUD */}
 
       {/* Navegación - GLASSMORPHISM DESIGN */}
-      <nav className="nav-stagger" style={{ 
+      <nav className={`nav-stagger${isHorizontal ? '' : ' sidebar-nav-scroll'}`} style={{ 
         display: 'flex', 
         flexDirection: isHorizontal ? 'row' : 'column', 
-        gap: isHorizontal ? '8px' : '10px', 
+        gap: isHorizontal ? '8px' : '6px', 
         flex: 1,
+        minHeight: 0,
         justifyContent: isHorizontal ? 'center' : 'flex-start'
       }}>
         {navItems.map((item) => {
@@ -281,9 +302,11 @@ const Sidebar = () => {
               onFocus={handleMouseEnter}
               style={{
                 position: 'relative',
-                padding: isHorizontal ? '10px 16px' : '14px 18px',
-                minHeight: isHorizontal ? 'auto' : '48px',
-                fontSize: isHorizontal ? '0.75rem' : '0.85rem',
+                padding: isHorizontal ? '10px 16px' : '0 16px',
+                height: isHorizontal ? 'auto' : '44px',
+                minHeight: isHorizontal ? 'auto' : '44px',
+                flexShrink: 0,
+                fontSize: isHorizontal ? '0.75rem' : '0.82rem',
                 borderRadius: 'var(--radius-md)',
                 textDecoration: 'none',
                 display: 'flex',
@@ -408,17 +431,20 @@ const Sidebar = () => {
       </nav>
 
       {/* Perfil/Ajustes Link  */}
-      <div style={{ 
+      <div className={isHorizontal ? undefined : 'sidebar-footer'} style={{ 
         display: 'flex', 
         flexDirection: isHorizontal ? 'row' : 'column',
         gap: '8px',
-        marginTop: isHorizontal ? '0' : 'auto'
+        flexShrink: 0,
+        marginTop: isHorizontal ? '0' : 'auto',
+        paddingTop: isHorizontal ? '0' : '10px',
+        borderTop: isHorizontal ? 'none' : '1px solid var(--border-glass-top)'
       }}>
         <NavLink
           to="/profile"
           style={({ isActive }) => ({
-            display: 'flex', alignItems: 'center', gap: '14px',
-            padding: isHorizontal ? '8px 16px' : '14px 16px',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: isHorizontal ? '8px 16px' : '10px 14px',
             borderRadius: 'var(--radius-md)',
             textDecoration: 'none',
             background: isActive ? 'rgba(255,255,255,0.05)' : 'transparent',
@@ -431,8 +457,8 @@ const Sidebar = () => {
           className="glass-card-hover"
         >
           <div style={{ 
-            width: isHorizontal ? '32px' : '40px', 
-            height: isHorizontal ? '32px' : '40px', 
+            width: isHorizontal ? '32px' : '34px', 
+            height: isHorizontal ? '32px' : '34px', 
             borderRadius: '50%', 
             overflow: 'hidden', 
             border: '2px solid var(--accent-primary)',
@@ -495,8 +521,8 @@ const Sidebar = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '14px',
-            padding: isHorizontal ? '8px 16px' : '14px 16px',
+            gap: '12px',
+            padding: isHorizontal ? '8px 16px' : '10px 14px',
             borderRadius: 'var(--radius-md)',
             background: 'rgba(255, 0, 0, 0.05)',
             border: '1px solid rgba(255, 0, 0, 0.2)',

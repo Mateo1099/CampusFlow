@@ -23,3 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 .aider*
+
+# ─── Variables de entorno y secretos ───────────────────────────────────
+# Nunca comitear credenciales reales. `.env.example` sí se versiona porque
+# solo contiene nombres de variables, sin valores.
+.env
+.env.*
+!.env.example
+
+# Archivos SQL locales que puedan contener credenciales reales.
+# Convención: si necesitas una copia con la key real para ejecutarla,
+# nómbrala con el sufijo `.secret.sql` y quedará fuera de git.
+*.secret.sql

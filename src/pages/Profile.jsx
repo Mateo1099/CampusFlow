@@ -15,19 +15,20 @@ const THEMES = [
   { id: 'daltonic', labelKey: 'daltonicMode', icon: '👁️', gradient: 'linear-gradient(135deg, #0c4a6e, #075985)' },
 ];
 
-const NotificationRow = ({ checked, onChange, label }) => {
+const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <motion.div
-      onClick={() => onChange(!checked)}
+      onClick={() => { if (!isLoading) onChange(!checked); }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       layout
       style={{
         width: '100%',
         borderRadius: '14px',
-        cursor: 'pointer',
+        cursor: isLoading ? 'wait' : 'pointer',
+        opacity: isLoading ? 0.72 : 1,
         overflow: 'hidden',
         position: 'relative',
         transition: 'all 0.2s ease-in-out',
@@ -74,13 +75,13 @@ const NotificationRow = ({ checked, onChange, label }) => {
         <span style={{
           fontSize: '0.8rem',
           fontWeight: 700,
-          color: checked ? '#22c55e' : '#ef4444',
+          color: isLoading ? 'var(--text-muted)' : (checked ? '#22c55e' : '#ef4444'),
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           opacity: 1,
           transition: 'all 0.3s ease'
         }}>
-          {label}
+          {isLoading ? 'CARGANDO PREFERENCIAS…' : label}
         </span>
 
         {/* Status dot */}
@@ -283,7 +284,7 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children, accentC
 );
 
 const Profile = () => {
-  const { settings, updateSettings, t } = useSettings();
+  const { settings, updateSettings, t, settingsLoading } = useSettings();
   const { user, checkMFAStatus } = useAuth();
   const wallpaperInputRef = useRef(null);
   const profileInputRef = useRef(null);
@@ -311,7 +312,9 @@ const Profile = () => {
   const [disableMfaLoading, setDisableMfaLoading] = useState(false);
   const [disableMfaError, setDisableMfaError] = useState('');
 
-  const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
+  // null representa "aún no cargado"; evita mostrar false antes de conocer
+  // la preferencia real almacenada en Supabase.
+  const [emailNotif, setEmailNotif] = useState(null);
   const [redCustomDaysInput, setRedCustomDaysInput] = useState(settings.redAlertCustomDays || 1);
   const [yellowCustomDaysInput, setYellowCustomDaysInput] = useState(settings.yellowAlertCustomDays || 1);
   const [greenCustomDaysInput, setGreenCustomDaysInput] = useState(settings.greenAlertCustomDays || 1);
@@ -344,9 +347,13 @@ const Profile = () => {
     setTempName(settings.name);
   }, [settings.name]);
 
-  // Sincroniza el toggle de notificaciones por correo con el valor real cargado de Supabase
-  // REMOVIDO: useEffect que causaba doble-clic. El estado local se actualiza correctamente
-  // en handleEmailNotifChange sin necesidad de un useEffect que cause race conditions.
+  // La fuente de verdad es SettingsContext una vez termina fetchProfile. Durante
+  // esa carga el toggle se conserva neutro, sin sobrescribir el valor remoto.
+  useEffect(() => {
+    if (!settingsLoading) {
+      setEmailNotif(Boolean(settings.emailNotifications));
+    }
+  }, [settings.emailNotifications, settingsLoading]);
 
   // Si SettingsContext no pudo guardar un cambio en Supabase (RLS, red, permisos), revierte
   // el estado local y avisa aquí con un toast de error, en vez de dejar la UI desincronizada
@@ -620,9 +627,12 @@ const Profile = () => {
       // antes de que ProtectedRoute pueda hacer un redirect incorrecto
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 9. Actualizar estado local de settings inmediatamente para que la UI responda
-      setSettings(prev => ({ ...prev, two_factor_enabled: false }));
-
+      // 9. El estado local ya se actualizó en el paso 5a con
+      //    updateSettings({ two_factor_enabled: false }), que además persiste en
+      //    Supabase. Aquí antes había un setSettings(...) que NO existe en este
+      //    componente (es interno de SettingsContext): lanzaba
+      //    "ReferenceError: setSettings is not defined", caía en el catch y le
+      //    mostraba ese error al usuario aunque el 2FA sí se había desactivado.
       setIsDisablingMfa(false);
       setDisableVerifyCode('');
       setDisableMfaError('');
@@ -669,7 +679,10 @@ const Profile = () => {
   };
 
   const handleEmailNotifChange = (newValue) => {
-    // Actualizar UI al instante (optimistic update)
+    if (settingsLoading || emailNotif === null) return;
+
+    const previousValue = emailNotif;
+    // Actualizar UI al instante solo después de conocer el valor remoto.
     setEmailNotif(newValue);
     
     // Toast con confirmación visual inmediata
@@ -688,7 +701,7 @@ const Profile = () => {
       .catch(err => {
         // Si falla, revertir el estado y mostrar error
         console.error('[PROFILE] Error al guardar notificaciones:', err.message);
-        setEmailNotif(!newValue);
+        setEmailNotif(previousValue);
         showNotification('⚠️ Error al guardar, intenta de nuevo');
       });
   };
@@ -1074,7 +1087,7 @@ const Profile = () => {
         </div>
       )}
 
-      <div className="animate-fade-in profile-page" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+      <div className="animate-fade-in profile-page" style={{ padding: 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 40px)', maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
         <header style={{ marginBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <h1 style={{
             fontSize: '2.6rem',
@@ -1107,7 +1120,7 @@ const Profile = () => {
           </div>
         </header>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
 
           {/* IDENTITY BAR — barra HUD unificada: avatar protagonista + identidad + consola de notificaciones */}
           <div className="glass-panel identity-bar" style={{
@@ -1205,7 +1218,7 @@ const Profile = () => {
                     gap: '10px',
                     minWidth: 0,
                     padding: '6px 14px',
-                    marginLeft: '-14px',
+                    marginLeft: 0,
                     borderRadius: '12px',
                     border: '1.5px solid transparent',
                     background: 'transparent',
@@ -1259,18 +1272,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* ── DIVISOR HUD con glow, separa identidad de la consola de notificaciones ── */}
-            <div style={{
-              width: '1px',
-              alignSelf: 'stretch',
-              minHeight: '110px',
-              background: 'linear-gradient(180deg, transparent, var(--accent-primary), transparent)',
-              opacity: 0.3,
-              flexShrink: 0,
-              position: 'relative',
-              zIndex: 1
-            }} />
-
             {/* ── ZONA 2: CONSOLA DE NOTIFICACIONES (unificada: toggles + frecuencia por zona) ── */}
             <div style={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 1 }}>
               <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.22em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1279,7 +1280,8 @@ const Profile = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <NotificationRow
-                  checked={emailNotif}
+                  checked={Boolean(emailNotif)}
+                  isLoading={settingsLoading || emailNotif === null}
                   onChange={handleEmailNotifChange}
                   label="Correo Electrónico"
                 />
@@ -1299,7 +1301,7 @@ const Profile = () => {
             gridTemplateRows: emailNotif ? '1fr' : '0fr',
             transition: 'grid-template-rows 0.3s ease-out',
             overflow: 'hidden',
-            marginTop: '-8px'
+            marginTop: 0
           }}>
             <div style={{ minHeight: 0 }}>
               <div className="glass-panel" style={{ padding: '22px 26px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1342,11 +1344,11 @@ const Profile = () => {
             </div>
           </div>
 
-          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
+          <div className="settings-triptych" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', alignItems: 'stretch', maxWidth: '1050px', margin: '0 auto', width: '100%' }}>
             {/* THEME SELECTOR */}
-            <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+            <div className="glass-panel settings-card" style={{ padding: '24px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column' }}>
               <SectionTitle icon={<Palette />} label={t.themeMode} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="settings-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>
                 {THEMES.map(theme => (
                   <button key={theme.id} onClick={() => {
                     document.body.classList.add('theme-fade');
@@ -1366,9 +1368,9 @@ const Profile = () => {
             </div>
 
             {/* WALLPAPERS */}
-            <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+            <div className="glass-panel settings-card" style={{ padding: '24px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column' }}>
               <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div className="settings-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', flex: 1, alignContent: 'center' }}>
                 {WALLPAPERS.filter(wp => wp.src).map(wp => (
                   <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                     {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
@@ -1377,6 +1379,7 @@ const Profile = () => {
                 <button
                   onClick={() => wallpaperInputRef.current.click()}
                   style={{
+                    gridColumn: '1 / -1',
                     height: '70px',
                     borderRadius: '12px',
                     border: settings.customWallpaper ? 'none' : '2px dashed var(--text-secondary)',
@@ -1384,7 +1387,10 @@ const Profile = () => {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
+                    /* Con foto de fondo hay un velo oscuro encima, así que el
+                       blanco es correcto. Sin foto, el fondo es --bg-panel, que
+                       en tema claro es casi blanco: ahí hace falta el token. */
+                    color: settings.customWallpaper ? '#fff' : 'var(--text-primary)',
                     backgroundColor: settings.customWallpaper ? 'transparent' : 'var(--bg-panel, rgba(0,0,0,0.05))',
                     backgroundImage: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'none',
                     backgroundSize: 'cover',
@@ -1408,13 +1414,14 @@ const Profile = () => {
             </div>
 
             <motion.div
-              className="glass-panel"
+              className="glass-panel settings-card"
               style={{
                 padding: '24px',
                 border: '1px solid var(--border-glass-top)',
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: '235px',
+                height: '100%',
                 overflow: 'hidden',
                 position: 'relative',
                 cursor: securityScreen === 'overview' ? 'pointer' : 'default'

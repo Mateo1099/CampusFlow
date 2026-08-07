@@ -294,10 +294,15 @@ cloudMapping.start_date = updates.startDate || updates.start_date;
 **Dark (por defecto - "Cyber Luxe")**
 ```css
 --bg-primary: #0a0a0f;
---accent-primary: #007aff;
+--accent-primary: #00f3ff;    /* cian */
+--accent-secondary: #bc13fe;  /* magenta */
 --accent-lime: #34c759;
 --text-primary: #f5f5f7;
 ```
+
+> El acento del tema oscuro es **cian `#00f3ff`**, no azul. Antes este documento
+> decía `#007aff`, lo que provocó que la interfaz mezclara azul y cian durante
+> un tiempo. Usa siempre `var(--accent-primary)` en componentes nuevos.
 
 **Light ("Minimalist Tech")**
 ```css

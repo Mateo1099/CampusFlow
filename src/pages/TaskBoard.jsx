@@ -56,7 +56,7 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
       }}
       className="glass-panel task-card-alfa"
       style={{
-        padding: '20px',
+        padding: 'clamp(14px, 2vw, 20px)',
         marginBottom: '16px',
         borderTop: '1px solid var(--border-glass-top)',
         display: 'flex',
@@ -141,7 +141,7 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
           </motion.button>
         </div>
       </div>
-      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#fff' }}>{task.title}</h4>
+      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</h4>
       <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
         {displayDate && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -412,10 +412,10 @@ const TaskBoard = () => {
               background: 'rgba(255,255,255,0.03)', 
               border: '1px solid rgba(255,255,255,0.1)',
               cursor: 'pointer',
-              color: '#fff'
+              color: 'var(--text-primary)'
             }}
           >
-            <ArrowUpDown size={16} color="#00f3ff" />
+            <ArrowUpDown size={16} color="var(--accent-primary)" />
             <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{currentSort}</span>
             <ChevronDown size={14} color="var(--text-muted)" style={{ transform: showSortMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
           </button>
@@ -473,7 +473,7 @@ const TaskBoard = () => {
       <div style={{
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        gap: isMobile ? '20px' : '32px',
+        gap: isMobile ? '20px' : 'clamp(16px, 2.5vw, 32px)',
         flex: isMobile ? 'none' : 1,
         paddingBottom: '24px',
         minWidth: isMobile ? '0' : 'fit-content'
@@ -530,18 +530,18 @@ const TaskBoard = () => {
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               className="glass-panel gamer-glow" 
               style={{ 
-                width: '90%', 
-                maxWidth: '520px',
+                width: '92%', 
+                maxWidth: '500px',
                 minWidth: 'min(320px, 90vw)',
-                padding: 'clamp(20px, 5vw, 40px)', 
-                background: 'rgba(15, 15, 20, 0.85)', 
+                padding: '24px', 
+                background: 'rgba(15, 15, 20, 0.92)', 
                 backdropFilter: 'blur(30px)',
-                border: '1px solid rgba(0, 243, 255, 0.25)',
-                borderRadius: '24px',
+                border: '1px solid rgba(0, 243, 255, 0.2)',
+                borderRadius: '16px',
                 position: 'relative',
                 zIndex: 10000,
-                boxShadow: '0 25px 60px rgba(0,0,0,0.4), 0 0 40px rgba(0, 243, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
-                maxHeight: '90vh',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.4), 0 0 20px rgba(0, 243, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.05)',
+                maxHeight: '85vh',
                 overflowY: 'auto'
               }}
             >
@@ -603,7 +603,7 @@ const TaskBoard = () => {
                     <span style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
                       {(formData.startDate || '').split('T')[0] || 'Selecciona...'}
                     </span>
-                    <CalendarIcon size={16} color="#fff" style={{ flexShrink: 0, marginLeft: '8px', opacity: 0.6 }} />
+                    <CalendarIcon size={16} color="var(--text-primary)" style={{ flexShrink: 0, marginLeft: '8px', opacity: 0.6 }} />
                   </div>
                 </div>
 

@@ -732,7 +732,7 @@ const Dashboard = () => {
               {selectedDay !== null && (
                 <button
                   onClick={() => setSelectedDay(null)}
-                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text-primary)', fontSize: '0.65rem', fontWeight: 900, padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}
                 >
                   Reset
                 </button>
@@ -809,7 +809,7 @@ const Dashboard = () => {
                         }
                       }}
                     >
-                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', fontWeight: 900, color: '#fff' }}>{task.title}</h4>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', fontWeight: 900, color: 'var(--text-primary)' }}>{task.title}</h4>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           {taskCourse && taskCourse.name}
@@ -1043,7 +1043,7 @@ const Dashboard = () => {
                 </h2>
                 {bigBossTask ? (
                   <div>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 950, margin: '0 0 4px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bigBossTask.title}</h4>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 950, margin: '0 0 4px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bigBossTask.title}</h4>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>
                       {formatDateLegible(bigBossTask.deadline || bigBossTask.due_date)} - {courses.find(c => c.id === bigBossTask.course_id)?.name || 'Sin Materia'}
                     </p>
