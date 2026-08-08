@@ -60,20 +60,15 @@ export default defineConfig({
       }
     },
     
-    // Minification and optimization
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        pure_funcs: ['console.debug', 'console.info']
-      }
-    },
-    
+    // Vite 8 incluye Oxc: evita el proceso externo de Terser y reduce el
+    // tiempo de build tanto en Windows como en GitHub Actions.
+    minify: 'oxc',
+
     // Source maps for production (can be disabled for smaller builds)
     sourcemap: false,
-    
-    // Report compressed sizes
-    reportCompressedSize: true,
+
+    // El reporte gzip es solo informativo y añade trabajo innecesario al CI.
+    reportCompressedSize: false,
     
     // CSS code splitting
     cssCodeSplit: true

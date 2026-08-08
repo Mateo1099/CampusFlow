@@ -3,14 +3,30 @@ import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext();
 
+// Solo Playwright activa este usuario ficticio al iniciar su servidor aislado.
+// La variable no existe en desarrollo normal ni en producción.
+const E2E_MOCK_AUTH_ENABLED = import.meta.env.VITE_E2E_MOCK_AUTH === 'true';
+const E2E_MOCK_USER = Object.freeze({
+  id: '00000000-0000-4000-8000-000000000001',
+  email: 'qa@campusflow.test',
+  aud: 'authenticated',
+  role: 'authenticated',
+  app_metadata: { provider: 'email', providers: ['email'] },
+  user_metadata: { full_name: 'CampusFlow QA' },
+  email_confirmed_at: '2026-01-01T00:00:00.000Z',
+  created_at: '2026-01-01T00:00:00.000Z'
+});
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(E2E_MOCK_AUTH_ENABLED ? E2E_MOCK_USER : null);
+  const [loading, setLoading] = useState(!E2E_MOCK_AUTH_ENABLED);
   const [aal, setAal] = useState('aal1'); // Authentication Assurance Level - default aal1
   const [mfaRequired, setMfaRequired] = useState(false);
   const [sessionId, setSessionId] = useState(null);
 
   useEffect(() => {
+    if (E2E_MOCK_AUTH_ENABLED) return undefined;
+
     let isMounted = true; // Prevenir memory leaks si el componente se desmonta
 
     const initializeAuth = async () => {
