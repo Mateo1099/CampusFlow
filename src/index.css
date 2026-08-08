@@ -2007,3 +2007,11 @@ h5,
   min-height: 235px !important;
   transition: none !important;
 }
+
+/* Planificador semanal: conserva el ancho editorial de las tarjetas sin
+   provocar overflow cuando el viewport útil es menor que su mínimo desktop. */
+@media (max-width: 480px) {
+  .planner-cards-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

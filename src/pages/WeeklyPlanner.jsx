@@ -630,7 +630,8 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
         </div>
       ) : (
         <motion.div 
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 420px))', gap: '20px' }}
+          className="planner-cards-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 380px))', gap: '20px', justifyContent: 'start', width: '100%' }}
           initial="hidden"
           animate="visible"
           variants={{

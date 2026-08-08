@@ -162,6 +162,15 @@ const TaskBoard = () => {
   const { isMobile } = useBreakpoint();
   const [showModal, setShowModal] = useState(false);
 
+  // Bloquea el scroll de fondo mientras el modal Nuevo/Editar Trabajo está abierto.
+  React.useEffect(() => {
+    if (showModal) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = previousOverflow; };
+    }
+  }, [showModal]);
+
   React.useEffect(() => {
     if (location.state?.openModal) {
       setShowModal(true);
@@ -514,9 +523,9 @@ const TaskBoard = () => {
           <div className="animate-backdrop" style={{ 
             position: 'fixed', 
             inset: 0, 
-            background: 'rgba(0,0,0,0.5)', 
+            background: 'rgba(5, 8, 18, 0.85)', 
             zIndex: 9999, 
-            backdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
