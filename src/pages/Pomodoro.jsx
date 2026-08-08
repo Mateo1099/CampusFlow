@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, Music, Volume2, VolumeX, Square, ChevronDown, C
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
+import { playPhaseCompleteChime, resumeAudio } from '../lib/audioService';
 
 const STUDY_METHODS = {
   pomodoro: {
@@ -54,6 +55,15 @@ const Pomodoro = () => {
   const [timeLeft, setTimeLeft] = useState(customTimes.focus);
   const [editMinutes, setEditMinutes] = useState(25);
 
+  // Timestamp objetivo (Date.now() + segundos restantes) en vez de solo
+  // decrementar de a 1. Los navegadores ralentizan setInterval en pestañas
+  // minimizadas/en segundo plano (Chrome llega a limitarlo a ~1 tick/minuto),
+  // así que decrementar de a 1 por tick perdería tiempo real transcurrido.
+  // Calculando siempre contra un timestamp fijo, el tiempo mostrado es
+  // correcto aunque se hayan perdido ticks, y se autocorrige apenas el
+  // navegador vuelve a ejecutar el interval con normalidad.
+  const endTimeRef = useRef(null);
+
   // Estados para Ambiente Sonoro
   const audioRef = useRef(null);
   const [ambientSound, setAmbientSound] = useState('');
@@ -98,8 +108,32 @@ const Pomodoro = () => {
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft(p => p - 1), 1000);
+      // Fija (o conserva) el instante real en que debe llegar a 0. Se fija
+      // una sola vez al iniciar/reanudar, no en cada tick.
+      if (endTimeRef.current === null) {
+        endTimeRef.current = Date.now() + timeLeft * 1000;
+      }
+
+      const tick = () => {
+        const secondsLeft = Math.max(0, Math.round((endTimeRef.current - Date.now()) / 1000));
+        setTimeLeft(secondsLeft);
+      };
+
+      interval = setInterval(tick, 1000);
+
+      // Al recuperar foco/visibilidad, recalcula de inmediato en vez de
+      // esperar al siguiente tick del interval (que pudo haber sido
+      // pausado por el navegador mientras la pestaña estaba oculta).
+      document.addEventListener('visibilitychange', tick);
+      window.addEventListener('focus', tick);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', tick);
+        window.removeEventListener('focus', tick);
+      };
     } else if (timeLeft === 0 && isActive) {
+      endTimeRef.current = null;
       setIsActive(false);
       
       if (mode === 'focus') {
@@ -107,13 +141,40 @@ const Pomodoro = () => {
         incrementStat('pomodorosCompleted');
       }
       
+      // Sonido de campana: se reproduce vía Web Audio API, que sigue activo
+      // aunque la pestaña esté minimizada o en segundo plano (a diferencia de
+      // un <audio> que algunos navegadores pueden pausar). resumeAudio()
+      // se llama primero porque Chrome suspende el AudioContext hasta el
+      // primer gesto del usuario; Layout.jsx ya captura ese primer gesto,
+      // pero esto blinda el caso de que el contexto se haya suspendido
+      // igual (p. ej. al volver de segundo plano en algunos navegadores).
+      resumeAudio();
+      try {
+        playPhaseCompleteChime();
+      } catch (err) {
+        console.error('No se pudo reproducir la campana de fin de fase:', err);
+      }
+
+      // Notificación del sistema operativo: se sigue viendo/oyendo aunque el
+      // usuario esté en otra app (Word, Excel, etc.) porque la gestiona el OS,
+      // no la pestaña del navegador. Requiere permiso ya concedido (ver
+      // efecto de abajo) y que el navegador no esté completamente cerrado.
       if (Notification.permission === 'granted') {
-        new Notification('¡Fase completada!', { body: t[modeConfig[mode].labelKey] });
+        new Notification('¡Fase completada!', {
+          body: t[modeConfig[mode].labelKey],
+          icon: '/favicon.svg',
+          tag: 'campusflow-pomodoro-phase',
+          silent: false
+        });
       }
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft, mode, t, addXP, incrementStat, modeConfig]);
 
+  // El permiso de Notification debe solicitarse cuanto antes (no solo al
+  // completar la primera fase) para que, si el usuario minimiza el
+  // navegador durante su primer Pomodoro, la notificación ya tenga permiso
+  // concedido a tiempo.
   useEffect(() => {
     if (Notification.permission === 'default') Notification.requestPermission();
   }, []);
@@ -162,15 +223,21 @@ const Pomodoro = () => {
 
   const toggleTimer = () => {
     if (isEditing) saveEdit();
+    // Al pausar, se libera el timestamp objetivo para que al reanudar el
+    // efecto de arriba calcule uno nuevo a partir del timeLeft actual (en
+    // vez de seguir contando desde el timestamp de la sesión anterior).
+    endTimeRef.current = null;
     setIsActive(p => !p);
   };
   
   const resetTimer = () => { 
+    endTimeRef.current = null;
     setIsActive(false); 
     setTimeLeft(customTimes[mode]); 
   };
   
   const changeMode = (m) => { 
+    endTimeRef.current = null;
     setIsActive(false); 
     setIsEditing(false);
     setMode(m); 
@@ -178,6 +245,7 @@ const Pomodoro = () => {
   };
 
   const changeMethod = (methodId) => {
+    endTimeRef.current = null;
     const method = STUDY_METHODS[methodId];
     setSelectedStudyMethod(methodId);
     setMode(method.defaultMode);
@@ -195,11 +263,13 @@ const Pomodoro = () => {
 
   const startEdit = () => {
     if (isActive) setIsActive(false);
+    endTimeRef.current = null;
     setEditMinutes(Math.floor(customTimes[mode] / 60));
     setIsEditing(true);
   };
 
   const saveEdit = () => {
+    endTimeRef.current = null;
     const newSeconds = Math.max(1, editMinutes) * 60;
     setCustomTimes(prev => ({ ...prev, [mode]: newSeconds }));
     setTimeLeft(newSeconds);

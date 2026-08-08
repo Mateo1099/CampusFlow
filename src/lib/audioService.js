@@ -52,6 +52,50 @@ export const playClick = (freq = 800) => {
   currentGain = gain;
 };
 
+// Campana de fin de fase (Pomodoro): 3 tonos ascendentes con envolvente de
+// campana real (ataque rápido, decaimiento exponencial largo). Sintetizada
+// con Web Audio API en vez de un mp3 para no sumar más peso a los archivos
+// de audio ya servidos desde /public/sounds.
+export const playPhaseCompleteChime = () => {
+  const ctx = initAudio();
+
+  if (currentOscillator) {
+    try {
+      currentOscillator.stop();
+      currentOscillator.disconnect();
+    } catch (e) {
+      // Ya estaba detenido
+    }
+  }
+
+  const notes = [880, 1108.73, 1318.51]; // A5, C#6, E6 — acorde mayor brillante
+  const noteDuration = 0.9;
+  const noteStagger = 0.16;
+
+  notes.forEach((freq, index) => {
+    const startTime = ctx.currentTime + index * noteStagger;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.22, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + noteDuration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + noteDuration + 0.05);
+
+    if (index === notes.length - 1) {
+      currentOscillator = osc;
+    }
+  });
+};
+
 export const playDropSound = () => {
   const ctx = initAudio();
   
