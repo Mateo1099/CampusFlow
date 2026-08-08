@@ -106,21 +106,20 @@ const CourseModal = ({
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               style={{ 
                 width: '480px',
-                maxWidth: '95vw',
+                maxWidth: '92vw',
                 background: 'rgba(15, 15, 20, 0.95)', 
-                borderRadius: '24px',
-                border: '1px solid rgba(0, 243, 255, 0.35)',
-                padding: '40px',
+                borderRadius: '16px',
+                border: '1px solid rgba(0, 243, 255, 0.2)',
+                padding: '20px',
                 backdropFilter: 'blur(30px)',
-                boxShadow: '0 0 30px rgba(0, 243, 255, 0.3), 0 0 15px rgba(0, 243, 255, 0.15), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)',
+                boxShadow: '0 0 20px rgba(0, 243, 255, 0.1), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.06)',
                 maxHeight: '85vh',
                 overflowY: 'auto',
-                marginTop: 'auto',
-                marginBottom: 'auto'
+                margin: 'auto'
               }}
             >
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isEditing ? <Pencil size={24} /> : <Plus size={24} />}
             {isEditing ? 'EDITAR MATERIA' : 'NUEVA MATERIA'}
@@ -143,7 +142,7 @@ const CourseModal = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE DEL CURSO *</label>
             <input 
@@ -152,13 +151,13 @@ const CourseModal = ({
               value={formData.name} 
               onChange={e => setFormData({ ...formData, name: e.target.value })} 
               placeholder="Ej. Cálculo Diferencial" 
-              style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
+              style={{ background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>CÓDIGO</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>CÓDIGO</label>
               <input 
                 className="input" 
                 value={formData.code} 
@@ -194,49 +193,42 @@ const CourseModal = ({
             </div>
           )}
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>PROFESOR *</label>
-            <input 
-              className="input" 
-              required 
-              value={formData.teacher} 
-              onChange={e => setFormData({ ...formData, teacher: e.target.value })} 
-              placeholder="Ej. Ing. Mauricio Silva" 
-              style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
-            />
-          </div>
-
-          <div style={{ position: 'relative', width: '100%' }}>
-            <label 
-              onClick={handleDatePickerClick}
-              style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850, cursor: 'pointer' }}>
-              FECHA DE CREACIÓN
-            </label>
-            <div 
-              style={{ width: '100%', cursor: 'pointer' }}
-              onClick={handleDatePickerClick}
-            >
-              <div 
-                ref={dateInputRef}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>PROFESOR *</label>
+              <input 
                 className="input" 
-                style={{ 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  background: 'rgba(255,255,255,0.04)', 
-                  padding: '14px 16px', 
-                  borderRadius: '14px', 
-                  border: '1px solid rgba(0, 243, 255, 0.15)', 
-                  backdropFilter: 'blur(10px)', 
-                  transition: 'all 0.3s ease', 
-                  width: '100%',
-                  userSelect: 'none',
-                  minHeight: '48px'
-                }}
+                required 
+                value={formData.teacher} 
+                onChange={e => setFormData({ ...formData, teacher: e.target.value })} 
+                placeholder="Ej. Ing. Mauricio Silva" 
+                style={{ background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
+              />
+            </div>
+
+            <div style={{ position: 'relative', width: '100%' }}>
+              <label 
+                onClick={handleDatePickerClick}
+                style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850, cursor: 'pointer' }}>
+                FECHA DE CREACIÓN
+              </label>
+              <div 
+                style={{ width: '100%', cursor: 'pointer' }}
+                onClick={handleDatePickerClick}
               >
-                <span>{formData.created_at || 'SELECCIONAR FECHA...'}</span>
-                <CalendarIcon size={18} color="#00f3ff" style={{ cursor: 'pointer', flexShrink: 0 }} />
+                <div 
+                  ref={dateInputRef}
+                  className="input" 
+                  style={{ 
+                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', 
+                    border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', 
+                    transition: 'all 0.3s ease', width: '100%', userSelect: 'none', minHeight: '44px'
+                  }}
+                >
+                  <span>{formData.created_at || 'SELECCIONAR FECHA...'}</span>
+                  <CalendarIcon size={18} color="#00f3ff" style={{ cursor: 'pointer', flexShrink: 0 }} />
+                </div>
               </div>
             </div>
           </div>
@@ -253,7 +245,7 @@ const CourseModal = ({
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
             <ModalButton label="CANCELAR" onClick={handleClose} variant="cancel" />
             <ModalButton 
               label={isEditing ? "GUARDAR CAMBIOS" : "REGISTRAR"} 

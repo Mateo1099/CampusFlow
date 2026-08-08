@@ -128,7 +128,7 @@ const MFAChallenge = () => {
       {/* Animated Background Orbs */}
       <div style={{ 
         position: 'absolute', top: '10%', left: '5%', width: '400px', height: '400px', 
-        background: 'radial-gradient(circle, rgba(0, 122, 255, 0.2), transparent)', 
+        background: 'radial-gradient(circle, rgba(0, 243, 255, 0.2), transparent)', 
         filter: 'blur(80px)', borderRadius: '50%', zIndex: 0,
         animation: 'float 8s ease-in-out infinite',
         animationDelay: '0s'
@@ -167,8 +167,8 @@ const MFAChallenge = () => {
           }
         }
         @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 10px rgba(0, 122, 255, 0.3), inset 0 0 10px rgba(0, 122, 255, 0.1); }
-          50% { box-shadow: 0 0 20px rgba(0, 122, 255, 0.5), inset 0 0 15px rgba(0, 122, 255, 0.2); }
+          0%, 100% { box-shadow: 0 0 10px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.1); }
+          50% { box-shadow: 0 0 20px rgba(0, 243, 255, 0.5), inset 0 0 15px rgba(0, 243, 255, 0.2); }
         }
       `}</style>
       
@@ -184,9 +184,9 @@ const MFAChallenge = () => {
       }}>
         <div style={{
           width: '64px', height: '64px',
-          background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.8), rgba(139, 92, 246, 0.8))',
+          background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.8), rgba(188, 19, 254, 0.8))',
           borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 24px', boxShadow: '0 8px 16px rgba(0, 122, 255, 0.3), 0 0 20px rgba(0, 122, 255, 0.2)'
+          margin: '0 auto 24px', boxShadow: '0 8px 16px rgba(0, 243, 255, 0.3), 0 0 20px rgba(0, 243, 255, 0.2)'
         }}>
           <Lock size={32} color="white" />
         </div>

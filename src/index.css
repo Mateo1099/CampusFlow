@@ -34,20 +34,25 @@
   --bg-glass-hover: rgba(255, 255, 255, 0.08);
   --border-glass-top: rgba(255, 255, 255, 0.12);
   --border-glass-side: rgba(255, 255, 255, 0.04);
-  --border-focus: rgba(0, 122, 255, 0.6);
+  --border-focus: rgba(0, 243, 255, 0.6);
   --text-primary: #f5f5f7;
   --text-secondary: #a1a1aa;
   --text-muted: #52525b;
-  --accent-primary: #007aff;
-  --accent-secondary: #5856d6;
+  /* Paleta cyber-luxe: cian + magenta.
+     Estos tokens estaban en #007aff / #5856d6 (paleta tipo Apple) mientras los
+     componentes usaban #00f3ff / #bc13fe hardcodeados, así que la interfaz
+     mezclaba azul y cian. Se alinean los tokens al diseño real para que todo
+     use el mismo acento y los elementos que sí leen la variable coincidan. */
+  --accent-primary: #00f3ff;
+  --accent-secondary: #bc13fe;
   --accent-lime: #34c759;
   --accent-orange: #ff9500;
   --accent-danger: #ff3b30;
   --accent-success: #34c759;
   --shadow-neon: 0 10px 40px rgba(0, 0, 0, 0.4);
   --shadow-glass: 0 32px 64px rgba(0, 0, 0, 0.5);
-  --orb1: rgba(0, 122, 255, 0.1);
-  --orb2: rgba(88, 86, 214, 0.1);
+  --orb1: rgba(0, 243, 255, 0.1);
+  --orb2: rgba(188, 19, 254, 0.1);
 }
 
 /* ========== TEMA CLARO (MINIMALIST TECH) ========== */
@@ -82,26 +87,29 @@
   --bg-panel: rgba(10, 10, 37, 0.95);
   --bg-glass: rgba(20, 20, 50, 0.75);
   --bg-glass-hover: rgba(40, 40, 80, 0.9);
-  --border-glass-top: rgba(255, 255, 255, 0.2);
-  --border-glass-side: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(255, 220, 0, 0.8);
+  --border-glass-top: rgba(255, 191, 0, 0.35);
+  --border-glass-side: rgba(0, 221, 255, 0.18);
+  --border-focus: rgba(255, 191, 0, 0.85);
   --text-primary: #ffffff;
   --text-secondary: #cfd5e2;
   --text-muted: #717d96;
-  --accent-primary: #ffdc00;
-  /* High-contrast Yellow */
-  --accent-secondary: #0077ff;
-  /* High-contrast Blue */
+  --accent-primary: #ffbf00;
+  /* Ámbar alto contraste */
+  --accent-secondary: #00ddff;
+  /* Cian alto contraste */
   --accent-lime: #00ddff;
   --accent-orange: #ff9900;
   --accent-danger: #ffa500;
-  /* Orange for danger */
-  --accent-success: #ffdc00;
-  /* Yellow for success */
-  --shadow-neon: 0 0 25px rgba(255, 220, 0, 0.35);
+  --accent-success: #ffbf00;
+  --shadow-neon: 0 0 20px rgba(255, 191, 0, 0.3), 0 0 40px rgba(0, 221, 255, 0.15);
   --shadow-glass: 0 24px 64px rgba(0, 0, 0, 0.9);
-  --orb1: rgba(255, 220, 0, 0.1);
-  --orb2: rgba(0, 119, 255, 0.1);
+  --orb1: rgba(255, 191, 0, 0.1);
+  --orb2: rgba(0, 221, 255, 0.1);
+}
+
+/* Resplandor sutil en paneles de cristal para modo daltónico */
+[data-theme="daltonic"] .glass-panel {
+  box-shadow: 0 0 12px rgba(255, 191, 0, 0.08), 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 191, 0, 0.12);
 }
 
 /* ========== RESET ========== */
@@ -160,6 +168,13 @@ body {
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
+}
+
+/* Oculta las flechas de scroll que Chrome dibuja en Windows. */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 ::-webkit-scrollbar-track {
@@ -516,6 +531,7 @@ h5,
 
 .main-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 10px;
@@ -524,28 +540,144 @@ h5,
   min-width: 0;
 }
 
+/* El .app-container ya mide 100vh con 20px de padding, así que el sidebar debe
+   medir 100% de ESE espacio. Con height:100vh sobresalía 40px y overflow:hidden
+   recortaba justo el pie (Estudio / Perfil / Cerrar Sesión). */
 .sidebar {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Solo la zona de navegación cede espacio y hace scroll; el pie nunca se corta. */
+.sidebar-nav-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+.sidebar-nav-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.sidebar-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.sidebar-top-block {
+  flex-shrink: 0;
+}
+
+/* El menú sigue desplazándose con rueda, teclado y gestos, pero sin una pista
+   que invada las esquinas redondeadas del panel. */
 .sidebar::-webkit-scrollbar {
-  width: 4px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
+/* Base única para backdrops. Evita bordes verticales y mantiene accesibles los
+   modales altos en pantallas pequeñas. */
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: clamp(12px, 3vw, 32px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  background: rgba(5, 7, 15, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
-.sidebar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
+/* Paneles de modal — escala contenida para laptops 1366x768 */
+.modal-overlay > .glass-panel,
+.modal-overlay > div > .glass-panel {
+  max-width: 500px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  padding: 24px;
 }
 
-.sidebar::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary);
+.pomodoro-page {
+  min-height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .pomodoro-page {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 16px !important;
+  }
+
+  .pomodoro-page > div:last-child {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pomodoro-page > div:first-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Las barras de MÉTODO y MODO fluyen en bloques verticales separados y dejan
+     aire real antes del reloj, en vez de montarse encima del temporizador. */
+  .pomodoro-page > div:first-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .pomodoro-page > div:first-child > div {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    row-gap: 6px;
+    font-size: 14px !important;
+  }
+
+  .pomodoro-page > div:first-child > div button {
+    font-size: 14px !important;
+  }
+
+  .pomodoro-page > div:first-child > div span {
+    font-size: 13px !important;
+  }
+}
+
+/* ===== TRÍPTICO DE AJUSTES (Tema · Fondos · Seguridad) ===== */
+.settings-card {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .settings-triptych {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-triptych {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .page-header {
@@ -1874,4 +2006,12 @@ h5,
 .app-container.mobile-layout .profile-page .glass-panel[style*="minHeight: '235px'"] {
   min-height: 235px !important;
   transition: none !important;
+}
+
+/* Planificador semanal: conserva el ancho editorial de las tarjetas sin
+   provocar overflow cuando el viewport útil es menor que su mínimo desktop. */
+@media (max-width: 480px) {
+  .planner-cards-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }

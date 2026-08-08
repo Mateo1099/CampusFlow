@@ -123,6 +123,9 @@ export function SettingsProvider({ children }) {
     greenAlertCustomDays: 1
   });
   const [recentXPGains, setRecentXPGains] = useState([]);
+  // No mostramos preferencias remotas como si fueran valores definitivos antes
+  // de que el perfil de Supabase termine de cargar.
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   // Ref espejo de `settings`, para que updateSettings pueda leer el valor más
   // reciente sin necesitar `settings` en su lista de dependencias de useCallback
@@ -168,7 +171,7 @@ export function SettingsProvider({ children }) {
           customWallpaper: data.custom_wallpaper || null,
           avatarUrl: fullAvatarUrl,
           two_factor_enabled: data.two_factor_enabled || false,
-          emailNotifications: data.email_notifications || false,
+          emailNotifications: data.email_notifications ?? false,
           redAlertFreq: data.red_alert_freq || prev.redAlertFreq || 'diario',
           yellowAlertFreq: data.yellow_alert_freq || prev.yellowAlertFreq || 'diario',
           greenAlertFreq: data.green_alert_freq || prev.greenAlertFreq || 'diario',
@@ -183,7 +186,19 @@ export function SettingsProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (user) fetchProfile(user.id);
+    let isCurrent = true;
+
+    if (!user) {
+      setSettingsLoading(false);
+      return () => { isCurrent = false; };
+    }
+
+    setSettingsLoading(true);
+    fetchProfile(user.id).finally(() => {
+      if (isCurrent) setSettingsLoading(false);
+    });
+
+    return () => { isCurrent = false; };
   }, [user, fetchProfile]);
 
   const updateSettings = useCallback(async (updates) => {
@@ -316,8 +331,8 @@ export function SettingsProvider({ children }) {
   // en toda la app, aunque el cambio no les afecte (ej. cambiar recentXPGains
   // re-renderizaría el Sidebar entero aunque él solo lea `settings.theme`).
   const value = useMemo(() => ({
-    settings, updateSettings, t, addXP, incrementStat, recentXPGains
-  }), [settings, updateSettings, t, addXP, incrementStat, recentXPGains]);
+    settings, settingsLoading, updateSettings, t, addXP, incrementStat, recentXPGains
+  }), [settings, settingsLoading, updateSettings, t, addXP, incrementStat, recentXPGains]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }

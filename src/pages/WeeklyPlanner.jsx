@@ -342,7 +342,7 @@ function WeeklyPlanner() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ padding: '32px 40px', height: '100%', overflowY: 'auto' }}>
+    <div className="animate-fade-in" style={{ padding: 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 40px)', height: '100%', overflowY: 'auto' }}>
       {!activePlannerId ? (
         <PlannersList 
           planners={planners} 
@@ -584,7 +584,7 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
           }}>
             <Calendar size={40} color="#00f3ff" style={{ filter: 'drop-shadow(0 0 8px rgba(0, 243, 255, 0.8))' }} />
           </div>
-          <h3 style={{ color: '#fff', marginBottom: '12px', fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.5px' }}>No hay planificaciones aún</h3>
+          <h3 style={{ color: 'var(--text-primary)', marginBottom: '12px', fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.5px' }}>No hay planificaciones aún</h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', maxWidth: '400px', lineHeight: '1.6', fontSize: '0.95rem' }}>Crea tu primera planificación semanal para empezar a organizar tus bloques de tiempo y optimizar tus días.</p>
           <button 
             className="click-press" 
@@ -630,7 +630,8 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
         </div>
       ) : (
         <motion.div 
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}
+          className="planner-cards-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 380px))', gap: '20px', justifyContent: 'start', width: '100%' }}
           initial="hidden"
           animate="visible"
           variants={{
@@ -1474,11 +1475,12 @@ function PlannerModal({ onClose, onSave, initialPlanner }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000 }}>
+    <div className="modal-overlay" onClick={onClose}>
       <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ 
-        width: '100%', maxWidth: '440px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px',
-        background: 'linear-gradient(135deg, rgba(30,30,35,0.9) 0%, rgba(15,15,20,0.95) 100%)',
-        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', boxShadow: '0 30px 60px rgba(0,0,0,0.6)'
+        width: '100%', maxWidth: '480px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px',
+        background: 'linear-gradient(135deg, rgba(20,20,25,0.96) 0%, rgba(12,12,18,0.98) 100%)',
+        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+        maxHeight: '85vh', overflowY: 'auto'
       }}>
         <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '0.5px' }}>{initialPlanner ? 'EDITAR PLANIFICACIÓN' : 'NUEVA PLANIFICACIÓN'}</h2>
         
@@ -1592,7 +1594,7 @@ function PlannerModal({ onClose, onSave, initialPlanner }) {
             </div>
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', marginTop: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
             <button type="button" onClick={onClose} className="click-press" 
               onMouseEnter={(e) => {
                 const liquid = e.currentTarget.querySelector('.liquid-fill-btn-red');
@@ -1743,7 +1745,7 @@ function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', co
   ];
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'radial-gradient(circle at top, rgba(0, 243, 255, 0.08), rgba(0,0,0,0.88) 46%)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '16px' }}>
+    <div className="modal-overlay" onClick={onClose}>
       <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '620px', padding: '24px 30px', display: 'flex', flexDirection: 'column', gap: '16px', margin: 'auto', borderRadius: '30px', background: 'linear-gradient(155deg, rgba(10,12,22,0.96) 0%, rgba(18,22,34,0.92) 55%, rgba(0,243,255,0.06) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06)', maxHeight: '95vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
           <div>

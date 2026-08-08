@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X
 } from 'lucide-react';
 
 const THEMES = [
@@ -15,19 +15,20 @@ const THEMES = [
   { id: 'daltonic', labelKey: 'daltonicMode', icon: '👁️', gradient: 'linear-gradient(135deg, #0c4a6e, #075985)' },
 ];
 
-const NotificationRow = ({ checked, onChange, label }) => {
+const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <motion.div
-      onClick={() => onChange(!checked)}
+      onClick={() => { if (!isLoading) onChange(!checked); }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       layout
       style={{
         width: '100%',
         borderRadius: '14px',
-        cursor: 'pointer',
+        cursor: isLoading ? 'wait' : 'pointer',
+        opacity: isLoading ? 0.72 : 1,
         overflow: 'hidden',
         position: 'relative',
         transition: 'all 0.2s ease-in-out',
@@ -74,13 +75,13 @@ const NotificationRow = ({ checked, onChange, label }) => {
         <span style={{
           fontSize: '0.8rem',
           fontWeight: 700,
-          color: checked ? '#22c55e' : '#ef4444',
+          color: isLoading ? 'var(--text-muted)' : (checked ? '#22c55e' : '#ef4444'),
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           opacity: 1,
           transition: 'all 0.3s ease'
         }}>
-          {label}
+          {isLoading ? 'CARGANDO PREFERENCIAS…' : label}
         </span>
 
         {/* Status dot */}
@@ -283,13 +284,12 @@ const BottomRowMenu = ({ icon, label, value, isOpen, onToggle, children, accentC
 );
 
 const Profile = () => {
-  const { settings, updateSettings, t } = useSettings();
+  const { settings, updateSettings, t, settingsLoading } = useSettings();
   const { user, checkMFAStatus } = useAuth();
   const wallpaperInputRef = useRef(null);
   const profileInputRef = useRef(null);
 
   const [avatarLoaded, setAvatarLoaded] = useState(false);
-  const [openSection, setOpenSection] = useState(null);
   const [openSetting, setOpenSetting] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -311,13 +311,34 @@ const Profile = () => {
   const [disableMfaLoading, setDisableMfaLoading] = useState(false);
   const [disableMfaError, setDisableMfaError] = useState('');
 
-  const [emailNotif, setEmailNotif] = useState(settings.emailNotifications || false);
+  // null representa "aún no cargado"; evita mostrar false antes de conocer
+  // la preferencia real almacenada en Supabase.
+  const [emailNotif, setEmailNotif] = useState(null);
   const [redCustomDaysInput, setRedCustomDaysInput] = useState(settings.redAlertCustomDays || 1);
   const [yellowCustomDaysInput, setYellowCustomDaysInput] = useState(settings.yellowAlertCustomDays || 1);
   const [greenCustomDaysInput, setGreenCustomDaysInput] = useState(settings.greenAlertCustomDays || 1);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
   const [manualSecret, setManualSecret] = useState('');
   const [securityScreen, setSecurityScreen] = useState('overview');
+  const securityCardRef = useRef(null);
+  const securityDialogRef = useRef(null);
+
+  const closeSecurityModal = useCallback(() => {
+    setSecurityScreen('overview');
+    setIsDisablingMfa(false);
+    setDisableVerifyCode('');
+    setDisableMfaError('');
+    window.requestAnimationFrame(() => securityCardRef.current?.focus());
+  }, []);
+
+  const closeMfaEnrollment = useCallback(() => {
+    setMfaData(null);
+    setQrCodeSvg(null);
+    setVerifyCode('');
+    setMfaError('');
+    setMfaSuccessMessage('');
+    setManualSecret('');
+  }, []);
 
   const downloadAvatar = useCallback(async (path) => {
     try {
@@ -344,9 +365,13 @@ const Profile = () => {
     setTempName(settings.name);
   }, [settings.name]);
 
-  // Sincroniza el toggle de notificaciones por correo con el valor real cargado de Supabase
-  // REMOVIDO: useEffect que causaba doble-clic. El estado local se actualiza correctamente
-  // en handleEmailNotifChange sin necesidad de un useEffect que cause race conditions.
+  // La fuente de verdad es SettingsContext una vez termina fetchProfile. Durante
+  // esa carga el toggle se conserva neutro, sin sobrescribir el valor remoto.
+  useEffect(() => {
+    if (!settingsLoading) {
+      setEmailNotif(Boolean(settings.emailNotifications));
+    }
+  }, [settings.emailNotifications, settingsLoading]);
 
   // Si SettingsContext no pudo guardar un cambio en Supabase (RLS, red, permisos), revierte
   // el estado local y avisa aquí con un toast de error, en vez de dejar la UI desincronizada
@@ -377,9 +402,13 @@ const Profile = () => {
     }
   }, [settings.theme]);
 
-  // Scroll lock: congela el scroll del fondo (.main-content + body) mientras el modal 2FA está abierto
+  // Los diálogos de Seguridad viven fuera de la grilla. Bloquea el fondo,
+  // cierra primero el diálogo superior con Escape y mantiene el foco dentro.
   useEffect(() => {
-    if (!mfaData) return;
+    // Solo se congela el fondo cuando el diálogo realmente existe en el DOM.
+    // Así, un fallo de render nunca puede dejar Ajustes sin desplazamiento.
+    const isSecurityModalOpen = securityScreen === 'detail' && Boolean(securityDialogRef.current);
+    if (!isSecurityModalOpen && !mfaData) return undefined;
 
     const scrollContainer = document.querySelector('.main-content');
     const previousBodyOverflow = document.body.style.overflow;
@@ -388,11 +417,43 @@ const Profile = () => {
     document.body.style.overflow = 'hidden';
     if (scrollContainer) scrollContainer.style.overflow = 'hidden';
 
+    const handleDialogKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (mfaData) closeMfaEnrollment();
+        else closeSecurityModal();
+        return;
+      }
+
+      if (event.key !== 'Tab' || mfaData || !securityDialogRef.current) return;
+
+      const focusableElements = securityDialogRef.current.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusableElements.length) return;
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    if (isSecurityModalOpen && !mfaData) {
+      window.requestAnimationFrame(() => securityDialogRef.current?.focus());
+    }
+
     return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
       document.body.style.overflow = previousBodyOverflow;
       if (scrollContainer) scrollContainer.style.overflow = previousContainerOverflow;
     };
-  }, [mfaData]);
+  }, [securityScreen, mfaData, closeMfaEnrollment, closeSecurityModal]);
 
   const handleProfileImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -620,9 +681,12 @@ const Profile = () => {
       // antes de que ProtectedRoute pueda hacer un redirect incorrecto
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 9. Actualizar estado local de settings inmediatamente para que la UI responda
-      setSettings(prev => ({ ...prev, two_factor_enabled: false }));
-
+      // 9. El estado local ya se actualizó en el paso 5a con
+      //    updateSettings({ two_factor_enabled: false }), que además persiste en
+      //    Supabase. Aquí antes había un setSettings(...) que NO existe en este
+      //    componente (es interno de SettingsContext): lanzaba
+      //    "ReferenceError: setSettings is not defined", caía en el catch y le
+      //    mostraba ese error al usuario aunque el 2FA sí se había desactivado.
       setIsDisablingMfa(false);
       setDisableVerifyCode('');
       setDisableMfaError('');
@@ -669,7 +733,10 @@ const Profile = () => {
   };
 
   const handleEmailNotifChange = (newValue) => {
-    // Actualizar UI al instante (optimistic update)
+    if (settingsLoading || emailNotif === null) return;
+
+    const previousValue = emailNotif;
+    // Actualizar UI al instante solo después de conocer el valor remoto.
     setEmailNotif(newValue);
     
     // Toast con confirmación visual inmediata
@@ -688,7 +755,7 @@ const Profile = () => {
       .catch(err => {
         // Si falla, revertir el estado y mostrar error
         console.error('[PROFILE] Error al guardar notificaciones:', err.message);
-        setEmailNotif(!newValue);
+        setEmailNotif(previousValue);
         showNotification('⚠️ Error al guardar, intenta de nuevo');
       });
   };
@@ -909,7 +976,15 @@ const Profile = () => {
           font-size: 0.7rem;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          /* Debe ocupar su posición final desde el primer frame. popIn usa
+             translate(-50%, -50%) porque fue creado para el toast centrado y
+             provocaba que estas etiquetas se acomodaran tarde. */
+          animation: none;
+          transform: none;
+          opacity: 1;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
           backdrop-filter: blur(10px);
         }
 
@@ -948,12 +1023,23 @@ const Profile = () => {
 
         @keyframes shieldBreathe {
           0%, 100% {
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.08);
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.15);
             transform: scale(1);
           }
           50% {
-            box-shadow: 0 0 30px rgba(239, 68, 68, 0.25), inset 0 0 12px rgba(239, 68, 68, 0.08);
-            transform: scale(1.04);
+            box-shadow: 0 0 45px rgba(239, 68, 68, 0.5), inset 0 0 18px rgba(239, 68, 68, 0.18);
+            transform: scale(1.08);
+          }
+        }
+
+        @keyframes shieldBreatheActive {
+          0%, 100% {
+            box-shadow: 0 0 18px rgba(34, 197, 94, 0.15);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 40px rgba(34, 197, 94, 0.45), inset 0 0 16px rgba(34, 197, 94, 0.16);
+            transform: scale(1.06);
           }
         }
 
@@ -1074,7 +1160,7 @@ const Profile = () => {
         </div>
       )}
 
-      <div className="animate-fade-in profile-page" style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+      <div className="animate-fade-in profile-page" style={{ padding: 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 40px)', maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
         <header style={{ marginBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <h1 style={{
             fontSize: '2.6rem',
@@ -1107,7 +1193,7 @@ const Profile = () => {
           </div>
         </header>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
 
           {/* IDENTITY BAR — barra HUD unificada: avatar protagonista + identidad + consola de notificaciones */}
           <div className="glass-panel identity-bar" style={{
@@ -1205,7 +1291,7 @@ const Profile = () => {
                     gap: '10px',
                     minWidth: 0,
                     padding: '6px 14px',
-                    marginLeft: '-14px',
+                    marginLeft: 0,
                     borderRadius: '12px',
                     border: '1.5px solid transparent',
                     background: 'transparent',
@@ -1234,7 +1320,7 @@ const Profile = () => {
                       }}
                     />
                   ) : (
-                    <h2 className="font-display" style={{ fontSize: '2.1rem', margin: 0, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, textShadow: '0 0 26px rgba(0,243,255,0.2)' }}>
+                    <h2 className="font-display" style={{ fontSize: 'clamp(16px, 1.5vw, 22px)', margin: 0, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'visible', width: '100%', minWidth: 0, textShadow: '0 0 26px rgba(0,243,255,0.2)' }}>
                       {settings.name || 'Mateo'}
                     </h2>
                   )}
@@ -1259,18 +1345,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* ── DIVISOR HUD con glow, separa identidad de la consola de notificaciones ── */}
-            <div style={{
-              width: '1px',
-              alignSelf: 'stretch',
-              minHeight: '110px',
-              background: 'linear-gradient(180deg, transparent, var(--accent-primary), transparent)',
-              opacity: 0.3,
-              flexShrink: 0,
-              position: 'relative',
-              zIndex: 1
-            }} />
-
             {/* ── ZONA 2: CONSOLA DE NOTIFICACIONES (unificada: toggles + frecuencia por zona) ── */}
             <div style={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 1 }}>
               <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.22em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1279,7 +1353,8 @@ const Profile = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <NotificationRow
-                  checked={emailNotif}
+                  checked={Boolean(emailNotif)}
+                  isLoading={settingsLoading || emailNotif === null}
                   onChange={handleEmailNotifChange}
                   label="Correo Electrónico"
                 />
@@ -1299,7 +1374,7 @@ const Profile = () => {
             gridTemplateRows: emailNotif ? '1fr' : '0fr',
             transition: 'grid-template-rows 0.3s ease-out',
             overflow: 'hidden',
-            marginTop: '-8px'
+            marginTop: 0
           }}>
             <div style={{ minHeight: 0 }}>
               <div className="glass-panel" style={{ padding: '22px 26px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1342,11 +1417,11 @@ const Profile = () => {
             </div>
           </div>
 
-          <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
+          <div className="settings-triptych" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', alignItems: 'stretch', maxWidth: '1050px', margin: '0 auto', width: '100%' }}>
             {/* THEME SELECTOR */}
-            <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+            <div className="glass-panel settings-card" style={{ padding: '24px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column' }}>
               <SectionTitle icon={<Palette />} label={t.themeMode} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="settings-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, justifyContent: 'center' }}>
                 {THEMES.map(theme => (
                   <button key={theme.id} onClick={() => {
                     document.body.classList.add('theme-fade');
@@ -1366,9 +1441,9 @@ const Profile = () => {
             </div>
 
             {/* WALLPAPERS */}
-            <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass-top)' }}>
+            <div className="glass-panel settings-card" style={{ padding: '24px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column' }}>
               <SectionTitle icon={<ImageIcon />} label={t.wallpapers} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div className="settings-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', flex: 1, alignContent: 'center' }}>
                 {WALLPAPERS.filter(wp => wp.src).map(wp => (
                   <button key={wp.id} onClick={() => updateSettings({ wallpaper: wp.id })} style={{ height: '70px', borderRadius: '12px', border: `2px solid ${settings.wallpaper === wp.id ? 'var(--accent-primary)' : 'transparent'}`, backgroundImage: `url(${wp.src})`, backgroundSize: 'cover', backgroundPosition: 'center', cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                     {settings.wallpaper === wp.id && <div style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-primary)', borderRadius: '50%', padding: '2px' }}><Check size={10} color="#000" /></div>}
@@ -1377,6 +1452,7 @@ const Profile = () => {
                 <button
                   onClick={() => wallpaperInputRef.current.click()}
                   style={{
+                    gridColumn: '1 / -1',
                     height: '70px',
                     borderRadius: '12px',
                     border: settings.customWallpaper ? 'none' : '2px dashed var(--text-secondary)',
@@ -1384,7 +1460,10 @@ const Profile = () => {
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
+                    /* Con foto de fondo hay un velo oscuro encima, así que el
+                       blanco es correcto. Sin foto, el fondo es --bg-panel, que
+                       en tema claro es casi blanco: ahí hace falta el token. */
+                    color: settings.customWallpaper ? '#fff' : 'var(--text-primary)',
                     backgroundColor: settings.customWallpaper ? 'transparent' : 'var(--bg-panel, rgba(0,0,0,0.05))',
                     backgroundImage: settings.customWallpaper ? `url(${settings.customWallpaper})` : 'none',
                     backgroundSize: 'cover',
@@ -1407,24 +1486,33 @@ const Profile = () => {
               </div>
             </div>
 
-            <motion.div
-              className="glass-panel"
+            <motion.button
+              ref={securityCardRef}
+              type="button"
+              className="glass-panel settings-card"
+              aria-haspopup="dialog"
+              aria-expanded={securityScreen === 'detail'}
+              aria-label="Abrir configuración de seguridad"
               style={{
                 padding: '24px',
                 border: '1px solid var(--border-glass-top)',
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: '235px',
+                height: '100%',
+                width: '100%',
                 overflow: 'hidden',
                 position: 'relative',
-                cursor: securityScreen === 'overview' ? 'pointer' : 'default'
+                cursor: 'pointer',
+                color: 'inherit',
+                font: 'inherit',
+                textAlign: 'left',
+                boxSizing: 'border-box'
               }}
-              onClick={() => securityScreen === 'overview' && setSecurityScreen('detail')}
+              onClick={() => setSecurityScreen('detail')}
             >
-              <AnimatePresence mode="wait">
-                {/* PANTALLA 1: OVERVIEW */}
-                {securityScreen === 'overview' && (
-                  <motion.div
+              {/* La tarjeta permanece estable; la configuración vive fuera de la grilla. */}
+              <motion.div
                     key="security-overview"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -1451,7 +1539,7 @@ const Profile = () => {
                         border: settings.two_factor_enabled ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(239, 68, 68, 0.15)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: settings.two_factor_enabled ? '0 0 25px rgba(34, 197, 94, 0.15)' : '0 0 20px rgba(239, 68, 68, 0.1)',
-                        animation: settings.two_factor_enabled ? 'none' : 'shieldBreathe 2s ease-in-out infinite'
+                        animation: settings.two_factor_enabled ? 'shieldBreatheActive 2.4s ease-in-out infinite' : 'shieldBreathe 1.8s ease-in-out infinite'
                       }}>
                         <Shield size={42} strokeWidth={1.5} style={{ color: settings.two_factor_enabled ? '#22c55e' : '#ef4444', transition: 'all 0.3s ease', filter: settings.two_factor_enabled ? 'none' : 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.4))' }} />
                       </div>
@@ -1464,36 +1552,110 @@ const Profile = () => {
                       </p>
                     </div>
                   </motion.div>
-                )}
+            </motion.button>
 
-                {/* PANTALLA 2: DETALLE */}
+            {createPortal(
+              <AnimatePresence>
+                {/* MODAL FLOTANTE DE SEGURIDAD: fuera de la grilla, sin reflow. */}
                 {securityScreen === 'detail' && (
                   <motion.div
-                    key="security-detail"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'absolute', inset: 0, padding: 'inherit' }}
-                    style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
-                    onClick={(e) => e.stopPropagation()}
+                    key="security-modal-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      background: 'rgba(5, 8, 18, 0.85)',
+                      backdropFilter: 'blur(16px)',
+                      WebkitBackdropFilter: 'blur(16px)',
+                      zIndex: 9999,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '16px',
+                      overflowY: 'auto',
+                      overscrollBehavior: 'contain'
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (event.target === event.currentTarget) closeSecurityModal();
+                    }}
                   >
-                    <div onClick={() => setSecurityScreen('overview')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Shield size={20} color={settings.two_factor_enabled ? '#22c55e' : '#ef4444'} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 900, color: 'var(--text-primary)' }}>ESTADO DE PROTECCIÓN</h3>
-                          <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Tu cuenta {settings.two_factor_enabled ? 'tiene' : 'aún no tiene'} 2FA configurada.</p>
-                        </div>
+                  <motion.div
+                    ref={securityDialogRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="security-dialog-title"
+                    tabIndex={-1}
+                    initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.97 }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      width: '100%',
+                      maxWidth: '500px',
+                      maxHeight: 'calc(100vh - 32px)',
+                      margin: 'auto',
+                      padding: '28px',
+                      boxSizing: 'border-box',
+                      borderRadius: '20px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'linear-gradient(155deg, rgba(15, 23, 42, 0.97), rgba(7, 12, 24, 0.96))',
+                      boxShadow: '0 30px 80px rgba(0,0,0,0.62), 0 0 45px rgba(0,243,255,0.08), inset 0 1px 0 rgba(255,255,255,0.08)',
+                      overflowY: 'auto',
+                      position: 'relative',
+                      outline: 'none'
+                    }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={closeSecurityModal}
+                      aria-label="Cerrar configuración de seguridad"
+                      className="click-press"
+                      style={{
+                        position: 'absolute', top: '18px', right: '18px', zIndex: 2,
+                        width: '36px', height: '36px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(event) => {
+                        event.currentTarget.style.color = '#ffffff';
+                        event.currentTarget.style.borderColor = 'rgba(0,243,255,0.45)';
+                        event.currentTarget.style.background = 'rgba(0,243,255,0.1)';
+                      }}
+                      onMouseLeave={(event) => {
+                        event.currentTarget.style.color = 'var(--text-secondary)';
+                        event.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                        event.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      }}
+                    >
+                      <X size={18} />
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', paddingRight: '44px', gap: '12px', minWidth: 0, flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ margin: '0 0 4px', color: 'var(--accent-primary)', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase' }}>Centro de protección</p>
+                        <h2 id="security-dialog-title" style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Seguridad</h2>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div className={`status-pill ${settings.two_factor_enabled ? 'status-pill-active' : 'status-pill-inactive'}`}>
-                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }} />
-                          {settings.two_factor_enabled ? 'ACTIVA' : 'INACTIVA'}
-                        </div>
-                        <ChevronDown size={18} style={{ color: 'var(--text-secondary)', transform: 'rotate(180deg)', transition: 'transform 0.3s' }} />
+                      <div className={`status-pill ${settings.two_factor_enabled ? 'status-pill-active' : 'status-pill-inactive'}`} style={{ flexShrink: 0 }}>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                        {settings.two_factor_enabled ? 'ACTIVA' : 'INACTIVA'}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', minWidth: 0 }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', border: `1px solid ${settings.two_factor_enabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Shield size={20} color={settings.two_factor_enabled ? '#22c55e' : '#ef4444'} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 900, color: 'var(--text-primary)' }}>ESTADO DE PROTECCIÓN</h3>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1.45, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>Tu cuenta {settings.two_factor_enabled ? 'tiene' : 'aún no tiene'} 2FA configurada.</p>
                       </div>
                     </div>
 
@@ -1510,8 +1672,8 @@ const Profile = () => {
                         </div>
                       ) : (
                         <>
-                          <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, flex: '1 1 240px' }}>
                               <div style={{ color: 'var(--text-secondary)', opacity: 0.8 }}><Smartphone size={22} /></div>
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>Autenticación de dos pasos</p>
@@ -1573,9 +1735,11 @@ const Profile = () => {
                       )}
                     </div>
                   </motion.div>
+                  </motion.div>
                 )}
-              </AnimatePresence>
-            </motion.div>
+              </AnimatePresence>,
+              document.body
+            )}
 
               {/* ═══════════════════════════════════════════════════
                   MFA ACTIVATION MODAL
@@ -1594,21 +1758,14 @@ const Profile = () => {
                       background: 'rgba(0, 0, 0, 0.72)',
                       backdropFilter: 'blur(10px)',
                       WebkitBackdropFilter: 'blur(10px)',
-                      zIndex: 100,
+                      zIndex: 10001,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       overflowY: 'auto',
                       padding: '20px'
                     }}
-                    onClick={() => {
-                      setMfaData(null);
-                      setQrCodeSvg(null);
-                      setVerifyCode('');
-                      setMfaError('');
-                      setMfaSuccessMessage('');
-                      setManualSecret('');
-                    }}
+                    onClick={closeMfaEnrollment}
                   >
                     {/* ── ModalShell: flex column, 3 regiones ── */}
                     <motion.div

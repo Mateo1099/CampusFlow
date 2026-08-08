@@ -214,181 +214,86 @@ const Pomodoro = () => {
 
   return (
     <div className="animate-fade-in pomodoro-page" style={{ 
-      height: '100%', 
-      minHeight: '80vh',
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      padding: '20px', 
-      position: 'relative' 
+      height: 'calc(100vh - 40px)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'clamp(12px, 1.5vw, 20px)',
+      padding: 'clamp(12px, 2vw, 24px)',
+      boxSizing: 'border-box',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      
-      {/* Encabezado Premium Integrado */}
-      <div className="glass-panel" style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        padding: '24px', 
-        borderRadius: 'var(--radius-xl)', 
-        background: 'var(--bg-glass)', 
-        border: '1px solid var(--border-glass-top)', 
-        boxShadow: '0 12px 40px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.05)',
-        marginBottom: '24px', 
-        width: '100%', 
-        maxWidth: '460px',
-        gap: '20px',
-        position: 'relative'
-      }}>
-        {/* Glow sutil de fondo */}
-        <div style={{ position: 'absolute', top: '-60%', left: '-50%', width: '200%', height: '200%', background: 'radial-gradient(circle at 50% 0%, var(--accent-primary) 0%, transparent 60%)', opacity: 0.06, pointerEvents: 'none' }} />
 
-        {/* Título y Descripción con Etiqueta Superior */}
-        <div style={{ textAlign: 'center', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-          <div style={{ 
-            fontSize: '0.65rem', 
-            textTransform: 'uppercase', 
-            letterSpacing: '0.15em', 
-            fontWeight: 800, 
-            color: 'var(--accent-primary)', 
-            opacity: 0.9,
-            background: 'var(--bg-secondary)',
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-full)',
-            border: '1px solid rgba(255,255,255,0.03)',
-            marginBottom: '4px',
-            display: 'inline-block'
-          }}>
-            Método de Estudio
-          </div>
-          <h1 style={{ 
-            fontSize: '1.5rem', 
-            fontWeight: 800, 
-            fontFamily: 'var(--font-display)', 
-            color: 'var(--text-primary)', 
-            margin: 0, 
-            letterSpacing: '0.01em',
-            textShadow: '0 2px 10px rgba(0,0,0,0.1)'
-          }}>
-            {STUDY_METHODS[selectedStudyMethod].title}
-          </h1>
-          <p style={{ 
-            fontSize: '0.85rem', 
-            color: 'var(--text-secondary)', 
-            fontFamily: 'var(--font-body)', 
-            fontWeight: 500, 
-            margin: 0,
-            opacity: 0.85
-          }}>
-            {STUDY_METHODS[selectedStudyMethod].description}
-          </p>
-        </div>
-
-        {/* Selector de Método - Simple y Estable */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
-          gap: '12px',
-          width: '100%',
-          zIndex: 1,
-          marginTop: '4px'
-        }}>
+      {/* ─── BARRA DE CONTROL SUPERIOR UNIFICADA ─── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        {/* Método */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', height: '44px', borderRadius: '22px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)' }}>
+          <span style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, color: '#ffffff', opacity: 0.7 }}>Método:</span>
           {Object.values(STUDY_METHODS).map(method => {
             const isSelected = selectedStudyMethod === method.id;
             return (
-              <button
-                key={method.id}
-                onClick={() => changeMethod(method.id)}
-                style={{
-                  padding: '12px 8px',
-                  borderRadius: '10px',
-                  background: isSelected ? 'var(--accent-primary)' : 'var(--bg-secondary)',
-                  color: isSelected ? '#000' : 'var(--text-primary)',
-                  border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass-top)',
-                  fontSize: '0.85rem',
-                  letterSpacing: '0.02em',
-                  fontWeight: isSelected ? 800 : 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-in-out',
-                  outline: 'none',
-                  boxShadow: isSelected ? '0 4px 15px rgba(0,0,0,0.2)' : '0 2px 5px rgba(0,0,0,0.05)'
-                }}
-              >
+              <button key={method.id} onClick={() => changeMethod(method.id)} style={{
+                padding: '6px 14px', borderRadius: '14px', height: '30px',
+                background: isSelected ? 'var(--accent-primary)' : 'transparent',
+                color: isSelected ? '#000' : '#ffffff',
+                border: 'none', fontSize: '0.72rem', fontWeight: isSelected ? 800 : 600,
+                cursor: 'pointer', transition: 'all 0.2s ease', outline: 'none',
+                boxShadow: isSelected ? '0 0 10px var(--accent-primary)' : 'none',
+              }}>
                 {method.shortLabel}
               </button>
             );
           })}
         </div>
+
+        {/* Modos — mismo height y border-radius que Método */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 16px', height: '44px', borderRadius: '22px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)' }}>
+          {Object.entries(modeConfig).map(([k, cfg]) => (
+            <button key={k} onClick={() => changeMode(k)} style={{
+              background: mode === k ? cfg.color : 'transparent',
+              color: mode === k ? '#000' : '#ffffff',
+              padding: '6px 14px', height: '30px', fontWeight: mode === k ? 700 : 500,
+              boxShadow: mode === k ? `0 0 12px ${cfg.color}` : 'none',
+              border: 'none', fontSize: '0.68rem', borderRadius: '14px',
+              cursor: 'pointer', transition: 'all 0.3s var(--ease-out-quint)',
+            }}>
+              {cfg.labelOverride || t[cfg.labelKey]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Selector de modo */}
-      <div className="glass-panel" style={{ display: 'flex', gap: '4px', padding: '6px', borderRadius: 'var(--radius-full)', marginBottom: '20px', border: '1px solid var(--border-glass-top)' }}>
-        {Object.entries(modeConfig).map(([k, cfg]) => (
-          <button key={k} onClick={() => changeMode(k)} className="btn" style={{
-            background: mode === k ? cfg.color : 'transparent',
-            color: mode === k ? '#000' : 'var(--text-secondary)',
-            padding: '6px 16px',
-            fontWeight: mode === k ? 700 : 500,
-            boxShadow: mode === k ? `0 0 20px ${cfg.color}` : 'none',
-            border: 'none',
-            fontSize: '0.75rem',
-            transition: 'all 0.3s var(--ease-out-quint)',
-          }}>
-            {cfg.labelOverride || t[cfg.labelKey]}
-          </button>
-        ))}
-      </div>
-
-      {/* Estado Actual - 'Respirando' justo encima del reloj */}
-      <div className={isActive ? 'animate-pulse-subtle' : ''} style={{ 
-        background: isActive ? color : 'rgba(255,255,255,0.05)', 
-        color: isActive ? '#000' : 'var(--text-secondary)', 
-        padding: '6px 20px', 
-        borderRadius: 'var(--radius-full)', 
-        fontSize: '0.7rem', 
-        fontFamily: 'var(--font-display)', 
-        fontWeight: 950, 
-        letterSpacing: '0.25em', 
-        marginBottom: '-4px', 
-        textTransform: 'uppercase',
-        border: isActive ? `1.5px solid ${color}` : '1px solid var(--border-glass-top)',
-        boxShadow: isActive ? `0 0 20px ${color}` : 'none',
-        transition: 'all 0.5s var(--ease-out-expo)',
-        transform: isActive ? 'scale(1.02)' : 'scale(1)',
-        zIndex: 10,
-        backdropFilter: 'blur(8px)',
-        animation: isActive ? 'pulseSubtle 2s ease-in-out infinite' : 'none'
-      }}>
-        {isActive ? t.activeStatus : (isEditing ? 'EDITANDO' : t.pausedStatus)}
-      </div>
-
-      {/* Área del Reloj Activo - Espaciado Garantizado */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', width: '100%' }}>
+      {/* ─── CENTRO: Estado + Reloj + Controles ─── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', minHeight: 0 }}>
         
-        {/* Reloj de Arena (Hourglass) */}
-        <div 
-          className={isActive ? 'animate-pulse-subtle' : ''} 
-          style={{ 
-            position: 'relative', 
-            width: '260px', 
-            height: '320px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            transition: 'all 0.8s var(--ease-out-quint)'
-          }}
-        >
-          <svg width="240" height="320" viewBox="0 0 240 320" style={{ position: 'absolute', inset: 0, filter: `drop-shadow(0 0 15px ${color})` }}>
+        {/* Estado */}
+        <div className={isActive ? 'animate-pulse-subtle' : ''} style={{ 
+          background: isActive ? color : 'rgba(255,255,255,0.05)', 
+          color: isActive ? '#000' : 'var(--text-secondary)', 
+          padding: '4px 16px', borderRadius: 'var(--radius-full)', 
+          fontSize: '0.6rem', fontFamily: 'var(--font-display)', fontWeight: 950, letterSpacing: '0.25em', 
+          textTransform: 'uppercase',
+          border: isActive ? `1.5px solid ${color}` : '1px solid var(--border-glass-top)',
+          boxShadow: isActive ? `0 0 14px ${color}` : 'none',
+          transition: 'all 0.5s var(--ease-out-expo)',
+          backdropFilter: 'blur(8px)',
+        }}>
+          {isActive ? t.activeStatus : (isEditing ? 'EDITANDO' : t.pausedStatus)}
+        </div>
+
+        {/* Reloj */}
+        <div className={isActive ? 'animate-pulse-subtle' : ''} style={{ 
+          position: 'relative', width: 'min(200px, 30vh)', height: 'min(250px, 38vh)', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.8s var(--ease-out-quint)'
+        }}>
+          <svg viewBox="0 0 240 320" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', filter: `drop-shadow(0 0 10px ${color})` }}>
             <defs>
-              <clipPath id="topClip">
-                <rect x="0" y={20 + (130 * (progress / 100))} width="240" height={130 * (1 - (progress / 100))} />
-              </clipPath>
-              <clipPath id="bottomClip">
-                <rect x="0" y={290 - (130 * (progress / 100))} width="240" height={130 * (progress / 100)} />
-              </clipPath>
+              <clipPath id="topClip"><rect x="0" y={20 + (130 * (progress / 100))} width="240" height={130 * (1 - (progress / 100))} /></clipPath>
+              <clipPath id="bottomClip"><rect x="0" y={290 - (130 * (progress / 100))} width="240" height={130 * (progress / 100)} /></clipPath>
             </defs>
-            <path d="M 40,30 L 200,30 C 200,100 150,140 120,160 C 90,140 40,100 40,30 Z" stroke={color} strokeWidth="4" fill="none" opacity="0.25" strokeLinejoin="round" />
-            <path d="M 120,160 C 90,180 40,220 40,290 L 200,290 C 200,220 150,180 120,160 Z" stroke={color} strokeWidth="4" fill="none" opacity="0.25" strokeLinejoin="round" />
+            <path d="M 40,30 L 200,30 C 200,100 150,140 120,160 C 90,140 40,100 40,30 Z" stroke={color} strokeWidth="3" fill="none" opacity="0.25" strokeLinejoin="round" />
+            <path d="M 120,160 C 90,180 40,220 40,290 L 200,290 C 200,220 150,180 120,160 Z" stroke={color} strokeWidth="3" fill="none" opacity="0.25" strokeLinejoin="round" />
             <path d="M 40,30 L 200,30 C 200,100 150,140 120,160 C 90,140 40,100 40,30 Z" stroke={color} strokeWidth="1" fill="rgba(255,255,255,0.02)" strokeLinejoin="round" />
             <path d="M 120,160 C 90,180 40,220 40,290 L 200,290 C 200,220 150,180 120,160 Z" stroke={color} strokeWidth="1" fill="rgba(255,255,255,0.02)" strokeLinejoin="round" />
             <path clipPath="url(#topClip)" d="M 40,30 L 200,30 C 200,100 150,140 120,160 C 90,140 40,100 40,30 Z" fill={color} opacity="0.9" style={{ transition: 'all 1s linear' }} />
@@ -396,21 +301,20 @@ const Pomodoro = () => {
             {isActive && progress < 100 && (
               <line x1="120" y1="160" x2="120" y2={290 - (130 * (progress / 100))} stroke={color} strokeWidth="2" strokeDasharray="4 4" className="falling-sand" style={{ transition: 'y2 1s linear' }} />
             )}
-            <line x1="30" y1="30" x2="210" y2="30" stroke={color} strokeWidth="6" strokeLinecap="round" />
-            <line x1="30" y1="290" x2="210" y2="290" stroke={color} strokeWidth="6" strokeLinecap="round" />
+            <line x1="30" y1="30" x2="210" y2="30" stroke={color} strokeWidth="5" strokeLinecap="round" />
+            <line x1="30" y1="290" x2="210" y2="290" stroke={color} strokeWidth="5" strokeLinecap="round" />
           </svg>
-
-          <div style={{ zIndex: 2, background: 'var(--bg-glass)', padding: '12px 28px', borderRadius: '20px', border: `1px solid ${color}44`, backdropFilter: 'blur(8px)', boxShadow: `0 4px 20px rgba(0,0,0,0.1), inset 0 0 10px ${color}11` }}>
+          <div style={{ zIndex: 2, background: 'var(--bg-glass)', padding: '8px 20px', borderRadius: '16px', border: `1px solid ${color}44`, backdropFilter: 'blur(8px)' }}>
             {isEditing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input type="number" value={editMinutes} onChange={(e) => setEditMinutes(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                  style={{ width: '80px', background: 'transparent', border: 'none', borderBottom: `2px solid ${color}`, color: '#fff', fontSize: '3rem', fontFamily: 'var(--font-display)', fontWeight: 800, textAlign: 'center', outline: 'none' }}
+                  style={{ width: '60px', background: 'transparent', border: 'none', borderBottom: `2px solid ${color}`, color: '#fff', fontSize: '2.2rem', fontFamily: 'var(--font-display)', fontWeight: 800, textAlign: 'center', outline: 'none' }}
                   autoFocus min="1" max="120" />
-                <span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-display)', fontWeight: 600 }}>min</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-display)', fontWeight: 600 }}>min</span>
               </div>
             ) : (
               <button onClick={startEdit} style={{ background: 'transparent', border: 'none', cursor: 'pointer', outline: 'none', padding: 0 }} title="Click para editar tiempo">
-                <span style={{ fontSize: '4.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '4px', color: '#fff', textShadow: `0 0 20px ${color}` }}>
+                <span style={{ fontSize: 'clamp(2rem, 5vh, 3.2rem)', fontWeight: 800, fontFamily: 'var(--font-display)', letterSpacing: '3px', color: '#fff', textShadow: `0 0 12px ${color}` }}>
                   {String(minutes).padStart(2, '0')}
                   <span style={{ opacity: isActive ? 1 : 0.5, animation: isActive ? 'blink 2s infinite' : 'none' }}>:</span>
                   {String(seconds).padStart(2, '0')}
@@ -420,60 +324,33 @@ const Pomodoro = () => {
           </div>
         </div>
 
-        {/* Controles Principales */}
-        <div style={{ position: 'relative', width: '280px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px' }}>
-          <button 
-            className="btn-icon click-press" 
-            onClick={resetTimer} 
-            aria-label="Reiniciar" 
-            title="Reiniciar" 
-            style={{ 
-              position: 'absolute', left: '20px', width: '50px', height: '50px', 
-              background: 'var(--bg-glass)',
-              border: `1px solid var(--border-glass-top)`,
-              borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.4s var(--ease-out-expo)',
-              boxShadow: `0 4px 15px rgba(0,0,0,0.1), inset 0 0 8px rgba(255,255,255,0.05)`,
-              zIndex: 15,
-              cursor: 'pointer',
-              padding: 0,
-              outline: 'none',
-              backdropFilter: 'blur(8px)'
-            }}
-            onMouseOver={e => { e.currentTarget.style.boxShadow = `0 6px 20px rgba(0,0,0,0.15), inset 0 0 12px rgba(255,255,255,0.08)`; e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.border = `1px solid ${color}55`; }}
-            onMouseOut={e => { e.currentTarget.style.boxShadow = `0 4px 15px rgba(0,0,0,0.1), inset 0 0 8px rgba(255,255,255,0.05)`; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.border = `1px solid var(--border-glass-top)`; }}
-          >
-            <RotateCcw size={20} style={{ color: 'var(--text-secondary)' }} />
+        {/* Controles */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: '0 auto' }}>
+          <button className="btn-icon click-press" onClick={resetTimer} aria-label="Reiniciar" title="Reiniciar" style={{ 
+            width: '44px', height: '44px', background: 'var(--bg-glass)', border: '1px solid var(--border-glass-top)',
+            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', padding: 0, outline: 'none', backdropFilter: 'blur(8px)',
+            transition: 'all 0.3s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}>
+            <RotateCcw size={18} style={{ color: 'var(--text-secondary)' }} />
           </button>
-
-          <button 
-            onClick={toggleTimer} 
-            aria-label={isActive ? 'Pausar' : 'Iniciar'} 
-            className="click-press"
-            style={{
-              width: '80px', height: '80px', borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: isActive ? 'var(--bg-glass)' : color,
-              color: isActive ? color : '#000',
-              border: isActive ? `2px solid ${color}` : `1px solid ${color}`,
-              boxShadow: isActive ? `0 0 30px ${color}33, inset 0 0 20px ${color}22` : `0 10px 30px ${color}55`,
-              cursor: 'pointer',
-              transition: 'all 0.5s var(--ease-out-expo)',
-              outline: 'none',
-              zIndex: 20,
-              backdropFilter: isActive ? 'blur(10px)' : 'none'
-            }}
-            onMouseOver={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = isActive ? `0 0 40px ${color}55, inset 0 0 25px ${color}33` : `0 15px 40px ${color}77`; }}
-            onMouseOut={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = isActive ? `0 0 30px ${color}33, inset 0 0 20px ${color}22` : `0 10px 30px ${color}55`; }}
-          >
-            {isActive ? <Pause size={34} /> : <Play size={34} style={{ marginLeft: '4px' }} />}
+          <button onClick={toggleTimer} aria-label={isActive ? 'Pausar' : 'Iniciar'} className="click-press" style={{
+            width: '64px', height: '64px', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: isActive ? 'var(--bg-glass)' : color,
+            color: isActive ? color : '#000',
+            border: isActive ? `2px solid ${color}` : '1px solid transparent',
+            boxShadow: isActive ? `0 0 20px ${color}44` : `0 8px 20px ${color}55`,
+            cursor: 'pointer', transition: 'all 0.5s var(--ease-out-expo)', outline: 'none',
+            backdropFilter: isActive ? 'blur(10px)' : 'none'
+          }}>
+            {isActive ? <Pause size={26} /> : <Play size={26} style={{ marginLeft: '3px' }} />}
           </button>
         </div>
       </div>
 
-      {/* Contenedor de Widgets Inferiores */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', width: '100%', maxWidth: '800px', justifyContent: 'center', marginTop: '20px' }}>
+      {/* ─── FILA INFERIOR: Objetivo (izq) + Ambiente Sonoro (der) ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'clamp(12px, 2vw, 24px)', alignItems: 'start' }}>
         
         {/* Widget Objetivo de Estudio */}
         <div className="glass-panel" style={{
@@ -548,17 +425,16 @@ const Pomodoro = () => {
 
                 {isTaskDropdownOpen && (
                   <div className="animate-fade-in" style={{
-                    marginTop: '8px',
-                    // Siempre 'relative' (nunca 'absolute'): así el desplegable empuja el widget
-                    // de Ambiente Sonoro hacia abajo en vez de flotar encima y tapándolo. Esto no
-                    // depende de detectar el tamaño de pantalla, funciona igual en cualquier viewport.
-                    position: 'relative',
-                    width: '100%',
-                    zIndex: 60,
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: 0,
+                    right: 0,
+                    marginBottom: '6px',
+                    zIndex: 10000,
                     background: 'rgba(8, 10, 18, 0.98)', backdropFilter: 'blur(20px) saturate(180%)',
                     WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(0, 243, 255, 0.3)', 
-                    borderRadius: 'var(--radius-md)', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 12px rgba(0, 243, 255, 0.06)',
-                    padding: '6px', maxHeight: 'min(260px, 45vh)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px'
+                    borderRadius: 'var(--radius-md)', boxShadow: '0 -12px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 12px rgba(0, 243, 255, 0.06)',
+                    padding: '6px', maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px'
                   }}>
                     {pendingTasks.length === 0 ? (
                       <div style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -569,7 +445,7 @@ const Pomodoro = () => {
                         <button
                           onClick={() => { setSelectedTaskId(''); setIsTaskDropdownOpen(false); }}
                           style={{
-                            width: '100%', padding: '12px 14px', border: 'none', borderRadius: '8px',
+                            width: '100%', padding: '12px 14px', borderRadius: '8px',
                             background: selectedTaskId === '' ? 'rgba(0, 243, 255, 0.14)' : 'transparent',
                             color: selectedTaskId === '' ? '#00f3ff' : 'rgba(255, 255, 255, 0.75)',
                             fontSize: '0.88rem', fontFamily: 'var(--font-body)', fontWeight: selectedTaskId === '' ? 800 : 600,
@@ -589,7 +465,7 @@ const Pomodoro = () => {
                             key={t.id}
                             onClick={() => { setSelectedTaskId(t.id); setIsTaskDropdownOpen(false); }}
                             style={{
-                              width: '100%', padding: '12px 14px', border: 'none', borderRadius: '8px',
+                              width: '100%', padding: '12px 14px', borderRadius: '8px',
                               background: selectedTaskId === t.id ? 'rgba(0, 243, 255, 0.14)' : 'transparent',
                               color: selectedTaskId === t.id ? '#ffffff' : 'var(--text-primary)',
                               cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
@@ -657,16 +533,15 @@ const Pomodoro = () => {
 
         {/* Widget de Ambiente Sonoro */}
         <div className="glass-panel ambient-widget" style={{
-          padding: '24px', 
+          padding: '20px', 
           borderRadius: 'var(--radius-lg)', 
           display: 'flex', 
           flexDirection: 'column', 
-          gap: '16px', 
+          gap: '14px', 
           width: '100%',
-          maxWidth: '380px', 
           background: 'var(--bg-glass)',
           border: '1px solid var(--border-glass-top)',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           position: 'relative'
         }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, var(--accent-primary), transparent)', opacity: 0.4, borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)' }} />
@@ -731,18 +606,20 @@ const Pomodoro = () => {
 
           {isSoundDropdownOpen && (
             <div className="animate-fade-in" style={{
-              marginTop: '8px',
-              position: 'relative',
-              width: '100%',
-              zIndex: 60,
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              right: 0,
+              marginBottom: '6px',
+              zIndex: 10000,
               background: 'rgba(8, 10, 18, 0.98)',
               backdropFilter: 'blur(20px) saturate(180%)',
               WebkitBackdropFilter: 'blur(20px) saturate(180%)',
               border: '1px solid rgba(0, 243, 255, 0.3)',
               borderRadius: 'var(--radius-md)',
-              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 12px rgba(0, 243, 255, 0.06)',
+              boxShadow: '0 -12px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 12px rgba(0, 243, 255, 0.06)',
               padding: '6px',
-              maxHeight: 'min(260px, 45vh)',
+              maxHeight: '200px',
               overflowY: 'auto'
             }}>
               {/* Sin Sonido */}
@@ -834,8 +711,7 @@ const Pomodoro = () => {
           />
         )}
       </div>
-
-      </div> {/* Fin del contenedor de widgets */}
+      </div> {/* Fin fila inferior */}
 
     </div>
   );

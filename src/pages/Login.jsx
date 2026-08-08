@@ -121,7 +121,7 @@ const Login = () => {
           width: '64px', height: '64px',
           background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
           borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 24px', boxShadow: '0 8px 16px rgba(0, 122, 255, 0.3)'
+          margin: '0 auto 24px', boxShadow: '0 8px 16px rgba(0, 243, 255, 0.3)'
         }}>
           <GraduationCap size={32} color="white" />
         </div>
