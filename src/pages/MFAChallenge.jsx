@@ -11,7 +11,7 @@ const MFAChallenge = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [successShow, setSuccessShow] = useState(false);
+  
 
   useEffect(() => {
     // Si no hay usuario, ir a login
@@ -76,7 +76,7 @@ const MFAChallenge = () => {
       if (challengeError) throw challengeError;
 
       // Verificar el código contra el challenge
-      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
+      const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: totpFactor.id,
         challengeId: challengeData.id,
         code
@@ -103,7 +103,7 @@ const MFAChallenge = () => {
       }
       
       setSuccess('¡Verificación exitosa!');
-      setSuccessShow(true);
+      
       
       // Navegar al dashboard después de que TODO se actualice
       console.log('[MFA] Navegando a / después de verificar AAL2');

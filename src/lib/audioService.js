@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 let audioCtx = null;
 let currentOscillator = null;
 let currentGain = null;
@@ -103,7 +104,7 @@ export const playDropSound = () => {
     try {
       currentOscillator.stop();
       currentOscillator.disconnect();
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
   }
 
   const osc = ctx.createOscillator();

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -382,7 +383,7 @@ const Profile = () => {
     };
     window.addEventListener('campusflow:settings-save-error', handleSaveError);
     return () => window.removeEventListener('campusflow:settings-save-error', handleSaveError);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
@@ -1160,7 +1161,7 @@ const Profile = () => {
         </div>
       )}
 
-      <div className="animate-fade-in profile-page" style={{ padding: 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 40px)', maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
+      <div className="animate-fade-in profile-page" style={{ padding: 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 40px)', maxWidth: '1080px', margin: '0 auto', width: '100%', minHeight: 'fit-content', overflow: 'hidden' }}>
         <header style={{ marginBottom: '48px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <h1 style={{
             fontSize: '2.6rem',

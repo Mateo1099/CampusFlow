@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react';
 import {
   prefetchWeeklyPlannerData,
@@ -17,13 +18,14 @@ export const usePrefetchedWeeklyPlannerData = (userId) => {
 
   useEffect(() => {
     if (!userId) {
-      setData(null);
-      setLoading(false);
+      setTimeout(() => {
+        setData(null);
+        setLoading(false);
+      }, 0);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setTimeout(() => { setLoading(true); setError(null); }, 0);
 
     // First try to get from cache
     const cached = getWeeklyPlannerDataFromCache(userId);

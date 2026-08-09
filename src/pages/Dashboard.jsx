@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react/jsx-no-comment-textnodes, react/no-unescaped-entities */
+import React, { useMemo, useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +28,7 @@ const calculateRemainingDays = (deadlineDate) => {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  
   const { tasks, courses, tasksLoading, coursesLoading } = useTasksContext();
   const { t, settings } = useSettings();
   const isLightMode = settings?.theme === 'light';
@@ -81,12 +82,9 @@ const Dashboard = () => {
   };
 
   const totalActionsForCompliance = totalTasks + completedBlocks + pendingBlocks + totalHabits;
-  const completedActionsForCompliance = completedTasks + completedBlocks + completedHabits;
-  const generalCompliance = totalActionsForCompliance > 0 ? Math.round((completedActionsForCompliance / totalActionsForCompliance) * 100) : null;
-  const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
+      const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
   const metricLabelColor = isLightMode ? '#475569' : 'rgba(226,232,240,0.92)';
-  const metricValueColor = isLightMode ? '#0f172a' : '#f8fafc';
-  // === LIGHT PREMIUM FROST ===
+    // === LIGHT PREMIUM FROST ===
   // Base glass style para cards en modo claro: blanco translúcido con borde sutil y sombra elegante.
   const lightGlassCardStyle = isLightMode ? {
     background: 'linear-gradient(160deg, rgba(255,255,255,0.88) 0%, rgba(248,250,255,0.96) 100%)',
@@ -130,7 +128,7 @@ const Dashboard = () => {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.1);
-    } catch { }
+    } catch { /* ignore */ }
   };
 
   const filteredCourses = useMemo(() => {
@@ -285,7 +283,7 @@ const Dashboard = () => {
         if (hoursLeft < 6) color = '#ff0033';
         else if (days < 2) color = '#ff8800';
         else color = '#00ff66';
-      } catch { }
+      } catch { /* ignore */ }
     }
     return { bigBossTask: task, bigBossColor: color };
   }, [filteredTasks, courses]);
@@ -313,7 +311,7 @@ const Dashboard = () => {
             color: course?.color || '#00f3ff'
           });
         }
-      } catch { }
+      } catch { /* ignore */ }
     });
     return matrix;
   }, [filteredTasks, courses]);

@@ -242,7 +242,12 @@ function CustomSelect({ value, onChange, options, placeholder, accentColor = 'va
 
 // --- MAIN ENTRANCE ---
 function WeeklyPlanner() {
-  const plannerMountTsRef = React.useRef(performance.now());
+  const plannerMountTsRef = React.useRef(null);
+  useEffect(() => {
+    if (plannerMountTsRef.current === null) {
+      plannerMountTsRef.current = performance.now();
+    }
+  }, []);
   const plannerFetchStartTsRef = React.useRef(null);
   const plannerRealContentLoggedRef = React.useRef(false);
 
@@ -646,7 +651,7 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
           }}
         >
           <AnimatePresence mode="popLayout">
-            {filteredPlanners.map((planner, index) => {
+            {filteredPlanners.map((planner) => {
               const blocks = planner.planner_blocks || [];
               const completed = blocks.filter(b => b.status === 'completado').length;
               const progress = blocks.length ? Math.round((completed / blocks.length) * 100) : 0;
@@ -789,10 +794,12 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
 
   const blocks = planner.planner_blocks || [];
 
-  useEffect(() => {
+  const [prevPlannerId, setPrevPlannerId] = useState(planner.id);
+  if (planner.id !== prevPlannerId) {
+    setPrevPlannerId(planner.id);
     setExpandedBlockIds(new Set());
     setExpandedSections(new Set());
-  }, [planner.id]);
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
@@ -881,6 +888,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
       }
     });
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks]);
 
   return (
@@ -1199,7 +1207,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                       </div>
 
                       <AnimatePresence initial={false} mode="popLayout">
-                        {visibleBlocks.map((b, blockIndex) => {
+                        {visibleBlocks.map((b) => {
                           const accent = getBlockAccent(b);
                           const statusTone = getStatusTone(b.status);
                           const isExpanded = expandedBlockIds.has(b.id);
@@ -1661,7 +1669,10 @@ function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', co
     status: 'pendiente'
   });
 
-  useEffect(() => {
+  const [prevBlockId, setPrevBlockId] = useState(initialBlock?.id);
+  
+  if (initialBlock?.id !== prevBlockId) {
+    setPrevBlockId(initialBlock?.id);
     if (initialBlock) {
       setFormData({
         day: initialBlock.day || initialDay || 'monday',
@@ -1674,21 +1685,20 @@ function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', co
         notes: initialBlock.notes || '',
         status: initialBlock.status || 'pendiente'
       });
-      return;
+    } else {
+      setFormData({
+        day: initialDay || 'monday',
+        block_time: initialTime || 'morning',
+        title: '',
+        block_type: 'libre',
+        course_id: '',
+        task_id: '',
+        duration_minutes: '',
+        notes: '',
+        status: 'pendiente'
+      });
     }
-
-    setFormData({
-      day: initialDay || 'monday',
-      block_time: initialTime || 'morning',
-      title: '',
-      block_type: 'libre',
-      course_id: '',
-      task_id: '',
-      duration_minutes: '',
-      notes: '',
-      status: 'pendiente'
-    });
-  }, [initialBlock, initialDay, initialTime, mode]);
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();

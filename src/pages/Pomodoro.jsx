@@ -15,8 +15,8 @@ const STUDY_METHODS = {
     defaultMode: 'focus',
     modes: {
       focus: { labelKey: 'focusMode', color: 'var(--accent-primary)', defaultTime: 25 * 60 },
-      shortBreak: { labelKey: 'shortBreak', color: 'var(--accent-lime)', defaultTime: 5 * 60 },
-      longBreak: { labelKey: 'longBreak', color: 'var(--accent-secondary)', defaultTime: 15 * 60 },
+      shortBreak: { labelKey: 'shortBreak', color: '#10b981', defaultTime: 5 * 60 },
+      longBreak: { labelKey: 'longBreak', color: '#8b5cf6', defaultTime: 15 * 60 },
     }
   },
   deepWork: {
@@ -27,7 +27,7 @@ const STUDY_METHODS = {
     defaultMode: 'focus',
     modes: {
       focus: { labelKey: 'focusMode', color: 'var(--accent-primary)', defaultTime: 50 * 60 },
-      break: { labelKey: 'shortBreak', labelOverride: 'Descanso', color: 'var(--accent-lime)', defaultTime: 10 * 60 },
+      break: { labelKey: 'shortBreak', labelOverride: 'Descanso', color: '#10b981', defaultTime: 10 * 60 },
     }
   }
 };
@@ -133,40 +133,42 @@ const Pomodoro = () => {
         window.removeEventListener('focus', tick);
       };
     } else if (timeLeft === 0 && isActive) {
-      endTimeRef.current = null;
-      setIsActive(false);
-      
-      if (mode === 'focus') {
-        addXP(50);
-        incrementStat('pomodorosCompleted');
-      }
-      
-      // Sonido de campana: se reproduce vía Web Audio API, que sigue activo
-      // aunque la pestaña esté minimizada o en segundo plano (a diferencia de
-      // un <audio> que algunos navegadores pueden pausar). resumeAudio()
-      // se llama primero porque Chrome suspende el AudioContext hasta el
-      // primer gesto del usuario; Layout.jsx ya captura ese primer gesto,
-      // pero esto blinda el caso de que el contexto se haya suspendido
-      // igual (p. ej. al volver de segundo plano en algunos navegadores).
-      resumeAudio();
-      try {
-        playPhaseCompleteChime();
-      } catch (err) {
-        console.error('No se pudo reproducir la campana de fin de fase:', err);
-      }
+      setTimeout(() => {
+        endTimeRef.current = null;
+        setIsActive(false);
+        
+        if (mode === 'focus') {
+          addXP(50);
+          incrementStat('pomodorosCompleted');
+        }
+        
+        // Sonido de campana: se reproduce vía Web Audio API, que sigue activo
+        // aunque la pestaña esté minimizada o en segundo plano (a diferencia de
+        // un <audio> que algunos navegadores pueden pausar). resumeAudio()
+        // se llama primero porque Chrome suspende el AudioContext hasta el
+        // primer gesto del usuario; Layout.jsx ya captura ese primer gesto,
+        // pero esto blinda el caso de que el contexto se haya suspendido
+        // igual (p. ej. al volver de segundo plano en algunos navegadores).
+        resumeAudio();
+        try {
+          playPhaseCompleteChime();
+        } catch (err) {
+          console.error('No se pudo reproducir la campana de fin de fase:', err);
+        }
 
-      // Notificación del sistema operativo: se sigue viendo/oyendo aunque el
-      // usuario esté en otra app (Word, Excel, etc.) porque la gestiona el OS,
-      // no la pestaña del navegador. Requiere permiso ya concedido (ver
-      // efecto de abajo) y que el navegador no esté completamente cerrado.
-      if (Notification.permission === 'granted') {
-        new Notification('¡Fase completada!', {
-          body: t[modeConfig[mode].labelKey],
-          icon: '/favicon.svg',
-          tag: 'campusflow-pomodoro-phase',
-          silent: false
-        });
-      }
+        // Notificación del sistema operativo: se sigue viendo/oyendo aunque el
+        // usuario esté en otra app (Word, Excel, etc.) porque la gestiona el OS,
+        // no la pestaña del navegador. Requiere permiso ya concedido (ver
+        // efecto de abajo) y que el navegador no esté completamente cerrado.
+        if (Notification.permission === 'granted') {
+          new Notification('¡Fase completada!', {
+            body: t[modeConfig[mode].labelKey],
+            icon: '/favicon.svg',
+            tag: 'campusflow-pomodoro-phase',
+            silent: false
+          });
+        }
+      }, 0);
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft, mode, t, addXP, incrementStat, modeConfig]);
@@ -187,7 +189,7 @@ const Pomodoro = () => {
         audioRef.current.play().catch(e => console.log('Autoplay blocked', e));
       }
     }
-  }, [ambientSound, customAudioUrl]);
+  }, [ambientSound, customAudioUrl, isActive]);
 
   // Controlar reproductor al pausar/despausar el pomodoro
   useEffect(() => {
@@ -198,7 +200,7 @@ const Pomodoro = () => {
         audioRef.current.pause();
       }
     }
-  }, [isActive]);
+  }, [isActive, ambientSound]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -414,7 +416,7 @@ const Pomodoro = () => {
             cursor: 'pointer', transition: 'all 0.5s var(--ease-out-expo)', outline: 'none',
             backdropFilter: isActive ? 'blur(10px)' : 'none'
           }}>
-            {isActive ? <Pause size={26} /> : <Play size={26} style={{ marginLeft: '3px' }} />}
+            {isActive ? <Pause size={26} /> : <Play size={26} style={{ transform: 'translateX(2px)' }} />}
           </button>
         </div>
       </div>

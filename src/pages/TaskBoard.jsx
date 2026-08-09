@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+/* eslint-disable no-unused-vars, react/jsx-no-comment-textnodes */
+import React, { useState, useRef, useMemo } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
-import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -181,7 +182,7 @@ const TaskBoard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
-  const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '' });
+  const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' });
   const [activePicker, setActivePicker] = useState(null);
   const [currentFilter, setCurrentFilter] = useState('TODAS');
   const [currentSort, setCurrentSort] = useState('RECIENTES');
@@ -284,7 +285,7 @@ const TaskBoard = () => {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.15);
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   const handleDragEnd = async (task, info) => {
@@ -310,7 +311,8 @@ const TaskBoard = () => {
       title: task.title, 
       courseId: task.course_id || '', 
       startDate: task.start_date ? task.start_date.split('T')[0] : '', 
-      dueDate: (task.deadline || task.due_date) ? (task.deadline || task.due_date).split('T')[0] : ''
+      dueDate: (task.deadline || task.due_date) ? (task.deadline || task.due_date).split('T')[0] : '',
+      deadlineTime: (task.deadline_time || task.deadline || task.due_date)?.includes('T') ? (task.deadline_time || task.deadline || task.due_date).split('T')[1].substring(0, 5) : '23:59'
     });
     setEditingTaskId(task.id);
     setIsEditing(true);
@@ -321,21 +323,22 @@ const TaskBoard = () => {
     e.preventDefault();
     if (!formData.title || !formData.courseId) return;
 
-    // Validación y formateo de fechas a ISO (YYYY-MM-DD)
-    const formatDateToISO = (dateStr) => {
+    // Validación y formateo de fechas a ISO (YYYY-MM-DDTHH:mm:ss)
+    const formatDateToISO = (dateStr, timeStr = '00:00') => {
       if (!dateStr) return null;
       const datePart = typeof dateStr === 'string' ? dateStr.split(/[T ]/)[0] : '';
       if (!datePart) return null;
-      const d = new Date(`${datePart}T00:00:00`);
+      const d = new Date(`${datePart}T${timeStr}:00`);
       if (isNaN(d.getTime())) return null;
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${timeStr}:00`;
     };
 
     const taskData = { 
       title: formData.title, 
       course_id: formData.courseId, // ASEGURAR UUID DE MATERIA
       start_date: formatDateToISO(formData.startDate), 
-      deadline: formatDateToISO(formData.dueDate)
+      deadline: formatDateToISO(formData.dueDate, formData.deadlineTime || '23:59'),
+      deadline_time: formatDateToISO(formData.dueDate, formData.deadlineTime || '23:59')
     };
 
     // ALFA_DEBUG: Verificación de integridad de datos antes del envío
@@ -348,7 +351,7 @@ const TaskBoard = () => {
         await addTask({ ...taskData, status: 'sin entregar' });
       }
       handleClose();
-      setFormData({ title: '', courseId: '', startDate: '', dueDate: '' });
+      setFormData({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' });
     } catch (err) { 
       console.error("ALFA_SAVE_ERROR:", err); 
     }
@@ -365,7 +368,7 @@ const TaskBoard = () => {
         <button 
           ref={btnNewRef} 
           className="click-press" 
-          onClick={() => { setIsEditing(false); setFormData({ title: '', courseId: '', startDate: '', dueDate: '' }); setShowModal(true); }} 
+          onClick={() => { setIsEditing(false); setFormData({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' }); setShowModal(true); }} 
           style={{ 
             padding: '10px 28px', 
             fontWeight: 700, 
@@ -480,12 +483,13 @@ const TaskBoard = () => {
       </div>
 
       <div style={{
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        gap: isMobile ? '20px' : 'clamp(16px, 2.5vw, 32px)',
+        display: isMobile ? 'flex' : 'grid',
+        flexDirection: isMobile ? 'column' : undefined,
+        gridTemplateColumns: isMobile ? undefined : 'repeat(4, minmax(0, 1fr))',
+        gap: isMobile ? '20px' : 'clamp(12px, 1.5vw, 24px)',
         flex: isMobile ? 'none' : 1,
         paddingBottom: '24px',
-        minWidth: isMobile ? '0' : 'fit-content'
+        width: '100%'
       }}>
         {COLUMNS.map(col => {
           const colTasks = filteredTasks.filter(t => t.status === col.id);
@@ -494,10 +498,9 @@ const TaskBoard = () => {
               key={col.id}
               ref={el => columnRefs.current[col.id] = el}
               style={{
-                flex: isMobile ? 'none' : '1',
-                minWidth: isMobile ? '100%' : '300px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                minWidth: 0
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderBottom: `2px solid ${col.accent}`, marginBottom: isMobile ? '10px' : '20px' }}>
@@ -550,8 +553,7 @@ const TaskBoard = () => {
                 position: 'relative',
                 zIndex: 10000,
                 boxShadow: '0 20px 50px rgba(0,0,0,0.4), 0 0 20px rgba(0, 243, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.05)',
-                maxHeight: '85vh',
-                overflowY: 'auto'
+                overflow: 'visible'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'clamp(20px, 4vw, 32px)', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -585,7 +587,7 @@ const TaskBoard = () => {
                 placeholder="Selecciona materia..."
                 required
               />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px' }}>
                 {/* FECHA INICIO */}
                 <div>
                   <label style={{ 
@@ -646,6 +648,25 @@ const TaskBoard = () => {
                     <CalendarIcon size={16} color="#00f3ff" style={{ flexShrink: 0, marginLeft: '8px' }} />
                   </div>
                 </div>
+
+                {/* HORA LÍMITE */}
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.65rem', 
+                    fontWeight: 800, 
+                    color: '#00f3ff', 
+                    marginBottom: '6px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em'
+                  }}>
+                    HORA LÍMITE
+                  </label>
+                  <CustomTimePicker 
+                    value={formData.deadlineTime || '23:59'} 
+                    onChange={(val) => setFormData({ ...formData, deadlineTime: val })} 
+                  />
+                </div>
               </div>
               {activePicker && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10002 }}><CustomCalendar selectedDate={activePicker === 'start' ? formData.startDate : formData.dueDate} onDateSelect={(d) => { setFormData({ ...formData, [activePicker === 'start' ? 'startDate' : 'dueDate']: d.split('T')[0] }); setActivePicker(null); }} onClose={() => setActivePicker(null)} /></div>}
               <div style={{ display: 'flex', gap: 'clamp(12px, 2vw, 16px)', justifyContent: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
@@ -686,9 +707,13 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       type={type} 
       onClick={onClick} 
       disabled={disabled}
-      whileHover={!disabled ? { scale: 1.02, boxShadow: variant === 'save' ? '0 0 15px rgba(0, 243, 255, 0.3)' : '0 0 15px rgba(255, 77, 77, 0.2)' } : {}}
+      whileHover={!disabled ? { 
+        scale: 1.02, 
+        boxShadow: variant === 'save' ? '0 0 15px rgba(0, 242, 255, 0.5)' : '0 0 15px rgba(239, 68, 68, 0.5)',
+        borderColor: variant === 'save' ? 'rgba(0, 242, 255, 1)' : 'rgba(239, 68, 68, 1)'
+      } : {}}
       whileTap={!disabled ? { scale: 0.98 } : {}}
-      transition={{ hover: { duration: 0.2, ease: "easeOut" }, tap: { duration: 0.1 } }}
+      transition={{ hover: { duration: 0.3, ease: "easeOut" }, tap: { duration: 0.1 } }}
       style={{ 
         width: 'clamp(140px, 40vw, 180px)', 
         height: 'clamp(42px, 10vw, 48px)', 
@@ -798,5 +823,134 @@ function ConfirmDeleteModal({ onClose, onConfirm, title, message }) {
     </div>
   );
 }
+
+const CustomTimePicker = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const [hours, minutes] = (value || '23:59').split(':');
+
+  const handleHourClick = (h) => {
+    onChange(`${h.toString().padStart(2, '0')}:${minutes}`);
+  };
+
+  const handleMinuteClick = (m) => {
+    onChange(`${hours}:${m.toString().padStart(2, '0')}`);
+  };
+
+  return (
+    <div style={{ position: 'relative' }} ref={dropdownRef}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(255,255,255,0.03)', 
+          padding: '13px 12px', 
+          borderRadius: '10px', 
+          minWidth: 0,
+          border: '1px solid rgba(0, 243, 255, 0.2)',
+          cursor: 'pointer',
+          transition: 'border 0.3s'
+        }}
+      >
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+          {value || '23:59'}
+        </span>
+        <Clock size={16} color="#00f3ff" style={{ flexShrink: 0, marginLeft: '8px' }} />
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 5, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              width: '100%',
+              minWidth: '150px',
+              background: 'rgba(15, 23, 42, 0.95)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '12px',
+              border: '1px solid rgba(0, 243, 255, 0.3)',
+              padding: '12px',
+              zIndex: 1000,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(0, 243, 255, 0.1)',
+              display: 'flex',
+              gap: '8px',
+              height: '180px'
+            }}
+          >
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '4px' }} className="custom-scrollbar-mini">
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: '4px', fontWeight: 800 }}>HORA</div>
+              {Array.from({ length: 24 }, (_, i) => i).map(h => {
+                const isSelected = parseInt(hours) === h;
+                return (
+                  <div
+                    key={h}
+                    onClick={() => handleHourClick(h)}
+                    style={{
+                      padding: '6px',
+                      textAlign: 'center',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      background: isSelected ? 'rgba(0, 243, 255, 0.15)' : 'transparent',
+                      color: isSelected ? '#00f3ff' : 'var(--text-primary)',
+                      border: isSelected ? '1px solid rgba(0, 243, 255, 0.4)' : '1px solid transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {h.toString().padStart(2, '0')}
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px' }} className="custom-scrollbar-mini">
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: '4px', fontWeight: 800 }}>MINUTO</div>
+              {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 59].map(m => {
+                const isSelected = parseInt(minutes) === m;
+                return (
+                  <div
+                    key={m}
+                    onClick={() => { handleMinuteClick(m); setIsOpen(false); }}
+                    style={{
+                      padding: '6px',
+                      textAlign: 'center',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      background: isSelected ? 'rgba(0, 243, 255, 0.15)' : 'transparent',
+                      color: isSelected ? '#00f3ff' : 'var(--text-primary)',
+                      border: isSelected ? '1px solid rgba(0, 243, 255, 0.4)' : '1px solid transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {m.toString().padStart(2, '0')}
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export default TaskBoard;

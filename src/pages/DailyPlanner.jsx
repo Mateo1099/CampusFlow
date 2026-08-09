@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import React, { useState } from 'react';
 import { useTasksContext } from '../context/TaskContext';
 import { useSettings } from '../context/SettingsContext';

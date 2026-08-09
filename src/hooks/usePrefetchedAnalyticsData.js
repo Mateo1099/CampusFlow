@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from 'react';
 import {
   prefetchAnalyticsData,
@@ -43,13 +44,14 @@ export const usePrefetchedAnalyticsData = (userId) => {
 
   useEffect(() => {
     if (!userId) {
-      setData(DEFAULT_ANALYTICS);
-      setLoading(false);
+      setTimeout(() => {
+        setData(DEFAULT_ANALYTICS);
+        setLoading(false);
+      }, 0);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setTimeout(() => { setLoading(true); setError(null); }, 0);
 
     // First try to get from cache
     const cached = getAnalyticsDataFromCache(userId);

@@ -269,7 +269,9 @@ const Sidebar = () => {
         gap: isHorizontal ? '8px' : '6px', 
         flex: 1,
         minHeight: 0,
-        justifyContent: isHorizontal ? 'center' : 'flex-start'
+        overflowY: isHorizontal ? 'visible' : 'auto',
+        justifyContent: isHorizontal ? 'center' : 'space-evenly',
+        padding: isHorizontal ? '0' : '10px 0'
       }}>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '');
@@ -302,11 +304,10 @@ const Sidebar = () => {
               onFocus={handleMouseEnter}
               style={{
                 position: 'relative',
-                padding: isHorizontal ? '10px 16px' : '0 16px',
-                height: isHorizontal ? 'auto' : '44px',
-                minHeight: isHorizontal ? 'auto' : '44px',
+                padding: isHorizontal ? '10px 16px' : '14px 20px',
+                minHeight: isHorizontal ? 'auto' : '52px',
                 flexShrink: 0,
-                fontSize: isHorizontal ? '0.75rem' : '0.82rem',
+                fontSize: isHorizontal ? '0.75rem' : '0.9rem',
                 borderRadius: 'var(--radius-md)',
                 textDecoration: 'none',
                 display: 'flex',

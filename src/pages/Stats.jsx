@@ -1,6 +1,8 @@
 import React from 'react';
-import { useAnalytics } from '../hooks/useAnalytics';
+import { usePrefetchedAnalyticsData } from '../hooks/usePrefetchedAnalyticsData';
+import { useAuth } from '../context/AuthContext';
 import { BarChart3, CheckCircle2, Clock3, Sparkles, Sun, Sunset, Moon, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const weekDays = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
@@ -90,7 +92,12 @@ const MetricCardSkeleton = () => (
 );
 
 const Stats = React.memo(() => {
-  const statsMountTsRef = React.useRef(performance.now());
+  const statsMountTsRef = React.useRef(null);
+  React.useEffect(() => {
+    if (statsMountTsRef.current === null) {
+      statsMountTsRef.current = performance.now();
+    }
+  }, []);
   const statsRealContentLoggedRef = React.useRef(false);
 
   const perfLog = React.useCallback((event, payload = {}) => {
@@ -103,6 +110,8 @@ const Stats = React.memo(() => {
     console.log('[PERF]', entry);
   }, []);
 
+  const { user } = useAuth();
+  
   const {
     totalTasks,
     completedTasks,
@@ -118,7 +127,7 @@ const Stats = React.memo(() => {
     insights,
     recommendations,
     loading
-  } = useAnalytics();
+  } = usePrefetchedAnalyticsData(user?.id);
 
   const showPageSkeleton = loading;
 
@@ -149,8 +158,7 @@ const Stats = React.memo(() => {
 
   const totalBlocks = completedBlocks + pendingBlocks;
   const hasTasks = totalTasks > 0;
-  const hasHabits = totalHabits > 0;
-  const hasBlocks = totalBlocks > 0;
+    const hasBlocks = totalBlocks > 0;
   const hasWeeklyMinutes = safeMinutesByDay.some((minutes) => minutes > 0);
   const totalTimeDistribution = morningMinutes + afternoonMinutes + nightMinutes;
   const hasTimeDistribution = totalTimeDistribution > 0;
@@ -400,8 +408,7 @@ const Stats = React.memo(() => {
               {insights.slice(0, 3).map((insight, index) => {
                 const isWarning = insight.type === 'warning';
                 const isSuccess = insight.type === 'success';
-                const isInfo = insight.type === 'info';
-                
+                                
                 const iconColor = isWarning ? '#ffcc00' : isSuccess ? '#00ff66' : 'var(--accent-primary)';
                 const IconComponent = isWarning ? AlertTriangle : isSuccess ? CheckCircle2 : Info;
                 
@@ -470,8 +477,7 @@ const Stats = React.memo(() => {
               {recommendations.slice(0, 3).map((rec, index) => {
                 const isHigh = rec.priority === 'high';
                 const isMedium = rec.priority === 'medium';
-                const isLow = rec.priority === 'low';
-
+                
                 const priorityColor = isHigh ? '#ff6b6b' : isMedium ? '#ffcc00' : '#00ff66';
                 const priorityBg = isHigh ? 'rgba(255, 107, 107, 0.15)' : isMedium ? 'rgba(255, 204, 0, 0.15)' : 'rgba(0, 255, 102, 0.15)';
                 const priorityLabel = isHigh ? 'URGENTE' : isMedium ? 'MODERADA' : 'BAJA';

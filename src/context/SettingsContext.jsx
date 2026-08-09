@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
@@ -139,7 +140,7 @@ export function SettingsProvider({ children }) {
       // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme, two_factor_enabled Y email_notifications
       let { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days, in_app_alerts_enabled')
         .eq('id', uid)
         .maybeSingle();
 

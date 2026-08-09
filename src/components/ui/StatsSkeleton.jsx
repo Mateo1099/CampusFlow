@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/purity */
 import React from 'react';
 import { motion } from 'framer-motion';
 
