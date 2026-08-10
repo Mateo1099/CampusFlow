@@ -105,29 +105,40 @@ export const useAnalytics = (externalData) => {
 
     let isMounted = true;
     const fetchSnapshot = async () => {
-      const { supabase } = await import('./../lib/supabaseClient');
-      const startOfWeek = new Date();
-      startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
-      startOfWeek.setHours(0, 0, 0, 0);
-      const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
-      
-      const { data } = await supabase
-        .from('analytics_snapshots')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('period_type', 'weekly')
-        .gte('week_start_date', startOfWeekStr)
-        .order('snapshot_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      try {
+        const { supabase } = await import('./../lib/supabaseClient');
+        const startOfWeek = new Date();
+        startOfWeek.setDate(startOfWeek.getDate() - (startOfWeek.getDay() === 0 ? 6 : startOfWeek.getDay() - 1));
+        startOfWeek.setHours(0, 0, 0, 0);
+        const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+          .from('analytics_snapshots')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('period_type', 'weekly')
+          .gte('week_start_date', startOfWeekStr)
+          .order('snapshot_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (isMounted && data) {
-        const mapped = mapSnapshotToAnalytics(data);
-        if (mapped) {
-           
-          setAnalytics(mapped);
+        if (error) {
+          console.error('[USE_ANALYTICS] Error fetching snapshot:', error);
+        }
+
+        if (isMounted && data) {
+          const mapped = mapSnapshotToAnalytics(data);
+          if (mapped) {
+             
+            setAnalytics(mapped);
+            inMemoryAnalyticsCache.set(userId, mapped);
+          }
+        }
+      } catch (err) {
+        console.error('[USE_ANALYTICS] Exception fetching snapshot:', err);
+      } finally {
+        if (isMounted) {
           setLoading(false);
-          inMemoryAnalyticsCache.set(userId, mapped);
         }
       }
     };
@@ -152,20 +163,27 @@ export const useAnalytics = (externalData) => {
     fetchGuardRef.current = fetchId;
 
     const loadCoreData = async () => {
-      const [tasksRes, habitsRes, logsRes, plannersRes] = await Promise.all([
-        dataStoreService.getTasks(userId),
-        dataStoreService.getHabits(userId),
-        dataStoreService.getHabitLogs(userId),
-        dataStoreService.getPlanners(userId)
-      ]);
-      
-      if (!isMounted || fetchGuardRef.current !== fetchId) return;
-      
-      setRawTasks(tasksRes || []);
-      setRawHabits(habitsRes || []);
-      setRawLogs(logsRes || []);
-      setRawPlanners(plannersRes || []);
-      setDataLoading(false);
+      try {
+        const [tasksRes, habitsRes, logsRes, plannersRes] = await Promise.all([
+          dataStoreService.getTasks(userId),
+          dataStoreService.getHabits(userId),
+          dataStoreService.getHabitLogs(userId),
+          dataStoreService.getPlanners(userId)
+        ]);
+        
+        if (!isMounted || fetchGuardRef.current !== fetchId) return;
+        
+        setRawTasks(tasksRes || []);
+        setRawHabits(habitsRes || []);
+        setRawLogs(logsRes || []);
+        setRawPlanners(plannersRes || []);
+      } catch (err) {
+        console.error('[USE_ANALYTICS] Error loading core data:', err);
+      } finally {
+        if (isMounted && fetchGuardRef.current === fetchId) {
+          setDataLoading(false);
+        }
+      }
     };
 
     loadCoreData();

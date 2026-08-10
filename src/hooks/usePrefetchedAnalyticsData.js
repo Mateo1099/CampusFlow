@@ -51,7 +51,8 @@ export const usePrefetchedAnalyticsData = (userId) => {
       return;
     }
 
-    setTimeout(() => { setLoading(true); setError(null); }, 0);
+    setLoading(true);
+    setError(null);
 
     // First try to get from cache
     const cached = getAnalyticsDataFromCache(userId);

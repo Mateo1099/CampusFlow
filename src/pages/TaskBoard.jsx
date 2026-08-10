@@ -41,6 +41,7 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
   };
 
   const displayDate = formatDate(task.deadline || task.due_date);
+  const displayTime = (task.deadline_time || task.deadline || task.due_date)?.includes('T') ? (task.deadline_time || task.deadline || task.due_date).split('T')[1].substring(0, 5) : null;
 
   return (
     <motion.div
@@ -57,7 +58,7 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
       }}
       className="glass-panel task-card-alfa"
       style={{
-        padding: 'clamp(14px, 2vw, 20px)',
+        padding: '16px',
         marginBottom: '16px',
         borderTop: '1px solid var(--border-glass-top)',
         display: 'flex',
@@ -70,19 +71,19 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         touchAction: 'none'
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-          <GripVertical size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+          <GripVertical size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: '-4px' }} />
           <div style={{ 
-            display: 'flex', alignItems: 'center', gap: '8px', 
+            display: 'flex', alignItems: 'center', gap: '6px', 
             background: `${accentColor}15`, padding: '4px 10px', borderRadius: '6px',
-            border: `1px solid ${accentColor}33`, maxWidth: '100%', overflow: 'hidden'
+            border: `1px solid ${accentColor}33`, flexShrink: 1, minWidth: 0
           }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
             {/* El color de la materia solo se usa en el punto de acento (arriba), nunca como color
                 de texto: algunos colores de materia son oscuros/cian y quedaban ilegibles como texto
                 (mismo bug de contraste ya corregido en Pomodoro.jsx). */}
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {courseObj?.name || 'General'}
             </span>
           </div>
@@ -145,9 +146,17 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
       <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</h4>
       <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
         {displayDate && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <CalendarIcon size={12} color="var(--accent-primary)" />
-            <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayDate}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CalendarIcon size={12} color="var(--accent-primary)" />
+              <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayDate}</span>
+            </div>
+            {displayTime && displayTime !== '00:00' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Clock size={12} color="var(--accent-primary)" />
+                <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayTime}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
