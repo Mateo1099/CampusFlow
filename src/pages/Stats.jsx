@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePrefetchedAnalyticsData } from '../hooks/usePrefetchedAnalyticsData';
 import { useAuth } from '../context/AuthContext';
-import { Clock, Flame, BookOpen, BarChart3, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Clock, Flame, BookOpen, BarChart3, AlertTriangle, CheckCircle2, Info, TrendingUp, Target } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, YAxis, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -43,44 +43,51 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-const MetricCard = ({ icon: Icon, title, value, helper, delay = 0, iconColor = "var(--accent-primary)", glowColor = "rgba(0, 243, 255, 0.22)" }) => (
-  <motion.article
+const MetricCard = ({ icon: Icon, title, value, helper, delay = 0, iconColor = "#00f3ff", trend = null }) => (
+  <motion.div
+    className="glass-card click-press hover-lift"
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5, delay, ease: 'easeOut' }}
     style={{ 
-      padding: '20px 24px', 
+      padding: '24px', 
       display: 'flex', 
       flexDirection: 'column', 
-      borderRadius: '16px',
-      background: `radial-gradient(circle at 80% 20%, ${glowColor} 0%, transparent 60%), linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)`,
-      backdropFilter: 'blur(24px) saturate(200%)',
-      WebkitBackdropFilter: 'blur(24px) saturate(200%)',
-      border: '1px solid rgba(255, 255, 255, 0.12)',
-      borderTop: '1px solid rgba(255, 255, 255, 0.5)',
-      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.36), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)'
+      borderRadius: '24px',
+      position: 'relative',
+      overflow: 'hidden'
     }}
   >
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    {/* Radial Background Injection */}
+    <div style={{ position: 'absolute', top: '-50%', right: '-50%', width: '100%', height: '100%', background: `radial-gradient(circle, ${iconColor}1A 0%, transparent 70%)`, pointerEvents: 'none' }} />
+    
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', position: 'relative', zIndex: 1 }}>
+      <div style={{ padding: '10px', borderRadius: '14px', background: `linear-gradient(135deg, ${iconColor}1A 0%, rgba(255,255,255,0.02) 100%)`, border: `1px solid ${iconColor}33`, boxShadow: `0 0 12px ${iconColor}33` }}>
+        <Icon size={20} color={iconColor} style={{ filter: `drop-shadow(0 0 6px ${iconColor})` }} />
+      </div>
+      {trend && (
+        <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '999px', background: trend.isUp ? 'rgba(52, 199, 89, 0.1)' : 'rgba(255, 59, 48, 0.1)', color: trend.isUp ? '#34c759' : '#ff3b30', border: `1px solid ${trend.isUp ? 'rgba(52, 199, 89, 0.3)' : 'rgba(255, 59, 48, 0.3)'}` }}>
+          {trend.value}
+        </span>
+      )}
+    </div>
+    
+    <div style={{ position: 'relative', zIndex: 1 }}>
+      <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {title}
       </p>
-      <Icon size={18} color={iconColor} />
-    </div>
-    <div>
-      <p style={{ margin: '0 0 4px', fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+      <p style={{ margin: '4px 0 8px', fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}>
         {value}
       </p>
-      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{helper}</p>
+      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{helper}</p>
     </div>
-  </motion.article>
+  </motion.div>
 );
 
 const Stats = React.memo(() => {
   const { user } = useAuth();
   
   const {
-    completedBlocks,
     minutesByDay,
     historicalSummary,
     insights,
@@ -100,13 +107,12 @@ const Stats = React.memo(() => {
   const currentWeekMinutes = historicalSummary?.semanaActual?.minutos || 0;
   const diffMinutes = historicalSummary?.diferenciaMinutos || 0;
   const isUp = historicalSummary?.tendencia === 'up';
-  const diffText = diffMinutes === 0 ? 'Igual a la semana pasada' : `${isUp ? '+' : '-'}${Math.abs(diffMinutes)} min vs sem pasada`;
-
+  
   const dailyAvg = Math.round(currentWeekMinutes / 7);
   
   // Mock data for streak and main subject
-  const streak = hasWeeklyMinutes ? 3 : 0; 
-  const mainSubject = hasWeeklyMinutes ? "Desarrollo Web" : "N/A";
+  const streak = hasWeeklyMinutes ? 4 : 0; 
+  const compliance = hasWeeklyMinutes ? 85 : 0;
 
   if (loading) {
     return (
@@ -119,54 +125,101 @@ const Stats = React.memo(() => {
   }
 
   return (
-    <div style={{ padding: '32px 40px', height: '100%', overflowY: 'auto' }}>
-      <header className="page-header" style={{ marginBottom: '40px' }}>
-        <h1 className="page-title">Analítica PRO</h1>
-        <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>Mide tu rendimiento, descubre patrones y mejora tu flujo de estudio.</p>
-      </header>
+    <div style={{ padding: '32px 40px', height: '100%', overflowY: 'auto', width: '100%' }}>
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '24px 32px', 
+          marginBottom: '32px',
+          borderRadius: '24px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.1) 100%)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ padding: '12px', background: 'rgba(0, 243, 255, 0.1)', borderRadius: '16px', border: '1px solid rgba(0, 243, 255, 0.2)' }}>
+            <TrendingUp size={32} color="#00f3ff" style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.6))' }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '2.5rem', margin: 0, fontWeight: 950, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>ANALÍTICA PRO</h1>
+            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Visualiza tu rendimiento, horas de estudio y métricas de avance académico.</p>
+          </div>
+        </div>
+        
+        {/* Filtros de Periodo */}
+        <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '50px', border: '1px solid rgba(255,255,255,0.05)' }}>
+          {['Esta Semana', 'Este Mes', 'Semestre'].map((period, idx) => (
+            <button key={period} className={`click-press ${idx === 0 ? 'active' : ''}`} style={{
+              padding: '8px 16px',
+              borderRadius: '50px',
+              border: 'none',
+              background: idx === 0 ? 'rgba(0, 243, 255, 0.15)' : 'transparent',
+              color: idx === 0 ? '#00f3ff' : 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: idx === 0 ? '0 0 15px rgba(0,243,255,0.2)' : 'none',
+              transition: 'all 0.3s ease'
+            }}>
+              {period}
+            </button>
+          ))}
+        </div>
+      </motion.header>
 
-      {/* 1. ESTRUCTURA Y KPIs SUPERIORES */}
+      {/* 1. ESTRUCTURA Y KPIs SUPERIORES (Liquid Glass) */}
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-        gap: '16px', 
-        marginBottom: '32px' 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+        gap: '20px', 
+        marginBottom: '32px',
+        width: '100%'
       }}>
         <MetricCard
-          icon={Clock}
-          title="Horas Semana"
-          value={formatMinutes(currentWeekMinutes)}
-          helper={diffText}
-          delay={0.1}
-          iconColor="var(--accent-primary)"
-          glowColor="rgba(0, 243, 255, 0.22)"
-        />
-        <MetricCard
           icon={Flame}
-          title="Racha Actual"
+          title="Racha Activa"
           value={`${streak} días`}
-          helper={streak > 0 ? '¡Sigue así!' : 'Inicia tu racha hoy'}
+          helper="Días de estudio consecutivos"
+          delay={0.1}
+          iconColor="#f59e0b"
+          trend={{ value: '🔥 +1', isUp: true }}
+        />
+        <MetricCard
+          icon={Clock}
+          title="Horas Invertidas"
+          value={formatMinutes(currentWeekMinutes)}
+          helper="Total horas esta semana"
           delay={0.2}
-          iconColor="var(--accent-orange)"
-          glowColor="rgba(255, 149, 0, 0.22)"
+          iconColor="#8b5cf6"
+          trend={{ value: isUp ? `+${Math.round(diffMinutes/60)}h` : `${Math.round(diffMinutes/60)}h`, isUp: isUp }}
         />
         <MetricCard
-          icon={BookOpen}
-          title="Materia Principal"
-          value={mainSubject}
-          helper={completedBlocks > 0 ? `${completedBlocks} bloques completados` : 'Sin bloques'}
+          icon={Target}
+          title="Cumplimiento"
+          value={`${compliance}%`}
+          helper="Trabajos completados a tiempo"
           delay={0.3}
-          iconColor="var(--accent-secondary)"
-          glowColor="rgba(188, 19, 254, 0.22)"
+          iconColor="#10b981"
+          trend={{ value: '+5%', isUp: true }}
         />
         <MetricCard
-          icon={BarChart3}
+          icon={TrendingUp}
           title="Promedio Diario"
           value={`${dailyAvg} min`}
-          helper="Por día en promedio"
+          helper="Tiempo promedio por sesión"
           delay={0.4}
-          iconColor="var(--accent-lime)"
-          glowColor="rgba(52, 199, 89, 0.22)"
+          iconColor="#06b6d4"
+          trend={{ value: '+12%', isUp: true }}
         />
       </div>
 
@@ -191,8 +244,9 @@ const Stats = React.memo(() => {
               <BarChart data={chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="neonGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity={1} />
-                    <stop offset="100%" stopColor="var(--accent-secondary)" stopOpacity={0.8} />
+                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={1} />
+                    <stop offset="50%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="#ec4899" stopOpacity={0.5} />
                   </linearGradient>
                 </defs>
                 <XAxis 
