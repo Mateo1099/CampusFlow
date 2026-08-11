@@ -186,46 +186,35 @@ const Agenda = () => {
             <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Organiza y supervisa tus asignaturas y avance académico.</p>
           </div>
         </div>
-        <button
-          ref={btnNewRef}
-          className="click-press"
+        <motion.button 
+          className="click-press" 
           onClick={handleOpenNew}
-          style={{
-            padding: '10px 28px',
-            fontWeight: 700,
-            borderRadius: '50px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            color: '#00f3ff',
-            border: '1px solid #00f3ff',
-            backdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '0.9rem',
+          whileHover={{ scale: 1.05, backgroundColor: 'rgba(6, 182, 212, 0.2)', boxShadow: '0 0 20px rgba(6, 182, 212, 0.4)', borderColor: 'rgba(6, 182, 212, 0.6)' }}
+          whileTap={{ scale: 0.95 }}
+          style={{ 
+            padding: '10px 28px', 
+            fontWeight: 700, 
+            borderRadius: '50px', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            color: '#00f3ff', 
+            border: '1px solid rgba(0, 243, 255, 0.3)', 
+            backdropFilter: 'blur(10px)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            fontSize: '0.9rem', 
             cursor: 'pointer',
+            boxShadow: '0 0 20px rgba(0,243,255,0.15), inset 0 0 10px rgba(0,243,255,0.05)',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            transition: 'background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease'
           }}
         >
-          <div
-            ref={liquidRef}
-            style={{
-              background: 'radial-gradient(circle, rgba(0, 243, 255, 0.4) 0%, rgba(0, 243, 255, 0) 70%)',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%) scale(0)',
-              borderRadius: '50%',
-              width: '150%',
-              aspectRatio: '1/1',
-              pointerEvents: 'none',
-              opacity: 0,
-              zIndex: 0
-            }}
-          />
-          <Plus size={18} style={{ position: 'relative', zIndex: 1 }} />
+          <Plus size={18} style={{ position: 'relative', zIndex: 1 }} /> 
           <span style={{ position: 'relative', zIndex: 1 }}>NUEVA MATERIA</span>
-        </button>
+        </motion.button>
       </motion.header>
 
       {/* FILTROS NEON-PILLS */}

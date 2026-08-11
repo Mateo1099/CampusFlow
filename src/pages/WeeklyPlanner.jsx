@@ -347,7 +347,7 @@ function WeeklyPlanner() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ padding: 'clamp(16px, 3vw, 32px) clamp(12px, 3vw, 40px)', height: '100%', overflowY: 'auto' }}>
+    <div className="animate-fade-in w-full" style={{ padding: '32px 12px', height: '100%', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
       {!activePlannerId ? (
         <PlannersList 
           planners={planners} 
@@ -454,53 +454,66 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
 
   return (
     <>
-      <header className="page-header" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="page-title" style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>PLANIFICADOR SEMANAL</h1>
-          <p className="page-subtitle" style={{ color: 'var(--accent-primary)', marginTop: '8px' }}>Organización por bloques de tiempo</p>
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="page-header" 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '24px 32px', 
+          marginBottom: '32px',
+          borderRadius: '24px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.1) 100%)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ padding: '12px', background: 'rgba(0, 243, 255, 0.1)', borderRadius: '16px', border: '1px solid rgba(0, 243, 255, 0.2)' }}>
+            <Calendar size={32} color="#00f3ff" style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.6))' }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '2.5rem', margin: 0, fontWeight: 950, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>PLANIFICADOR SEMANAL</h1>
+            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Estructura tus bloques de estudio, horario y sesiones semanales.</p>
+          </div>
         </div>
-        <button 
+        <motion.button 
           className="click-press" 
           onClick={onNewPlanner} 
-          onMouseEnter={(e) => {
-            const liquid = e.currentTarget.querySelector('.liquid-fill');
-            if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
-          }}
-          onMouseLeave={(e) => {
-            const liquid = e.currentTarget.querySelector('.liquid-fill');
-            if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
-          }}
+          whileHover={{ scale: 1.05, backgroundColor: 'rgba(6, 182, 212, 0.2)', boxShadow: '0 0 20px rgba(6, 182, 212, 0.4)', borderColor: 'rgba(6, 182, 212, 0.6)' }}
+          whileTap={{ scale: 0.95 }}
           style={{ 
             padding: '10px 28px', 
             fontWeight: 700, 
             borderRadius: '50px', 
-            background: isLightMode ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(236,244,255,0.96))' : 'rgba(255, 255, 255, 0.05)', 
-            color: isLightMode ? '#0f3f9c' : '#00f3ff', 
-            border: isLightMode ? '1px solid rgba(37, 99, 235, 0.45)' : '1px solid rgba(0, 243, 255, 0.3)', 
+            background: 'rgba(255, 255, 255, 0.05)', 
+            color: '#00f3ff', 
+            border: '1px solid rgba(0, 243, 255, 0.3)', 
             backdropFilter: 'blur(10px)', 
             display: 'flex', 
             alignItems: 'center', 
             gap: '8px', 
             fontSize: '0.9rem', 
             cursor: 'pointer',
-            boxShadow: isLightMode ? '0 10px 24px rgba(37,99,235,0.18), inset 0 0 12px rgba(37,99,235,0.08)' : '0 0 20px rgba(0,243,255,0.15), inset 0 0 10px rgba(0,243,255,0.05)',
+            boxShadow: '0 0 20px rgba(0,243,255,0.15), inset 0 0 10px rgba(0,243,255,0.05)',
             textTransform: 'uppercase',
             letterSpacing: '1px',
             position: 'relative',
             overflow: 'hidden',
-            transition: 'all 0.3s ease'
+            transition: 'background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease'
           }}>
-          <div className="liquid-fill" style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
-            width: '150%', aspectRatio: '1/1', borderRadius: '50%',
-            background: isLightMode ? 'radial-gradient(circle, rgba(37,99,235,0.35) 0%, rgba(37,99,235,0) 70%)' : 'radial-gradient(circle, rgba(0, 243, 255, 0.4) 0%, rgba(0, 243, 255, 0) 70%)',
-            opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
-          }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={18} /> NUEVA PLANIFICACIÓN
+            <Plus size={18} /> NUEVA SESIÓN
           </div>
-        </button>
-      </header>
+        </motion.button>
+      </motion.header>
 
       <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
         {Object.keys(filterColors).map((f, index) => {
@@ -791,6 +804,14 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
   const [expandedBlockIds, setExpandedBlockIds] = useState(() => new Set());
   const [expandedSections, setExpandedSections] = useState(() => new Set());
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+
+  const getWeekLabel = () => {
+    if (currentWeekOffset === 0) return 'Semana Actual';
+    if (currentWeekOffset === 1) return 'Próxima Semana';
+    if (currentWeekOffset === -1) return 'Semana Anterior';
+    return currentWeekOffset > 0 ? `+${currentWeekOffset} Semanas` : `${currentWeekOffset} Semanas`;
+  };
 
   const blocks = planner.planner_blocks || [];
 
@@ -962,6 +983,33 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
         </div>
       )}
 
+      {/* Barra de Navegación Semanal (Liquid Glass) */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '22px' }}>
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px', borderRadius: '999px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <button 
+            className="click-press hover-bg"
+            onClick={() => setCurrentWeekOffset(prev => prev - 1)}
+            style={{ padding: '8px 16px', borderRadius: '999px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#00f3ff'; e.currentTarget.style.background = 'rgba(0, 243, 255, 0.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            &larr; Anterior
+          </button>
+          <div style={{ padding: '8px 24px', borderRadius: '999px', background: 'rgba(0, 243, 255, 0.15)', border: '1px solid rgba(0, 243, 255, 0.3)', color: '#00f3ff', fontWeight: 800, fontSize: '0.85rem', boxShadow: '0 0 16px rgba(0,243,255,0.1)' }}>
+            {getWeekLabel()}
+          </div>
+          <button 
+            className="click-press hover-bg"
+            onClick={() => setCurrentWeekOffset(prev => prev + 1)}
+            style={{ padding: '8px 16px', borderRadius: '999px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#00f3ff'; e.currentTarget.style.background = 'rgba(0, 243, 255, 0.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
+          >
+            Siguiente &rarr;
+          </button>
+        </div>
+      </div>
+
       {/* Resumen Inteligente Mejorado */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(152px, 1fr))', rowGap: '10px', columnGap: '14px', marginBottom: '22px' }}>
         <div className="glass-panel" style={isLightMode ? {
@@ -1077,7 +1125,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
         )}
       </div>
 
-      <div style={{
+      <div className="glass-panel" style={{
         borderRadius: '34px',
         overflow: 'hidden',
         border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.08)',
@@ -1092,9 +1140,9 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
           overflowX: 'auto',
           paddingBottom: '8px'
         }}>
-          <div style={{ background: isLightMode ? 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,246,255,0.94))' : 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))', border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.07)', borderRadius: '24px', padding: '16px' }} />
+          <div className="glass-panel" style={{ background: isLightMode ? 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,246,255,0.94))' : 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))', border: isLightMode ? '1px solid rgba(15,23,42,0.14)' : '1px solid rgba(255,255,255,0.07)', borderRadius: '24px', padding: '16px' }} />
           {DAYS.map(day => (
-            <div key={day} style={{ 
+            <div key={day} className="glass-panel" style={{ 
               background: isLightMode ? 'linear-gradient(145deg, rgba(255,255,255,0.95), rgba(241,246,255,0.94))' : 'linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03))',
               padding: '14px 14px 12px',
               fontWeight: 900,
@@ -1215,6 +1263,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
 
                           return (
                             <motion.div
+                              className="glass-card"
                               key={b.id}
                               layout
                               initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.985 }}
