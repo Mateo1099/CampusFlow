@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import LoadingGlass from './components/ui/LoadingGlass';
 import AppTransitionWrapper from './components/ui/AppTransitionWrapper';
 import { usePrefetchRoutes } from './hooks/usePrefetchRoutes';
+import { Toaster } from 'sonner';
 
 // Lazy-loaded pages for code splitting
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -282,6 +283,25 @@ function App() {
       <SettingsProvider>
         <TaskProvider>
           <BrowserRouter>
+            <Toaster 
+              visibleToasts={1}
+              position="bottom-right" 
+              theme="dark" 
+              duration={2500}
+              toastOptions={{
+                className: 'rounded-xl bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 font-body text-white font-semibold',
+                descriptionClassName: 'text-slate-300 font-normal',
+                style: {
+                  borderRadius: '12px',
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  color: '#ffffff',
+                  padding: '16px 20px',
+                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
+                }
+              }}
+            />
             <AppRoutes />
           </BrowserRouter>
         </TaskProvider>

@@ -59,11 +59,13 @@ const Layout = () => {
         {!isMobile && <Sidebar />}
         
         <main 
-          className="main-content" 
+          className="main-content w-full" 
           style={{ 
             position: 'relative', 
             zIndex: 1,
             paddingBottom: isMobile ? '64px' : '0', // Espacio para bottom nav en móvil
+            width: '100%',
+            maxWidth: '100%'
           }}
         >
           <Outlet />

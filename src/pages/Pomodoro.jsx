@@ -5,6 +5,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
 import { playPhaseCompleteChime, resumeAudio } from '../lib/audioService';
+import { toast } from 'sonner';
 
 const STUDY_METHODS = {
   pomodoro: {
@@ -28,6 +29,17 @@ const STUDY_METHODS = {
     modes: {
       focus: { labelKey: 'focusMode', color: '#00f2ff', defaultTime: 50 * 60 },
       break: { labelKey: 'shortBreak', labelOverride: 'Descanso', color: '#10b981', defaultTime: 10 * 60 },
+    }
+  },
+  ultradian: {
+    id: 'ultradian',
+    title: 'Ultradiano',
+    shortLabel: 'Ultradiano 90/20',
+    description: '90 min enfoque · 20 min descanso',
+    defaultMode: 'focus',
+    modes: {
+      focus: { labelKey: 'focusMode', color: '#00f2ff', defaultTime: 90 * 60 },
+      break: { labelKey: 'longBreak', labelOverride: 'Descanso largo', color: '#a855f7', defaultTime: 20 * 60 },
     }
   }
 };
@@ -141,6 +153,17 @@ const Pomodoro = () => {
         if (mode === 'focus') {
           addXP(50);
           incrementStat('pomodorosCompleted');
+          toast.success("¡Tiempo Cumplido!", { 
+            id: "pomodoro-toast", 
+            description: "+25 XP ganados en tu perfil.",
+            style: { border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 0 20px rgba(168, 85, 247, 0.15)' }
+          });
+        } else {
+          toast.success("¡Descanso Completado!", { 
+            id: "pomodoro-toast", 
+            description: "Volvamos a la acción.",
+            style: { border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 0 20px rgba(168, 85, 247, 0.15)' }
+          });
         }
         
         // Sonido de campana: se reproduce vía Web Audio API, que sigue activo
@@ -213,7 +236,11 @@ const Pomodoro = () => {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|ogg|m4a)$/i)) {
-        alert("Por favor selecciona un archivo de audio (MP3, WAV, OGG, M4A).");
+        toast.warning("Archivo Inválido", { 
+          id: "pomodoro-toast", 
+          description: "Por favor selecciona un archivo de audio (MP3, WAV, OGG, M4A).",
+          style: { border: '1px solid rgba(245, 158, 11, 0.4)', boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)' }
+        });
         e.target.value = null;
         return;
       }
@@ -230,13 +257,34 @@ const Pomodoro = () => {
     // efecto de arriba calcule uno nuevo a partir del timeLeft actual (en
     // vez de seguir contando desde el timestamp de la sesión anterior).
     endTimeRef.current = null;
-    setIsActive(p => !p);
+    setIsActive(p => {
+      const nextState = !p;
+      if (nextState) {
+        toast.success("Enfoque Iniciado", { 
+          id: "pomodoro-toast", 
+          description: "Cero distracciones activadas.",
+          style: { border: '1px solid rgba(6, 182, 212, 0.4)', boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)' }
+        });
+      } else {
+        toast.warning("Temporizador Pausado", { 
+          id: "pomodoro-toast", 
+          description: "Progreso detenido.",
+          style: { border: '1px solid rgba(245, 158, 11, 0.4)', boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)' }
+        });
+      }
+      return nextState;
+    });
   };
   
   const resetTimer = () => { 
     endTimeRef.current = null;
     setIsActive(false); 
     setTimeLeft(customTimes[mode]); 
+    toast.warning("Temporizador Reiniciado", { 
+      id: "pomodoro-toast", 
+      description: "El tiempo vuelve a empezar.",
+      style: { border: '1px solid rgba(245, 158, 11, 0.4)', boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)' }
+    });
   };
   
   const changeMode = (m) => { 

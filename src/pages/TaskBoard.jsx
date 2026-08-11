@@ -2,7 +2,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
-import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock } from 'lucide-react';
+import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock, AlertCircle, Flame, Eye, CheckCircle2 } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,10 +20,10 @@ gsap.registerPlugin(useGSAP, RoughEase, SlowMo, CustomEase);
 
 // COLUMNAS OFICIALES
 const COLUMNS = [
-  { id: 'sin entregar', label: 'SIN ENTREGAR', accent: 'var(--text-secondary)', badgeClass: 'badge-todo' },
-  { id: 'en proceso',   label: 'EN PROCESO',   accent: 'var(--accent-primary)',  badgeClass: 'badge-doing' },
-  { id: 'revisión',     label: 'REVISIÓN',     accent: '#ffcc00',                badgeClass: 'badge-revision' },
-  { id: 'entregado',    label: 'ENTREGADO',    accent: 'var(--accent-lime)',     badgeClass: 'badge-submitted' },
+  { id: 'sin entregar', label: 'SIN ENTREGAR', accent: '#f59e0b', icon: AlertCircle },
+  { id: 'en proceso',   label: 'EN PROCESO',   accent: '#06b6d4', icon: Flame },
+  { id: 'revisión',     label: 'REVISIÓN',     accent: '#a855f7', icon: Eye },
+  { id: 'entregado',    label: 'ENTREGADO',    accent: '#10b981', icon: CheckCircle2 },
 ];
 
 const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
@@ -43,6 +43,25 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
   const displayDate = formatDate(task.deadline || task.due_date);
   const displayTime = (task.deadline_time || task.deadline || task.due_date)?.includes('T') ? (task.deadline_time || task.deadline || task.due_date).split('T')[1].substring(0, 5) : null;
 
+  const calculatePriority = (dateStr) => {
+    if (!dateStr) return null;
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const datePart = typeof dateStr === 'string' ? dateStr.split(/[T ]/)[0] : '';
+    if (!datePart) return null;
+    const deadline = new Date(`${datePart}T00:00:00`);
+    if (isNaN(deadline.getTime())) return null;
+    
+    const diffTime = deadline - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 3) return { label: 'URGENTE', color: '#ff4d4d' };
+    if (diffDays >= 4 && diffDays <= 7) return { label: 'PRÓXIMO', color: '#ffcc00' };
+    return { label: 'EN TIEMPO', color: '#00f3ff' };
+  };
+
+  const priority = calculatePriority(task.deadline || task.due_date);
+
   return (
     <motion.div
       layout
@@ -56,109 +75,124 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         zIndex: 100,
         boxShadow: `0 20px 40px rgba(0,0,0,0.4), 0 0 20px ${accentColor}33`,
       }}
-      className="glass-panel task-card-alfa"
+      className="glass-card task-card-alfa"
       style={{
-        padding: '16px',
-        marginBottom: '16px',
-        borderTop: '1px solid var(--border-glass-top)',
+        padding: '20px',
+        marginBottom: '24px',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px',
         position: 'relative',
-        background: 'rgba(255,255,255,0.02)',
-        borderRadius: '16px',
         cursor: 'grab',
         touchAction: 'none'
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-          <GripVertical size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: '-4px' }} />
-          <div style={{ 
-            display: 'flex', alignItems: 'center', gap: '6px', 
-            background: `${accentColor}15`, padding: '4px 10px', borderRadius: '6px',
-            border: `1px solid ${accentColor}33`, flexShrink: 1, minWidth: 0
-          }}>
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-            {/* El color de la materia solo se usa en el punto de acento (arriba), nunca como color
-                de texto: algunos colores de materia son oscuros/cian y quedaban ilegibles como texto
-                (mismo bug de contraste ya corregido en Pomodoro.jsx). */}
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {courseObj?.name || 'General'}
-            </span>
-          </div>
+      {priority && task.status !== 'entregado' && (
+        <div style={{
+          position: 'absolute',
+          top: '-12px',
+          right: '16px',
+          background: `rgba(15, 23, 42, 0.8)`,
+          backdropFilter: 'blur(12px)',
+          border: `1px solid ${priority.color}80`,
+          boxShadow: `0 0 12px ${priority.color}40`,
+          padding: '4px 12px',
+          borderRadius: '20px',
+          fontSize: '0.65rem',
+          fontWeight: 800,
+          color: priority.color,
+          zIndex: 10,
+          letterSpacing: '0.05em'
+        }}>
+          {priority.label}
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', marginBottom: '12px' }}>
+        <GripVertical size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: '-4px', cursor: 'grab' }} />
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0, boxShadow: `0 0 8px ${accentColor}` }} />
+        <span 
+          className="text-xs font-semibold tracking-wider uppercase truncate" 
+          style={{ color: accentColor, flex: 1 }}
+        >
+          {courseObj?.name || 'General'}
+        </span>
+      </div>
+      <h4 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{task.title}</h4>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {displayDate ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CalendarIcon size={12} color="var(--accent-primary)" />
+                <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayDate}</span>
+              </div>
+              {displayTime && displayTime !== '00:00' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={12} color="var(--accent-primary)" />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayTime}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ width: '10px' }} />
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <motion.button 
             whileHover={{ 
-              scale: 1.02, 
+              scale: 1.1, 
               backgroundColor: 'rgba(0, 243, 255, 0.15)', 
-              borderColor: 'rgba(0, 243, 255, 0.5)',
-              boxShadow: '0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 8px rgba(0, 243, 255, 0.2)'
+              borderColor: 'rgba(0, 243, 255, 0.4)',
+              boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)'
             }}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.95 }}
             className="btn-icon-alfa"
             style={{ 
               opacity: 1, 
               cursor: 'pointer', 
-              color: '#00f3ff',
-              background: 'rgba(0, 243, 255, 0.02)',
-              border: '1px solid rgba(0, 243, 255, 0.1)',
-              padding: '6px',
+              color: 'rgba(0, 243, 255, 0.8)',
+              background: 'rgba(0, 243, 255, 0.03)',
+              border: '1px solid rgba(0, 243, 255, 0.12)',
+              backdropFilter: 'blur(10px)',
+              padding: '6px 8px',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.3s var(--ease-out-quint)'
+              transition: 'all 0.3s ease'
             }}
             onClick={(e) => { e.stopPropagation(); onEdit(task); }}
           >
-            <Edit2 size={15} style={{ filter: 'drop-shadow(0 0 4px rgba(0, 243, 255, 0.5))' }} />
+            <Edit2 size={14} style={{ filter: 'drop-shadow(0 0 2px rgba(0,243,255,0.4))' }} />
           </motion.button>
           <motion.button 
             whileHover={{ 
-              scale: 1.02, 
+              scale: 1.1, 
               backgroundColor: 'rgba(255, 77, 77, 0.15)', 
-              borderColor: 'rgba(255, 77, 77, 0.5)',
-              boxShadow: '0 0 15px rgba(255, 77, 77, 0.4), inset 0 0 8px rgba(255, 77, 77, 0.2)'
+              borderColor: 'rgba(255, 77, 77, 0.4)',
+              boxShadow: '0 0 12px rgba(255, 77, 77, 0.4), inset 0 0 6px rgba(255, 77, 77, 0.2)'
             }}
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.95 }}
             className="btn-icon-alfa"
             style={{ 
               opacity: 1, 
               cursor: 'pointer', 
-              color: '#ff4d4d',
-              background: 'rgba(255, 77, 77, 0.02)',
-              border: '1px solid rgba(255, 77, 77, 0.1)',
-              padding: '6px',
+              color: 'rgba(255, 77, 77, 0.8)',
+              background: 'rgba(255, 77, 77, 0.03)',
+              border: '1px solid rgba(255, 77, 77, 0.12)',
+              backdropFilter: 'blur(10px)',
+              padding: '6px 8px',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.3s var(--ease-out-quint)'
+              transition: 'all 0.3s ease'
             }}
             onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
           >
-            <Trash2 size={15} style={{ filter: 'drop-shadow(0 0 4px rgba(255, 77, 77, 0.5))' }} />
+            <Trash2 size={14} style={{ filter: 'drop-shadow(0 0 2px rgba(255,77,77,0.4))' }} />
           </motion.button>
         </div>
-      </div>
-      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</h4>
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-        {displayDate && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CalendarIcon size={12} color="var(--accent-primary)" />
-              <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayDate}</span>
-            </div>
-            {displayTime && displayTime !== '00:00' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Clock size={12} color="var(--accent-primary)" />
-                <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayTime}</span>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -369,10 +403,36 @@ const TaskBoard = () => {
   if (tasksLoading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--accent-primary)' }}><div className="animate-pulse font-display" style={{ fontWeight: 900, fontSize: '1.2rem' }}>//_SINCRONIZANDO...</div></div>;
 
   return (
-    <div className="animate-fade-in task-board-page" style={{ display: 'flex', flexDirection: 'column', padding: '32px 48px', minHeight: '100%' }}>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>TRABAJOS</h1>
+    <div className="animate-fade-in task-board-page w-full" style={{ display: 'flex', flexDirection: 'column', padding: '32px 12px', minHeight: '100%', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="page-header" 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '24px 32px', 
+          marginBottom: '32px',
+          borderRadius: '24px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.1) 100%)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ padding: '12px', background: 'rgba(0, 243, 255, 0.1)', borderRadius: '16px', border: '1px solid rgba(0, 243, 255, 0.2)' }}>
+            <CalendarIcon size={32} color="#00f3ff" style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.6))' }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '2.5rem', margin: 0, fontWeight: 950, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>TRABAJOS</h1>
+            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Gestiona tus entregas, prioridades y estado de tareas en tiempo real.</p>
+          </div>
         </div>
         <button 
           ref={btnNewRef} 
@@ -414,7 +474,7 @@ const TaskBoard = () => {
           <Plus size={18} style={{ position: 'relative', zIndex: 1 }} /> 
           <span style={{ position: 'relative', zIndex: 1 }}>NUEVO TRABAJO</span>
         </button>
-      </header>
+      </motion.header>
 
       {/* FILTROS NEON-PILLS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
@@ -491,14 +551,18 @@ const TaskBoard = () => {
         </div>
       </div>
 
-      <div style={{
+      <div className="w-full" style={{
         display: isMobile ? 'flex' : 'grid',
         flexDirection: isMobile ? 'column' : undefined,
         gridTemplateColumns: isMobile ? undefined : 'repeat(4, minmax(0, 1fr))',
-        gap: isMobile ? '20px' : 'clamp(12px, 1.5vw, 24px)',
+        gap: '24px',
         flex: isMobile ? 'none' : 1,
         paddingBottom: '24px',
-        width: '100%'
+        width: '100%',
+        maxWidth: '100%',
+        margin: 0,
+        paddingLeft: 0,
+        paddingRight: 0
       }}>
         {COLUMNS.map(col => {
           const colTasks = filteredTasks.filter(t => t.status === col.id);
@@ -506,16 +570,55 @@ const TaskBoard = () => {
             <div
               key={col.id}
               ref={el => columnRefs.current[col.id] = el}
+              className="glass-panel"
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                minWidth: 0
+                minWidth: 0,
+                padding: '16px',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '24px'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderBottom: `2px solid ${col.accent}`, marginBottom: isMobile ? '10px' : '20px' }}>
-                <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{col.label}</h3>
-                <span className={`badge ${col.badgeClass}`} style={{ fontWeight: 950 }}>{colTasks.length}</span>
-              </div>
+              <motion.div 
+                animate={colTasks.length > 0 ? { boxShadow: [`0 0 0px ${col.accent}00`, `0 4px 20px ${col.accent}30`, `0 0 0px ${col.accent}00`] } : {}}
+                transition={colTasks.length > 0 ? { duration: 3, repeat: Infinity, ease: 'easeInOut' } : {}}
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '14px 18px', 
+                  borderRadius: '12px', 
+                  background: `radial-gradient(circle at 0% 50%, ${col.accent}25 0%, rgba(255,255,255,0.02) 70%)`, 
+                  borderBottom: `2px solid ${col.accent}`, 
+                  borderTop: `1px solid rgba(255,255,255,0.15)`,
+                  marginBottom: isMobile ? '10px' : '24px',
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.1)`
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <col.icon size={16} color={col.accent} style={{ filter: `drop-shadow(0 0 6px ${col.accent}80)` }} />
+                  <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.05em', margin: 0 }}>{col.label}</h3>
+                </div>
+                <div 
+                  style={{ 
+                    fontWeight: 900, 
+                    fontSize: '0.75rem',
+                    color: col.accent,
+                    background: `rgba(15, 23, 42, 0.6)`,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${col.accent}50`,
+                    boxShadow: `0 0 10px ${col.accent}30`,
+                    padding: '4px 12px',
+                    borderRadius: '20px'
+                  }}
+                >
+                  {colTasks.length}
+                </div>
+              </motion.div>
               {(!isMobile || colTasks.length > 0) && (
                 <div style={{ display: 'flex', flexDirection: 'column', flex: isMobile ? 'none' : 1, minHeight: isMobile ? '0' : '200px' }}>
                   <AnimatePresence>

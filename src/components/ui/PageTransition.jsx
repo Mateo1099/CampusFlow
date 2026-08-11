@@ -20,18 +20,16 @@ const PageTransition = ({ children }) => {
   // Animation variants - subtle entrance only
   const pageVariants = {
     initial: {
-      opacity: prefersReducedMotion ? 1 : 0.96,
-      y: prefersReducedMotion ? 0 : 4,
+      opacity: 0,
     },
     animate: {
       opacity: 1,
-      y: 0,
     },
   };
 
   // Transition config - ultra-fast and smooth
   const pageTransition = {
-    duration: prefersReducedMotion ? 0 : 0.18,
+    duration: prefersReducedMotion ? 0 : 0.15,
     ease: 'easeOut',
   };
 

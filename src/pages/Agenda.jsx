@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
 import { CourseCard } from '../components/CourseCard';
-import { Plus, Trash2, Hash, Pencil, X, User, Building2, Save, Filter } from 'lucide-react';
+import { Plus, Trash2, Hash, Pencil, X, User, Building2, Save, Filter, BookOpen } from 'lucide-react';
 import emptyStateImg from '../assets/empty_state_cube.png';
 import CourseModal from '../components/ui/CourseModal';
 import { gsap } from "gsap";
@@ -156,9 +156,35 @@ const Agenda = () => {
 
   return (
     <div className="animate-fade-in agenda-page" style={{ padding: '32px 48px' }}>
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass-top)', paddingBottom: '32px', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ fontSize: '3.2rem', margin: 0, fontWeight: 950 }}>MATERIAS</h1>
+      <motion.header 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="page-header" 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '24px 32px', 
+          marginBottom: '32px',
+          borderRadius: '24px',
+          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.1) 100%)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ padding: '12px', background: 'rgba(0, 243, 255, 0.1)', borderRadius: '16px', border: '1px solid rgba(0, 243, 255, 0.2)' }}>
+            <BookOpen size={32} color="#00f3ff" style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.6))' }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '2.5rem', margin: 0, fontWeight: 950, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>MATERIAS</h1>
+            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Organiza y supervisa tus asignaturas y avance académico.</p>
+          </div>
         </div>
         <button
           ref={btnNewRef}
@@ -200,7 +226,7 @@ const Agenda = () => {
           <Plus size={18} style={{ position: 'relative', zIndex: 1 }} />
           <span style={{ position: 'relative', zIndex: 1 }}>NUEVA MATERIA</span>
         </button>
-      </header>
+      </motion.header>
 
       {/* FILTROS NEON-PILLS */}
       <InstitutionFilterPills

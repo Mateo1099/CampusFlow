@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings, FONT_OPTIONS, WALLPAPERS, ALERT_FREQUENCY_OPTIONS } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { emailService } from '../services/emailService';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X, Send, Mail, MailCheck
 } from 'lucide-react';
 
 const THEMES = [
@@ -73,23 +74,49 @@ const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
         justifyContent: 'space-between',
         padding: '14px 20px'
       }}>
-        <span style={{
-          fontSize: '0.8rem',
-          fontWeight: 700,
-          color: isLoading ? 'var(--text-muted)' : (checked ? '#22c55e' : '#ef4444'),
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          opacity: 1,
-          transition: 'all 0.3s ease'
-        }}>
-          {isLoading ? 'CARGANDO PREFERENCIAS…' : label}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isLoading ? 'var(--text-muted)' : (checked ? '#10b981' : 'rgba(156, 163, 175, 0.5)'),
+            filter: checked ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.6))' : 'none',
+            transition: 'all 0.3s ease'
+          }}>
+            {checked ? <MailCheck size={18} /> : <Mail size={18} />}
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              color: isLoading ? 'var(--text-muted)' : 'var(--text-primary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              transition: 'color 0.3s ease'
+            }}>
+              {isLoading ? 'CARGANDO PREFERENCIAS…' : label}
+            </span>
+            {!isLoading && (
+              <span style={{
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                color: checked ? '#10b981' : 'rgba(156, 163, 175, 0.6)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                transition: 'color 0.3s ease'
+              }}>
+                {checked ? 'Alertas Activas' : 'Pausado'}
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Status dot */}
         <motion.div
           animate={{
-            background: checked ? '#22c55e' : '#ef4444',
-            boxShadow: checked ? '0 0 10px rgba(34, 197, 94, 0.5)' : '0 0 10px rgba(239, 68, 68, 0.5)',
+            background: checked ? '#10b981' : '#ef4444',
+            boxShadow: checked ? '0 0 12px rgba(16, 185, 129, 0.5)' : '0 0 10px rgba(239, 68, 68, 0.3)',
             scale: 1
           }}
           transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
