@@ -14,12 +14,14 @@ const WeeklyPlanner = React.lazy(() => import('./pages/WeeklyPlanner'));
 const Pomodoro = React.lazy(() => import('./pages/Pomodoro'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Stats = React.lazy(() => import('./pages/Stats'));
+
 const Login = React.lazy(() => import('./pages/Login'));
 const MFAChallenge = React.lazy(() => import('./pages/MFAChallenge'));
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { TaskProvider } from './context/TaskContext';
+import { GamificationProvider } from './context/GamificationContext';
 import { supabase } from './lib/supabaseClient';
 
 const ProtectedRoute = ({ children }) => {
@@ -268,6 +270,7 @@ function AppRoutes() {
             <Route path="pomodoro" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
             <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />
             <Route path="stats" element={<Suspense fallback={<LoadingGlass />}><Stats /></Suspense>} />
+
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -282,28 +285,30 @@ function App() {
     <AuthProvider>
       <SettingsProvider>
         <TaskProvider>
-          <BrowserRouter>
-            <Toaster 
-              visibleToasts={1}
-              position="bottom-right" 
-              theme="dark" 
-              duration={2500}
-              toastOptions={{
-                className: 'rounded-xl bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 font-body text-white font-semibold',
-                descriptionClassName: 'text-slate-300 font-normal',
-                style: {
-                  borderRadius: '12px',
-                  background: 'rgba(15, 23, 42, 0.9)',
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  color: '#ffffff',
-                  padding: '16px 20px',
-                  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
-                }
-              }}
-            />
-            <AppRoutes />
-          </BrowserRouter>
+          <GamificationProvider>
+            <BrowserRouter>
+              <Toaster 
+                visibleToasts={1}
+                position="bottom-right" 
+                theme="dark" 
+                duration={2500}
+                toastOptions={{
+                  className: 'rounded-xl bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 font-body text-white font-semibold',
+                  descriptionClassName: 'text-slate-300 font-normal',
+                  style: {
+                    borderRadius: '12px',
+                    background: 'rgba(15, 23, 42, 0.9)',
+                    backdropFilter: 'blur(24px)',
+                    WebkitBackdropFilter: 'blur(24px)',
+                    color: '#ffffff',
+                    padding: '16px 20px',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
+                  }
+                }}
+              />
+              <AppRoutes />
+            </BrowserRouter>
+          </GamificationProvider>
         </TaskProvider>
       </SettingsProvider>
     </AuthProvider>

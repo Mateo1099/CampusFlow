@@ -2,6 +2,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
+import { useGamification } from '../context/GamificationContext';
 import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock, AlertCircle, Flame, Eye, CheckCircle2 } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -9,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useBreakpoint } from '../hooks/useMediaQuery';
 import InstitutionFilterPills from '../components/ui/InstitutionFilterPills';
 import CustomSelect from '../components/ui/CustomSelect';
+import TaskHistoryView from '../components/ui/TaskHistoryView';
 
 // GSAP IMPORTS
 import { gsap } from "gsap";
@@ -42,6 +44,15 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
 
   const displayDate = formatDate(task.deadline || task.due_date);
   const displayTime = (task.deadline_time || task.deadline || task.due_date)?.includes('T') ? (task.deadline_time || task.deadline || task.due_date).split('T')[1].substring(0, 5) : null;
+
+  let compactDateTime = null;
+  if (displayDate) {
+    if (displayTime && displayTime !== '00:00') {
+      compactDateTime = `📅 ${displayDate}   🕒 ${displayTime}`;
+    } else {
+      compactDateTime = `📅 ${displayDate}`;
+    }
+  }
 
   const calculatePriority = (dateStr) => {
     if (!dateStr) return null;
@@ -116,83 +127,46 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         >
           {courseObj?.name || 'General'}
         </span>
-      </div>
-      <h4 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{task.title}</h4>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {displayDate ? (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CalendarIcon size={12} color="var(--accent-primary)" />
-                <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayDate}</span>
-              </div>
-              {displayTime && displayTime !== '00:00' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Clock size={12} color="var(--accent-primary)" />
-                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', fontWeight: 700 }}>{displayTime}</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ width: '10px' }} />
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
           <motion.button 
-            whileHover={{ 
-              scale: 1.1, 
-              backgroundColor: 'rgba(0, 243, 255, 0.15)', 
-              borderColor: 'rgba(0, 243, 255, 0.4)',
-              boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)'
-            }}
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(0, 243, 255, 0.15)', borderColor: 'rgba(0, 243, 255, 0.4)', boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)' }}
             whileTap={{ scale: 0.95 }}
             className="btn-icon-alfa"
             style={{ 
-              opacity: 1, 
-              cursor: 'pointer', 
-              color: 'rgba(0, 243, 255, 0.8)',
-              background: 'rgba(0, 243, 255, 0.03)',
-              border: '1px solid rgba(0, 243, 255, 0.12)',
-              backdropFilter: 'blur(10px)',
-              padding: '6px 8px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.3s ease'
+              opacity: 1, cursor: 'pointer', color: 'rgba(0, 243, 255, 0.8)',
+              background: 'rgba(0, 243, 255, 0.03)', border: '1px solid rgba(0, 243, 255, 0.12)', backdropFilter: 'blur(10px)', padding: '4px 6px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: '8px', transition: 'all 0.3s ease'
             }}
             onClick={(e) => { e.stopPropagation(); onEdit(task); }}
           >
-            <Edit2 size={14} style={{ filter: 'drop-shadow(0 0 2px rgba(0,243,255,0.4))' }} />
+            <Edit2 size={13} style={{ filter: 'drop-shadow(0 0 2px rgba(0,243,255,0.4))' }} />
           </motion.button>
           <motion.button 
-            whileHover={{ 
-              scale: 1.1, 
-              backgroundColor: 'rgba(255, 77, 77, 0.15)', 
-              borderColor: 'rgba(255, 77, 77, 0.4)',
-              boxShadow: '0 0 12px rgba(255, 77, 77, 0.4), inset 0 0 6px rgba(255, 77, 77, 0.2)'
-            }}
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255, 77, 77, 0.15)', borderColor: 'rgba(255, 77, 77, 0.4)', boxShadow: '0 0 12px rgba(255, 77, 77, 0.4), inset 0 0 6px rgba(255, 77, 77, 0.2)' }}
             whileTap={{ scale: 0.95 }}
             className="btn-icon-alfa"
             style={{ 
-              opacity: 1, 
-              cursor: 'pointer', 
-              color: 'rgba(255, 77, 77, 0.8)',
-              background: 'rgba(255, 77, 77, 0.03)',
-              border: '1px solid rgba(255, 77, 77, 0.12)',
-              backdropFilter: 'blur(10px)',
-              padding: '6px 8px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.3s ease'
+              opacity: 1, cursor: 'pointer', color: 'rgba(255, 77, 77, 0.8)',
+              background: 'rgba(255, 77, 77, 0.03)', border: '1px solid rgba(255, 77, 77, 0.12)', backdropFilter: 'blur(10px)', padding: '4px 6px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: '8px', transition: 'all 0.3s ease'
             }}
             onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
           >
-            <Trash2 size={14} style={{ filter: 'drop-shadow(0 0 2px rgba(255,77,77,0.4))' }} />
+            <Trash2 size={13} style={{ filter: 'drop-shadow(0 0 2px rgba(255,77,77,0.4))' }} />
           </motion.button>
         </div>
+      </div>
+      <h4 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{task.title}</h4>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: 'auto', width: '100%' }}>
+        {compactDateTime ? (
+          <span className="text-[11px]" style={{ color: 'var(--accent-primary)', fontWeight: 700, whiteSpace: 'pre' }}>
+            {compactDateTime}
+          </span>
+        ) : (
+          <div style={{ width: '1px' }} />
+        )}
       </div>
     </motion.div>
   );
@@ -201,6 +175,7 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
 const TaskBoard = () => {
   const { tasks, setTasks, updateTaskStatus, deleteTask, updateTask, addTask, courses, tasksLoading } = useTasksContext();
   const { t } = useSettings();
+  const { addXP } = useGamification();
   const navigate = useNavigate();
   const location = useLocation();
   const { isMobile } = useBreakpoint();
@@ -341,7 +316,16 @@ const TaskBoard = () => {
       }
     });
     if (targetColumn !== task.status) {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: targetColumn } : t));
+      const isNowDelivered = targetColumn === 'entregado';
+      
+      if (isNowDelivered && !task.xpClaimed) {
+        addXP(50);
+      } else if (!isNowDelivered && task.xpClaimed) {
+        addXP(-50, true);
+      }
+
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: targetColumn, xpClaimed: isNowDelivered } : t));
+      
       try { 
         await updateTaskStatus(task.id, targetColumn);
         playDropSound();
@@ -403,7 +387,7 @@ const TaskBoard = () => {
   if (tasksLoading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--accent-primary)' }}><div className="animate-pulse font-display" style={{ fontWeight: 900, fontSize: '1.2rem' }}>//_SINCRONIZANDO...</div></div>;
 
   return (
-    <div className="animate-fade-in task-board-page w-full" style={{ display: 'flex', flexDirection: 'column', padding: '32px 12px', minHeight: '100%', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+    <div className="animate-fade-in task-board-page w-full" style={{ display: 'flex', flexDirection: 'column', padding: '32px 0px 32px 4px', minHeight: '100%', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <motion.header 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -467,7 +451,7 @@ const TaskBoard = () => {
 
       {/* FILTROS NEON-PILLS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', gap: '20px' }}>
-        <InstitutionFilterPills activeFilter={currentFilter} onSelect={setCurrentFilter} />
+        <InstitutionFilterPills activeFilter={currentFilter} onSelect={setCurrentFilter} extraOptions={['HISTORIAL']} />
 
         <div style={{ position: 'relative' }}>
           <button 
@@ -541,20 +525,24 @@ const TaskBoard = () => {
       </div>
 
       <div className="w-full" style={{
-        display: isMobile ? 'flex' : 'grid',
+        display: isMobile && currentFilter !== 'HISTORIAL' ? 'flex' : (currentFilter === 'HISTORIAL' ? 'block' : 'grid'),
         flexDirection: isMobile ? 'column' : undefined,
-        gridTemplateColumns: isMobile ? undefined : 'repeat(4, minmax(0, 1fr))',
-        gap: '24px',
+        gridTemplateColumns: currentFilter === 'HISTORIAL' ? undefined : (isMobile ? undefined : 'repeat(4, minmax(0, 1fr))'),
+        gap: '12px',
         flex: isMobile ? 'none' : 1,
         paddingBottom: '24px',
         width: '100%',
         maxWidth: '100%',
         margin: 0,
         paddingLeft: 0,
-        paddingRight: 0
+        paddingRight: 0,
+        boxSizing: 'border-box'
       }}>
-        {COLUMNS.map(col => {
-          const colTasks = filteredTasks.filter(t => t.status === col.id);
+        {currentFilter === 'HISTORIAL' ? (
+          <TaskHistoryView tasks={tasks.filter(t => t.status === 'entregado' || t.status === 'ENTREGADO')} courses={courses} />
+        ) : (
+          COLUMNS.map(col => {
+            const colTasks = filteredTasks.filter(t => t.status === col.id);
           return (
             <div
               key={col.id}
@@ -563,13 +551,16 @@ const TaskBoard = () => {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                minWidth: 0,
+                minWidth: '250px',
+                width: '100%',
+                boxSizing: 'border-box',
                 padding: '16px',
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%)',
                 backdropFilter: 'blur(16px)',
                 WebkitBackdropFilter: 'blur(16px)',
                 borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '24px'
+                borderRadius: '24px',
+                overflowX: 'hidden'
               }}
             >
               <motion.div 
@@ -611,15 +602,22 @@ const TaskBoard = () => {
               {(!isMobile || colTasks.length > 0) && (
                 <div style={{ display: 'flex', flexDirection: 'column', flex: isMobile ? 'none' : 1, minHeight: isMobile ? '0' : '200px' }}>
                   <AnimatePresence>
-                    {colTasks.map(task => (
-                      <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
-                    ))}
+                    {col.id === 'entregado'
+                      ? colTasks.slice(0, 5).map(task => (
+                          <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
+                        ))
+                      : colTasks.map(task => (
+                          <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
+                        ))
+                    }
                   </AnimatePresence>
+                  
                 </div>
               )}
             </div>
           );
-        })}
+        })
+        )}
       </div>
 
       {showModal && (

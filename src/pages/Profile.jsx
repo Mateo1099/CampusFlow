@@ -10,6 +10,7 @@ import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
   Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X, Send, Mail, MailCheck
 } from 'lucide-react';
+import CustomTimePicker from '../components/ui/CustomTimePicker';
 
 const THEMES = [
   { id: 'dark', labelKey: 'darkMode', icon: '🌙', gradient: 'linear-gradient(135deg, #0f172a, #1e293b)' },
@@ -79,7 +80,7 @@ const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: isLoading ? 'var(--text-muted)' : (checked ? '#10b981' : 'rgba(156, 163, 175, 0.5)'),
+            color: checked ? '#10b981' : 'rgba(156, 163, 175, 0.5)',
             filter: checked ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.6))' : 'none',
             transition: 'all 0.3s ease'
           }}>
@@ -90,25 +91,23 @@ const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
             <span style={{
               fontSize: '0.8rem',
               fontWeight: 700,
-              color: isLoading ? 'var(--text-muted)' : 'var(--text-primary)',
+              color: 'var(--text-primary)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
               transition: 'color 0.3s ease'
             }}>
-              {isLoading ? 'CARGANDO PREFERENCIAS…' : label}
+              {label}
             </span>
-            {!isLoading && (
-              <span style={{
-                fontSize: '0.65rem',
-                fontWeight: 800,
-                color: checked ? '#10b981' : 'rgba(156, 163, 175, 0.6)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                transition: 'color 0.3s ease'
-              }}>
-                {checked ? 'Alertas Activas' : 'Pausado'}
-              </span>
-            )}
+            <span style={{
+              fontSize: '0.65rem',
+              fontWeight: 800,
+              color: checked ? '#10b981' : 'rgba(156, 163, 175, 0.6)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              transition: 'color 0.3s ease'
+            }}>
+              {checked ? 'Alertas Activas' : 'Pausado'}
+            </span>
           </div>
         </div>
 
@@ -139,8 +138,34 @@ const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
 // necesita animación propia (el navegador maneja la apertura), y sigue viéndose
 // cyber-luxe porque el borde y el texto usan el color de la zona. El input numérico
 // cambió de horas (1-720) a DÍAS (1-30) para ser más intuitivo.
-const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customDays, onCustomDaysChange, onCommitCustomDays }) => {
+const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, customDays, onCustomDaysChange, onCommitCustomDays, alertTimes, onUpdateAlertTimes }) => {
   const isCustom = freq === 'personalizado';
+
+  const toggleTime = (timeStr) => {
+    const times = alertTimes || [];
+    if (times.includes(timeStr)) {
+      onUpdateAlertTimes(times.filter(t => t !== timeStr));
+    } else {
+      onUpdateAlertTimes([...times, timeStr].sort());
+    }
+  };
+
+  const timesArr = Array.isArray(alertTimes) ? alertTimes : [];
+  const hasMorning = timesArr.includes('08:00');
+  const hasAfternoon = timesArr.includes('14:00');
+  const hasNight = timesArr.includes('20:00');
+
+  const formatTime = (t) => {
+    const [h, m] = t.split(':');
+    let hour = parseInt(h);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour}:${m} ${ampm}`;
+  };
+
+  const summaryText = timesArr.length > 0 
+    ? `Recibirás ${timesArr.length} alerta${timesArr.length > 1 ? 's' : ''} al día a las ${timesArr.map(formatTime).join(', ')}.`
+    : `No recibirás alertas. Activa al menos un horario.`;
 
   return (
     <div style={{
@@ -214,6 +239,31 @@ const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, custo
             </span>
           </div>
         )}
+      </div>
+
+      {/* MOMENTOS DE ENTREGA */}
+      <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Momentos de entrega</span>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={() => toggleTime('08:00')} style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${hasMorning ? colorVar : 'rgba(255,255,255,0.1)'}`, background: hasMorning ? `${colorVar}1a` : 'rgba(0,0,0,0.2)', color: hasMorning ? colorVar : 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>🌅 Mañana</button>
+          <button onClick={() => toggleTime('14:00')} style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${hasAfternoon ? colorVar : 'rgba(255,255,255,0.1)'}`, background: hasAfternoon ? `${colorVar}1a` : 'rgba(0,0,0,0.2)', color: hasAfternoon ? colorVar : 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>☀️ Tarde</button>
+          <button onClick={() => toggleTime('20:00')} style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${hasNight ? colorVar : 'rgba(255,255,255,0.1)'}`, background: hasNight ? `${colorVar}1a` : 'rgba(0,0,0,0.2)', color: hasNight ? colorVar : 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>🌙 Noche</button>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <CustomTimePicker 
+            value={timesArr[timesArr.length - 1] || ''} 
+            onChange={(val) => {
+              if (val && !timesArr.includes(val)) {
+                onUpdateAlertTimes([...timesArr, val].sort());
+              }
+            }}
+            accentColor={colorVar}
+          />
+          <span style={{ fontSize: '0.875rem', fontFamily: 'var(--font-sans, sans-serif)', fontWeight: 500, letterSpacing: 'normal', color: colorVar, opacity: 0.95, flex: 1, lineHeight: 1.4, minWidth: '150px' }}>
+            {summaryText}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -339,9 +389,8 @@ const Profile = () => {
   const [disableMfaLoading, setDisableMfaLoading] = useState(false);
   const [disableMfaError, setDisableMfaError] = useState('');
 
-  // null representa "aún no cargado"; evita mostrar false antes de conocer
-  // la preferencia real almacenada en Supabase.
-  const [emailNotif, setEmailNotif] = useState(null);
+  // Ya no usamos useEffect para sincronizar emailNotif con null,
+  // leemos directamente desde settings.emailNotifications gracias a localStorage
   const [redCustomDaysInput, setRedCustomDaysInput] = useState(settings.redAlertCustomDays || 1);
   const [yellowCustomDaysInput, setYellowCustomDaysInput] = useState(settings.yellowAlertCustomDays || 1);
   const [greenCustomDaysInput, setGreenCustomDaysInput] = useState(settings.greenAlertCustomDays || 1);
@@ -392,14 +441,6 @@ const Profile = () => {
   useEffect(() => {
     setTempName(settings.name);
   }, [settings.name]);
-
-  // La fuente de verdad es SettingsContext una vez termina fetchProfile. Durante
-  // esa carga el toggle se conserva neutro, sin sobrescribir el valor remoto.
-  useEffect(() => {
-    if (!settingsLoading) {
-      setEmailNotif(Boolean(settings.emailNotifications));
-    }
-  }, [settings.emailNotifications, settingsLoading]);
 
   // Si SettingsContext no pudo guardar un cambio en Supabase (RLS, red, permisos), revierte
   // el estado local y avisa aquí con un toast de error, en vez de dejar la UI desincronizada
@@ -761,12 +802,8 @@ const Profile = () => {
   };
 
   const handleEmailNotifChange = (newValue) => {
-    if (settingsLoading || emailNotif === null) return;
+    if (settingsLoading) return;
 
-    const previousValue = emailNotif;
-    // Actualizar UI al instante solo después de conocer el valor remoto.
-    setEmailNotif(newValue);
-    
     // Toast con confirmación visual inmediata
     if (newValue) {
       showNotification('✅ 📧 NOTIFICACIONES POR EMAIL ACTIVADAS');
@@ -781,10 +818,8 @@ const Profile = () => {
         console.log('[PROFILE] Email notifications guardado exitosamente:', newValue);
       })
       .catch(err => {
-        // Si falla, revertir el estado y mostrar error
+        // Si falla, el context se revierte automáticamente y Profile recibe el evento de error
         console.error('[PROFILE] Error al guardar notificaciones:', err.message);
-        setEmailNotif(previousValue);
-        showNotification('⚠️ Error al guardar, intenta de nuevo');
       });
   };
 
@@ -823,6 +858,12 @@ const Profile = () => {
     const zoneEmoji = { rojo: '🚨', amarillo: '⚠️', verde: '✨' }[zone];
     const zoneName = { rojo: 'Roja', amarillo: 'Amarilla', verde: 'Verde' }[zone];
     showNotification(`${zoneEmoji} Intervalo ${zoneName} guardado: cada ${clean} día${clean > 1 ? 's' : ''}`);
+  };
+
+  const handleUpdateAlertTimes = (zone, newTimes, zoneEmoji) => {
+    const settingKey = { rojo: 'redAlertTimes', amarillo: 'yellowAlertTimes', verde: 'greenAlertTimes' }[zone];
+    updateSettings({ [settingKey]: newTimes });
+    showNotification(`${zoneEmoji} Horarios de alerta actualizados`);
   };
 
   const copyToClipboard = (text) => {
@@ -1381,8 +1422,8 @@ const Profile = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <NotificationRow
-                  checked={Boolean(emailNotif)}
-                  isLoading={settingsLoading || emailNotif === null}
+                  checked={Boolean(settings.emailNotifications)}
+                  isLoading={false}
                   onChange={handleEmailNotifChange}
                   label="Correo Electrónico"
                 />
@@ -1399,7 +1440,7 @@ const Profile = () => {
           <div style={{
             gridColumn: '1 / -1',
             display: 'grid',
-            gridTemplateRows: emailNotif ? '1fr' : '0fr',
+            gridTemplateRows: settings.emailNotifications ? '1fr' : '0fr',
             transition: 'grid-template-rows 0.3s ease-out',
             overflow: 'hidden',
             marginTop: 0
@@ -1419,6 +1460,8 @@ const Profile = () => {
                     customDays={redCustomDaysInput}
                     onCustomDaysChange={setRedCustomDaysInput}
                     onCommitCustomDays={() => handleCustomDaysCommit('rojo')}
+                    alertTimes={settings.redAlertTimes}
+                    onUpdateAlertTimes={(times) => handleUpdateAlertTimes('rojo', times, '🚨')}
                   />
                   <AlertFrequencyRow
                     zoneLabel="Amarilla · 4-7 días"
@@ -1429,6 +1472,8 @@ const Profile = () => {
                     customDays={yellowCustomDaysInput}
                     onCustomDaysChange={setYellowCustomDaysInput}
                     onCommitCustomDays={() => handleCustomDaysCommit('amarillo')}
+                    alertTimes={settings.yellowAlertTimes}
+                    onUpdateAlertTimes={(times) => handleUpdateAlertTimes('amarillo', times, '⚠️')}
                   />
                   <AlertFrequencyRow
                     zoneLabel="Verde · 8-15 días"
@@ -1439,6 +1484,8 @@ const Profile = () => {
                     customDays={greenCustomDaysInput}
                     onCustomDaysChange={setGreenCustomDaysInput}
                     onCommitCustomDays={() => handleCustomDaysCommit('verde')}
+                    alertTimes={settings.greenAlertTimes}
+                    onUpdateAlertTimes={(times) => handleUpdateAlertTimes('verde', times, '✨')}
                   />
                 </div>
               </div>

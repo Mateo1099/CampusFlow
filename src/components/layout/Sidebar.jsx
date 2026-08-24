@@ -3,14 +3,15 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { useTasksContext } from '../../context/TaskContext';
+
 import { prefetchWeeklyPlannerData } from '../../lib/prefetchWeeklyPlannerData';
 import { prefetchAnalyticsData } from '../../lib/prefetchAnalyticsData';
+import { useGamification } from '../../context/GamificationContext';
 
 const Sidebar = () => {
   const { t, settings } = useSettings();
-  const { analytics } = useTasksContext();
   const { logout, user } = useAuth();
+  const { xp, level, xpToNextLevel } = useGamification();
   const navigate = useNavigate();
   const location = useLocation();
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
@@ -34,6 +35,7 @@ const Sidebar = () => {
     { name: t.planner, path: '/planner', icon: <CalendarDays size={isHorizontal ? 20 : 18} /> },
     { name: t.analytics, path: '/stats', icon: <PieChart size={isHorizontal ? 20 : 18} /> },
     { name: t.pomodoro, path: '/pomodoro', icon: <Timer size={isHorizontal ? 20 : 18} /> },
+
   ], [t, isHorizontal]);
 
   // Trigger animations on route change
@@ -205,7 +207,7 @@ const Sidebar = () => {
                   display: 'block',
                   lineHeight: 1
                 }}>
-                  {settings.level}
+                  {level}
                 </span>
                 <span style={{
                   position: 'absolute',
@@ -230,7 +232,7 @@ const Sidebar = () => {
             border: '1px solid var(--border-glass-side)'
           }}>
             <div style={{ 
-              width: `${Math.min((analytics.totalXP / 1000) * 100, 100)}%`, 
+              width: `${Math.min((xp / xpToNextLevel) * 100, 100)}%`, 
               height: '100%', 
               background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
               borderRadius: 'var(--radius-full)',
@@ -256,8 +258,8 @@ const Sidebar = () => {
             fontWeight: 700,
             letterSpacing: '0.05em'
           }}>
-            <span style={{ color: 'var(--accent-primary)' }}>{analytics.totalXP} XP</span>
-            <span style={{ color: 'var(--text-muted)' }}>1000 XP</span>
+            <span style={{ color: 'var(--accent-primary)' }}>{xp} XP</span>
+            <span style={{ color: 'var(--text-muted)' }}>{xpToNextLevel} XP</span>
           </div>
         </div>
       ) /* End Gamification HUD */}
@@ -304,15 +306,15 @@ const Sidebar = () => {
               onFocus={handleMouseEnter}
               style={{
                 position: 'relative',
-                padding: isHorizontal ? '10px 16px' : '14px 20px',
+                padding: isHorizontal ? '10px 12px' : '12px 16px',
                 minHeight: isHorizontal ? 'auto' : '52px',
                 flexShrink: 0,
-                fontSize: isHorizontal ? '0.75rem' : '0.9rem',
+                fontSize: isHorizontal ? '0.75rem' : '0.85rem',
                 borderRadius: 'var(--radius-md)',
                 textDecoration: 'none',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '14px',
+                gap: isHorizontal ? '8px' : '12px',
                 fontFamily: 'var(--font-display)',
                 fontWeight: isActive ? 800 : 700,
                 textTransform: 'uppercase',
@@ -423,7 +425,7 @@ const Sidebar = () => {
               </div>
 
               {/* TEXT CONTENT */}
-              <span style={{ position: 'relative', zIndex: 4, whiteSpace: 'nowrap' }}>
+              <span style={{ position: 'relative', zIndex: 4, whiteSpace: 'normal', lineHeight: 1.2, wordBreak: 'break-word', flex: 1 }}>
                 {item.name}
               </span>
             </NavLink>

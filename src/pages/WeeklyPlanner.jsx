@@ -1,4 +1,6 @@
+import { supabase } from '../lib/supabaseClient';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -806,11 +808,52 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
 
-  const getWeekLabel = () => {
-    if (currentWeekOffset === 0) return 'Semana Actual';
-    if (currentWeekOffset === 1) return 'Próxima Semana';
-    if (currentWeekOffset === -1) return 'Semana Anterior';
-    return currentWeekOffset > 0 ? `+${currentWeekOffset} Semanas` : `${currentWeekOffset} Semanas`;
+  const getMondayDate = (offset = 0) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = today.getDay();
+    const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(today.getFullYear(), today.getMonth(), diffToMonday);
+    monday.setDate(monday.getDate() + (offset * 7));
+    return monday;
+  };
+
+  const getWeekRange = () => {
+    const startOfWeek = getMondayDate(currentWeekOffset);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    
+    const formatOpts = { day: 'numeric', month: 'short' };
+    const startStr = startOfWeek.toLocaleDateString('es-ES', formatOpts);
+    const endStr = endOfWeek.toLocaleDateString('es-ES', formatOpts);
+    const yearStr = endOfWeek.getFullYear();
+    
+    return `${startStr} - ${endStr}, ${yearStr}`;
+  };
+
+  const getDayNumber = (dayValue) => {
+    const dayMap = { monday: 0, tuesday: 1, wednesday: 2, thursday: 3, friday: 4, saturday: 5, sunday: 6 };
+    const startOfWeek = getMondayDate(currentWeekOffset);
+    const targetDate = new Date(startOfWeek);
+    targetDate.setDate(startOfWeek.getDate() + dayMap[dayValue]);
+    return targetDate.getDate();
+  };
+
+  const handleDateChange = (e) => {
+    if (e.target.value) {
+      const [y, m, d] = e.target.value.split('-').map(Number);
+      const selectedDate = new Date(y, m - 1, d, 0, 0, 0, 0);
+      
+      const todayMonday = getMondayDate(0);
+      
+      const day = selectedDate.getDay();
+      const diffToMonday = selectedDate.getDate() - day + (day === 0 ? -6 : 1);
+      const selectedMonday = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), diffToMonday);
+      
+      const diffTime = selectedMonday.getTime() - todayMonday.getTime();
+      const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+      setCurrentWeekOffset(diffWeeks);
+    }
   };
 
   const blocks = planner.planner_blocks || [];
@@ -995,8 +1038,12 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
           >
             &larr; Anterior
           </button>
-          <div style={{ padding: '8px 24px', borderRadius: '999px', background: 'rgba(0, 243, 255, 0.15)', border: '1px solid rgba(0, 243, 255, 0.3)', color: '#00f3ff', fontWeight: 800, fontSize: '0.85rem', boxShadow: '0 0 16px rgba(0,243,255,0.1)' }}>
-            {getWeekLabel()}
+          <div style={{ position: 'relative' }}>
+             <button style={{ padding: '8px 24px', borderRadius: '999px', background: 'rgba(0, 243, 255, 0.15)', border: '1px solid rgba(0, 243, 255, 0.3)', color: '#00f3ff', fontWeight: 800, fontSize: '0.85rem', boxShadow: '0 0 16px rgba(0,243,255,0.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 1 }}>
+               <Calendar size={16} />
+               {getWeekRange()}
+             </button>
+             <input type="date" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 2 }} onChange={handleDateChange} />
           </div>
           <button 
             className="click-press hover-bg"
@@ -1007,6 +1054,16 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
           >
             Siguiente &rarr;
           </button>
+          
+          {currentWeekOffset !== 0 && (
+            <button
+              onClick={() => setCurrentWeekOffset(0)}
+              style={{ marginLeft: '8px', padding: '8px 16px', borderRadius: '999px', background: 'rgba(0, 243, 255, 0.15)', border: '1px solid rgba(0, 243, 255, 0.4)', color: '#00f3ff', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 0 10px rgba(0,243,255,0.2)' }}
+              className="click-press"
+            >
+              Volver a Hoy
+            </button>
+          )}
         </div>
       </div>
 
@@ -1159,8 +1216,8 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
               justifyContent: 'center',
               gap: '4px'
             }}>
-              <div style={{ color: planner.color || 'var(--accent-primary)', fontSize: '0.68rem', lineHeight: 1 }}>DÍA</div>
-              {DAY_LABELS[day]}
+              <div style={{ color: planner.color || 'var(--accent-primary)', fontSize: '0.68rem', lineHeight: 1, textTransform: 'uppercase' }}>{DAY_LABELS[day]}</div>
+              <div style={{ fontSize: '1.25rem', marginTop: '2px', lineHeight: 1 }}>{getDayNumber(day)}</div>
             </div>
           ))}
 
@@ -1395,9 +1452,14 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                                         <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
                                           <button 
                                             type="button"
-                                            onClick={(event) => { 
-                                              event.stopPropagation(); 
-                                              navigate('/pomodoro', { state: { sourceBlock: b } }); 
+                                            onClick={async (event) => { 
+                                              event.stopPropagation();
+                                              if (b.status !== 'en_proceso') {
+                                                try {
+                                                  await supabase.from('weekly_planner_blocks').update({ status: 'en_proceso' }).eq('id', b.id);
+                                                } catch (e) { console.error(e); }
+                                              }
+                                              navigate('/pomodoro', { state: { sourceBlock: { ...b, status: 'en_proceso' } } }); 
                                             }}
                                             style={{ background: 'var(--accent-lime)1a', border: '1px solid var(--accent-lime)40', color: 'var(--accent-lime)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}
                                             title="Iniciar estudio"
@@ -1531,13 +1593,12 @@ function PlannerModal({ onClose, onSave, initialPlanner }) {
     onClose();
   };
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ 
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="glass-panel modal-custom-scrollbar" onClick={e => e.stopPropagation()} style={{ 
         width: '100%', maxWidth: '480px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px',
         background: 'linear-gradient(135deg, rgba(20,20,25,0.96) 0%, rgba(12,12,18,0.98) 100%)',
-        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-        maxHeight: '85vh', overflowY: 'auto'
+        border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto'
       }}>
         <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '0.5px' }}>{initialPlanner ? 'EDITAR PLANIFICACIÓN' : 'NUEVA PLANIFICACIÓN'}</h2>
         
@@ -1700,8 +1761,9 @@ function PlannerModal({ onClose, onSave, initialPlanner }) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </div>,
+    document.body
   );
 }
 
@@ -1803,9 +1865,9 @@ function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', co
     }))
   ];
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '620px', padding: '24px 30px', display: 'flex', flexDirection: 'column', gap: '16px', margin: 'auto', borderRadius: '30px', background: 'linear-gradient(155deg, rgba(10,12,22,0.96) 0%, rgba(18,22,34,0.92) 55%, rgba(0,243,255,0.06) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06)', maxHeight: '95vh', overflowY: 'auto' }}>
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="glass-panel modal-custom-scrollbar" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '620px', padding: '24px 30px', display: 'flex', flexDirection: 'column', gap: '16px', margin: 'auto', borderRadius: '30px', background: 'linear-gradient(155deg, rgba(10,12,22,0.96) 0%, rgba(18,22,34,0.92) 55%, rgba(0,243,255,0.06) 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
           <div>
             <h2 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.02em', color: '#fff' }}>{mode === 'edit' ? 'Editar Bloque' : 'Agregar Bloque'}</h2>
@@ -1931,8 +1993,9 @@ function BlockModal({ initialDay, initialTime, initialBlock, mode = 'create', co
             }}>{mode === 'edit' ? 'GUARDAR CAMBIOS' : 'GUARDAR BLOQUE'}</button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </div>,
+    document.body
   );
 }
 

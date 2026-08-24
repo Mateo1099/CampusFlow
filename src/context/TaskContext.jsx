@@ -19,7 +19,7 @@ export function TaskProvider({ children }) {
   // Hooks de Datos
   const { 
     tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading 
-  } = useTasks(user?.id, addXP, incrementStat);
+  } = useTasks(user?.id);
 
   const { 
     courses, addCourse, updateCourse, deleteCourse, coursesLoading 

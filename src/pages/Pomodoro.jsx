@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
 import { playPhaseCompleteChime, resumeAudio } from '../lib/audioService';
 import { toast } from 'sonner';
+import { useGamification } from '../context/GamificationContext';
 
 const STUDY_METHODS = {
   pomodoro: {
@@ -46,13 +47,15 @@ const STUDY_METHODS = {
 };
 
 const Pomodoro = () => {
+
   const location = useLocation();
   const incomingBlock = location.state?.sourceBlock;
   const [activePlannerBlock, setActivePlannerBlock] = useState(incomingBlock || null);
 
   const { user } = useAuth();
   const { tasks } = useTasks(user?.id);
-  const { t, addXP, incrementStat } = useSettings();
+  const { t, incrementStat } = useSettings();
+  const { addXP } = useGamification();
   
   const [selectedStudyMethod, setSelectedStudyMethod] = useState('pomodoro');
   const [mode, setMode] = useState(STUDY_METHODS['pomodoro'].defaultMode);
@@ -79,7 +82,7 @@ const Pomodoro = () => {
   // Estados para Ambiente Sonoro
   const audioRef = useRef(null);
   const [ambientSound, setAmbientSound] = useState('');
-  const [volume, setVolume] = useState(0.5);
+  const [volume, setVolume] = useState(() => Number(localStorage.getItem('cf_pomodoro_volume')) || 0.5);
   const [customAudioUrl, setCustomAudioUrl] = useState(null);
   const [isSoundDropdownOpen, setIsSoundDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -150,11 +153,11 @@ const Pomodoro = () => {
         setIsActive(false);
         
         if (mode === 'focus') {
-          addXP(50);
+          addXP(100);
           incrementStat('pomodorosCompleted');
           toast.success("¡Tiempo Cumplido!", { 
             id: "pomodoro-toast", 
-            description: "+25 XP ganados en tu perfil.",
+            description: "Sesión registrada con éxito.",
             style: { border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 0 20px rgba(168, 85, 247, 0.15)' }
           });
         } else {
@@ -898,3 +901,4 @@ const Pomodoro = () => {
 };
 
 export default Pomodoro;
+

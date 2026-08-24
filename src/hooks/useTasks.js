@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { tasksService } from '../lib/tasksService';
 import { dataStoreService } from '../lib/dataStoreService';
 
-export const useTasks = (userId, addXP, incrementStat) => {
+export const useTasks = (userId) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -22,7 +22,8 @@ export const useTasks = (userId, addXP, incrementStat) => {
     setLoading(true);
     try {
       const data = await dataStoreService.getTasks(userId);
-      setTasks(data);
+      // Inyectar xpClaimed para evitar exploit de XP en tareas ya entregadas
+      setTasks(data.map(t => ({ ...t, xpClaimed: String(t.status).toLowerCase() === 'entregado' })));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -41,7 +42,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
   const addTask = useCallback(async (task) => {
     try {
       const newTask = await tasksService.createTask(userId, task);
-      setTasks(prev => [newTask, ...prev]);
+      setTasks(prev => [{ ...newTask, xpClaimed: false }, ...prev]);
       dataStoreService.invalidate('tasks', userId);
       return newTask;
     } catch (err) {
@@ -53,7 +54,7 @@ export const useTasks = (userId, addXP, incrementStat) => {
   const updateTask = useCallback(async (id, updates) => {
     try {
       const updatedTask = await tasksService.updateTask(id, updates);
-      setTasks(prev => prev.map(t => t.id === id ? updatedTask : t));
+      setTasks(prev => prev.map(t => t.id === id ? { ...updatedTask, xpClaimed: String(updatedTask.status).toLowerCase() === 'entregado' } : t));
       dataStoreService.invalidate('tasks', userId);
       return updatedTask;
     } catch (err) {
@@ -67,16 +68,6 @@ export const useTasks = (userId, addXP, incrementStat) => {
       const task = tasksRef.current.find(t => String(t.id) === String(id));
       if (!task) return;
 
-      const oldStatus = task.status;
-      
-      // Lógica de XP
-      if (oldStatus !== 'ENTREGADO' && newStatus === 'ENTREGADO') {
-        if (addXP) addXP(100);
-        if (incrementStat) incrementStat('tasksCompleted');
-      } else if (oldStatus === 'ENTREGADO' && newStatus !== 'ENTREGADO') {
-        if (addXP) addXP(-100);
-      }
-
       // SURGICAL UPDATE: Enviamos solo lo necesario pero asegurando que no se pierda el mapeo
       const updates = {
         status: newStatus,
@@ -84,14 +75,16 @@ export const useTasks = (userId, addXP, incrementStat) => {
       };
 
       const updatedTask = await tasksService.updateTask(id, updates);
-      setTasks(prev => prev.map(t => String(t.id) === String(id) ? updatedTask : t));
+      // La lógica de XP ahora se maneja completamente en TaskBoard.jsx para evitar duplicados
+      const isNowDelivered = String(newStatus).toLowerCase() === 'entregado';
+      setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...updatedTask, xpClaimed: isNowDelivered } : t));
       dataStoreService.invalidate('tasks', userId);
     } catch (err) {
       console.error("ERROR EN updateTaskStatus:", err);
       setError(err.message);
       throw err;
     }
-  }, [addXP, incrementStat, userId]);
+  }, [userId]);
 
   const deleteTask = useCallback(async (id) => {
     try {

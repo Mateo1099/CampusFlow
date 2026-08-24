@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react/jsx-no-comment-textnodes, react/no-unescaped-entities */
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react/jsx-no-comment-textnodes */
 import React, { useMemo, useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
@@ -41,11 +41,8 @@ const Dashboard = () => {
 
   // Anal├¡tica PRO -> Dashboard Integration
   const {
-    totalTasks,
-    completedTasks,
     totalHabits,
     completedHabits,
-    totalMinutes,
     completedBlocks,
     pendingBlocks,
     minutesByTime,
@@ -61,28 +58,6 @@ const Dashboard = () => {
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   };
 
-  // Calculate pending tasks
-  const pendingTasks = Math.max(totalTasks - completedTasks, 0);
-
-  // Calculate completion rate
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  // Determine if analytics is empty for new dashboard section
-  const isAnalyticsDashboardEmpty = analyticsLoading || (totalTasks === 0 && totalMinutes === 0 && totalHabits === 0);
-
-  const getSmartInsight = () => {
-    const hasBlocks = (completedBlocks + pendingBlocks) > 0;
-    if (!hasBlocks && totalMinutes === 0) return 'A├║n no hay planificaci├│n suficiente.';
-    if (pendingBlocks > completedBlocks) return 'Tienes bloques pendientes esta semana.';
-    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga est├í en la ma├▒ana.';
-    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga est├í en la noche.';
-    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga est├í en la tarde.';
-    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecuci├│n esta semana.';
-    return 'Tu semana tiene una planificaci├│n estable.';
-  };
-
-  const totalActionsForCompliance = totalTasks + completedBlocks + pendingBlocks + totalHabits;
-      const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
   const metricLabelColor = isLightMode ? '#475569' : 'rgba(226,232,240,0.92)';
     // === LIGHT PREMIUM FROST ===
   // Base glass style para cards en modo claro: blanco translúcido con borde sutil y sombra elegante.
@@ -146,6 +121,41 @@ const Dashboard = () => {
       return true;
     });
   }, [tasks, currentFilter, courses]);
+
+  // UNIFICACIÓN DE ESTADO: Calculamos todo a partir de local filteredTasks
+  const safeTotalTasks = filteredTasks.length;
+  const safeCompletedTasks = filteredTasks.filter(t => {
+    const status = (t.status || '').toLowerCase();
+    return status === 'entregado' || status === 'completed' || status === 'submitted';
+  }).length;
+  const pendingTasks = Math.max(safeTotalTasks - safeCompletedTasks, 0);
+
+  // Estimación de minutos - Cortocircuito y fallback para NaN
+  const totalMinutes = filteredTasks.reduce((acc, t) => acc + (Number(t.estimated_time) || Number(t.expected_duration) || 0), 0);
+
+  // Sobrescribimos totalTasks y completedTasks para las métricas
+  const totalTasks = safeTotalTasks;
+  const completedTasks = safeCompletedTasks;
+
+  // Calculate completion rate
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  // Determine if analytics is empty for new dashboard section
+  const isAnalyticsDashboardEmpty = analyticsLoading || (totalTasks === 0 && totalMinutes === 0 && totalHabits === 0);
+
+  const getSmartInsight = () => {
+    const hasBlocks = (completedBlocks + pendingBlocks) > 0;
+    if (!hasBlocks && totalMinutes === 0) return 'A├║n no hay planificaci├│n suficiente.';
+    if (pendingBlocks > completedBlocks) return 'Tienes bloques pendientes esta semana.';
+    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga est├í en la ma├▒ana.';
+    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga est├í en la noche.';
+    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga est├í en la tarde.';
+    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecuci├│n esta semana.';
+    return 'Tu semana tiene una planificaci├│n estable.';
+  };
+
+  const totalActionsForCompliance = totalTasks + completedBlocks + pendingBlocks + totalHabits;
+      const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
 
   // RADAR DE ENTREGAS: Pr├│ximos 14 d├¡as
   const upcomingTasks = useMemo(() => {
@@ -474,13 +484,13 @@ const Dashboard = () => {
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 255, 136, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Completados</p>
                   <motion.h3
-                    key={completedTasks}
+                    key={Number(completedTasks) || 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                     style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#16a34a' : '#00ff88', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 255, 136, 0.5)' }}
                   >
-                    {completedTasks}
+                    {Number(completedTasks) || 0}
                   </motion.h3>
                 </div>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(22,163,74,0.1)' : 'rgba(0, 255, 136, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -517,13 +527,13 @@ const Dashboard = () => {
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(255, 200, 0, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Pendientes</p>
                   <motion.h3
-                    key={pendingTasks}
+                    key={Number(pendingTasks) || 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                     style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#d97706' : '#ffc800', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(255, 200, 0, 0.5)' }}
                   >
-                    {pendingTasks}
+                    {Number(pendingTasks) || 0}
                   </motion.h3>
                 </div>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(217,119,6,0.1)' : 'rgba(255, 200, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -560,13 +570,13 @@ const Dashboard = () => {
                 <div>
                   <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : metricLabelColor, fontWeight: 800, fontFamily: 'var(--font-display)', textShadow: 'none' }}>Minutos totales</p>
                   <motion.h3
-                    key={totalMinutes}
+                    key={Number(totalMinutes) || 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                     style={{ fontSize: '2.8rem', fontWeight: 900, margin: '0', color: isLightMode ? '#7c3aed' : '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(188, 19, 254, 0.5)' }}
                   >
-                    {Math.floor(totalMinutes)}
+                    {Math.floor(Number(totalMinutes) || 0)}
                   </motion.h3>
                 </div>
                 <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(147,51,234,0.1)' : 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -577,7 +587,7 @@ const Dashboard = () => {
           </div>
 
           {/* Metric Overlays: Compliance & Smart Summary Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '16px', marginBottom: '16px' }}>
             {/* Completion Rate Progress Bar */}
             <motion.div
               className="glass-panel"
@@ -640,65 +650,10 @@ const Dashboard = () => {
               </div>
               {/* Subtitle */}
               <p style={{ margin: '8px 0 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                {completedTasks} de {totalTasks} trabajos completados
+                {Number(completedTasks) || 0} de {totalTasks} trabajos completados
               </p>
             </motion.div>
 
-            {/* SMART SUMMARY (ANAL├ìTICA PRO) */}
-            <div className="glass-panel" style={isLightMode ? {
-              ...lightGlassCardStyle,
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              justifyContent: 'center',
-              borderRadius: '16px'
-            } : {
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.05) 0%, rgba(10, 15, 30, 0.5) 100%)',
-              border: '1px solid rgba(188, 19, 254, 0.15)',
-              borderRadius: '16px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <BrainCircuit size={18} color="var(--accent-primary)" />
-                <h2 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', color: 'var(--accent-primary)', fontWeight: 900, margin: 0 }}>
-                  Resumen Inteligente
-                </h2>
-              </div>
-
-              {isAnalyticsEmpty ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Sin datos suficientes.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600, fontStyle: 'italic', lineHeight: 1.4 }}>
-                    "{getSmartInsight()}"
-                  </p>
-                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginTop: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Clock3 size={14} color="var(--accent-primary)" />
-                      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
-                        <span style={{ opacity: 0.7 }}>Tiempo planeado: </span>
-                        <span style={{ color: 'var(--text-primary)' }}>{formatMinutes(totalMinutes)}</span>
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Zap size={14} color="var(--accent-secondary)" />
-                      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>
-                        <span style={{ opacity: 0.7 }}>Bloques pendientes: </span>
-                        <span style={{ color: 'var(--accent-secondary)' }}>{pendingBlocks}</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </motion.div>
       )}
@@ -743,7 +698,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {upcomingTasks.map(task => {
+                {upcomingTasks.slice(0, 4).map(task => {
                   let days;
                   let hoursLeft;
                   try {

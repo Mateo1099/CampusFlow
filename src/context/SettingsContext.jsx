@@ -115,13 +115,16 @@ export function SettingsProvider({ children }) {
     avatarUrl: null,
     customWallpaper: null,
     two_factor_enabled: false,
-    emailNotifications: false,
-    redAlertFreq: 'diario',
-    yellowAlertFreq: 'diario',
-    greenAlertFreq: 'diario',
-    redAlertCustomDays: 1,
-    yellowAlertCustomDays: 1,
-    greenAlertCustomDays: 1
+    emailNotifications: localStorage.getItem('cf_email_notif') === 'true',
+    redAlertFreq: localStorage.getItem('cf_red_freq') || 'diario',
+    yellowAlertFreq: localStorage.getItem('cf_yellow_freq') || 'diario',
+    greenAlertFreq: localStorage.getItem('cf_green_freq') || 'diario',
+    redAlertCustomDays: Number(localStorage.getItem('cf_red_custom_days')) || 1,
+    yellowAlertCustomDays: Number(localStorage.getItem('cf_yellow_custom_days')) || 1,
+    greenAlertCustomDays: Number(localStorage.getItem('cf_green_custom_days')) || 1,
+    redAlertTimes: JSON.parse(localStorage.getItem('cf_red_times') || '["08:00"]'),
+    yellowAlertTimes: JSON.parse(localStorage.getItem('cf_yellow_times') || '["08:00"]'),
+    greenAlertTimes: JSON.parse(localStorage.getItem('cf_green_times') || '["08:00"]')
   });
   const [recentXPGains, setRecentXPGains] = useState([]);
   // No mostramos preferencias remotas como si fueran valores definitivos antes
@@ -140,18 +143,19 @@ export function SettingsProvider({ children }) {
       // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme, two_factor_enabled Y email_notifications
       let { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days, in_app_alerts_enabled')
+        .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days, in_app_alerts_enabled, red_alert_times, yellow_alert_times, green_alert_times')
         .eq('id', uid)
         .maybeSingle();
 
       if (error) {
-        console.warn("Error en carga de perfil, intentando fallback de columnas...");
+        console.warn("Error en carga de perfil, intentando fallback de columnas seguras...", error.message);
+        // Fallback: consultamos todas las columnas antiguas si las nuevas (_times) rompen la query (400)
         const safeFetch = await supabase
           .from('profiles')
-          .select('id, language, typography, font_size, avatar_url, xp, level, theme')
+          .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days, in_app_alerts_enabled')
           .eq('id', uid)
           .maybeSingle();
-        data = safeFetch.data;
+        data = safeFetch.data || {};
       }
 
       if (data) {
@@ -178,7 +182,10 @@ export function SettingsProvider({ children }) {
           greenAlertFreq: data.green_alert_freq || prev.greenAlertFreq || 'diario',
           redAlertCustomDays: Number(data.red_alert_custom_days) || prev.redAlertCustomDays || 1,
           yellowAlertCustomDays: Number(data.yellow_alert_custom_days) || prev.yellowAlertCustomDays || 1,
-          greenAlertCustomDays: Number(data.green_alert_custom_days) || prev.greenAlertCustomDays || 1
+          greenAlertCustomDays: Number(data.green_alert_custom_days) || prev.greenAlertCustomDays || 1,
+          redAlertTimes: (data.red_alert_times && Array.isArray(data.red_alert_times)) ? data.red_alert_times : (prev.redAlertTimes || ['08:00']),
+          yellowAlertTimes: (data.yellow_alert_times && Array.isArray(data.yellow_alert_times)) ? data.yellow_alert_times : (prev.yellowAlertTimes || ['08:00']),
+          greenAlertTimes: (data.green_alert_times && Array.isArray(data.green_alert_times)) ? data.green_alert_times : (prev.greenAlertTimes || ['08:00'])
         }));
       }
     } catch (err) {
@@ -237,19 +244,47 @@ export function SettingsProvider({ children }) {
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;
       if (processedUpdates.fontSize) cloudMapping.font_size = Number(processedUpdates.fontSize);
       if (processedUpdates.two_factor_enabled !== undefined) cloudMapping.two_factor_enabled = processedUpdates.two_factor_enabled;
-      // Preferencia real de notificaciones por correo: se persiste en profiles.email_notifications
-      // y es la fuente de verdad que consulta la Edge Function send-activity-email antes de enviar.
-      if (processedUpdates.emailNotifications !== undefined) cloudMapping.email_notifications = processedUpdates.emailNotifications;
-      // Frecuencia de insistencia por zona del semáforo de alertas (rojo/amarillo/verde),
-      // leídas de forma independiente por run_daily_deadline_range_alerts() en Supabase.
-      if (processedUpdates.redAlertFreq !== undefined) cloudMapping.red_alert_freq = processedUpdates.redAlertFreq;
-      if (processedUpdates.yellowAlertFreq !== undefined) cloudMapping.yellow_alert_freq = processedUpdates.yellowAlertFreq;
-      if (processedUpdates.greenAlertFreq !== undefined) cloudMapping.green_alert_freq = processedUpdates.greenAlertFreq;
-      // Valor numérico (en DÍAS, 1-30) que define el intervalo real cuando la frecuencia
-      // de una zona está en 'personalizado'. Ver migrations_email_mailgun_v5.sql
-      if (processedUpdates.redAlertCustomDays !== undefined) cloudMapping.red_alert_custom_days = Number(processedUpdates.redAlertCustomDays);
-      if (processedUpdates.yellowAlertCustomDays !== undefined) cloudMapping.yellow_alert_custom_days = Number(processedUpdates.yellowAlertCustomDays);
-      if (processedUpdates.greenAlertCustomDays !== undefined) cloudMapping.green_alert_custom_days = Number(processedUpdates.greenAlertCustomDays);
+      // Preferencia real de notificaciones por correo y frecuencias
+      if (processedUpdates.emailNotifications !== undefined) {
+        cloudMapping.email_notifications = processedUpdates.emailNotifications;
+        localStorage.setItem('cf_email_notif', processedUpdates.emailNotifications);
+      }
+      if (processedUpdates.redAlertFreq !== undefined) {
+        cloudMapping.red_alert_freq = processedUpdates.redAlertFreq;
+        localStorage.setItem('cf_red_freq', processedUpdates.redAlertFreq);
+      }
+      if (processedUpdates.yellowAlertFreq !== undefined) {
+        cloudMapping.yellow_alert_freq = processedUpdates.yellowAlertFreq;
+        localStorage.setItem('cf_yellow_freq', processedUpdates.yellowAlertFreq);
+      }
+      if (processedUpdates.greenAlertFreq !== undefined) {
+        cloudMapping.green_alert_freq = processedUpdates.greenAlertFreq;
+        localStorage.setItem('cf_green_freq', processedUpdates.greenAlertFreq);
+      }
+      if (processedUpdates.redAlertCustomDays !== undefined) {
+        cloudMapping.red_alert_custom_days = Number(processedUpdates.redAlertCustomDays);
+        localStorage.setItem('cf_red_custom_days', Number(processedUpdates.redAlertCustomDays));
+      }
+      if (processedUpdates.yellowAlertCustomDays !== undefined) {
+        cloudMapping.yellow_alert_custom_days = Number(processedUpdates.yellowAlertCustomDays);
+        localStorage.setItem('cf_yellow_custom_days', Number(processedUpdates.yellowAlertCustomDays));
+      }
+      if (processedUpdates.greenAlertCustomDays !== undefined) {
+        cloudMapping.green_alert_custom_days = Number(processedUpdates.greenAlertCustomDays);
+        localStorage.setItem('cf_green_custom_days', Number(processedUpdates.greenAlertCustomDays));
+      }
+      if (processedUpdates.redAlertTimes !== undefined) {
+        cloudMapping.red_alert_times = processedUpdates.redAlertTimes;
+        localStorage.setItem('cf_red_times', JSON.stringify(processedUpdates.redAlertTimes));
+      }
+      if (processedUpdates.yellowAlertTimes !== undefined) {
+        cloudMapping.yellow_alert_times = processedUpdates.yellowAlertTimes;
+        localStorage.setItem('cf_yellow_times', JSON.stringify(processedUpdates.yellowAlertTimes));
+      }
+      if (processedUpdates.greenAlertTimes !== undefined) {
+        cloudMapping.green_alert_times = processedUpdates.greenAlertTimes;
+        localStorage.setItem('cf_green_times', JSON.stringify(processedUpdates.greenAlertTimes));
+      }
 
       if (updates.wallpaper !== undefined) {
         if (updates.wallpaper === 'custom') {
@@ -276,6 +311,16 @@ export function SettingsProvider({ children }) {
           if (error) throw error;
         } catch (dbErr) {
           console.error("Error en persistencia:", dbErr.message);
+
+          // SILENCIAR ERROR BD SI ES POR COLUMNAS DE ALERTAS NUEVAS
+          const errorMsg = dbErr.message?.toLowerCase() || '';
+          const isAlertTimesError = errorMsg.includes('red_alert_times') || errorMsg.includes('yellow_alert_times') || errorMsg.includes('green_alert_times') || dbErr.code === 'PGRST204';
+            
+          if (isAlertTimesError) {
+            console.warn("Ignorando error de base de datos por columnas faltantes, usando fallback en memoria.");
+            return; // Terminamos sin revertir el estado local optimista
+          }
+
           // CRÍTICO: si Supabase rechaza el guardado (RLS, red, permisos), la UI NO debe
           // quedarse mostrando el valor optimista como si se hubiera guardado. Antes este
           // catch solo hacía console.error, así que un toggle podía verse "activado" en

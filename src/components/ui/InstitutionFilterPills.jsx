@@ -12,6 +12,7 @@ const NEON_COLORS = {
   UNAD: '#ffcc00',
   SENA: '#00ff88',
   PERSONALIZADO: '#bc13fe',
+  HISTORIAL: '#ff4d4d',
 };
 
 const CLICK_FREQUENCIES = {
@@ -19,6 +20,7 @@ const CLICK_FREQUENCIES = {
   UNAD: 1000,
   SENA: 1200,
   PERSONALIZADO: 1500,
+  HISTORIAL: 1600,
 };
 
 /**
@@ -31,10 +33,12 @@ const CLICK_FREQUENCIES = {
  * @param {(id: string) => void} onSelect - callback al elegir un filtro.
  * @param {object} [style] - estilos extra para el contenedor (ej. marginBottom).
  */
-const InstitutionFilterPills = ({ activeFilter, onSelect, style }) => {
+const InstitutionFilterPills = ({ activeFilter, onSelect, style, extraOptions = [] }) => {
+  const combinedOptions = [...INSTITUTION_FILTER_OPTIONS, ...extraOptions];
+
   return (
     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', ...style }}>
-      {INSTITUTION_FILTER_OPTIONS.map(f => {
+      {combinedOptions.map(f => {
         const isActive = activeFilter === f;
         const neonColor = NEON_COLORS[f];
 
