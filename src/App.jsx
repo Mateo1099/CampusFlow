@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import Layout from './components/layout/Layout';
 import LoadingGlass from './components/ui/LoadingGlass';
 import AppTransitionWrapper from './components/ui/AppTransitionWrapper';
+import ReloadPrompt from './components/ui/ReloadPrompt';
 import { usePrefetchRoutes } from './hooks/usePrefetchRoutes';
 import { Toaster } from 'sonner';
 
@@ -307,6 +308,7 @@ function App() {
                 }}
               />
               <AppRoutes />
+              <ReloadPrompt />
             </BrowserRouter>
           </GamificationProvider>
         </TaskProvider>
@@ -316,3 +318,4 @@ function App() {
 }
 
 export default App;
+
