@@ -46,21 +46,21 @@ export const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         touchAction: 'none'
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-          <GripVertical size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-3 w-full">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <GripVertical size={14} color="var(--text-muted)" className="shrink-0" />
           <div style={{ 
             display: 'flex', alignItems: 'center', gap: '8px', 
             background: `${accentColor}15`, padding: '4px 10px', borderRadius: '6px',
             border: `1px solid ${accentColor}33`, maxWidth: '100%', overflow: 'hidden'
           }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            <span className="truncate" style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 800, textTransform: 'uppercase' }}>
               {courseObj?.name || 'General'}
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="flex gap-2 shrink-0">
           <motion.button 
             whileHover={{ 
               scale: 1.02, 
@@ -115,8 +115,8 @@ export const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
           </motion.button>
         </div>
       </div>
-      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</h4>
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+      <h4 className="break-words" style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{task.title}</h4>
+      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
         {displayDate && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <CalendarIcon size={12} color="var(--accent-primary)" />

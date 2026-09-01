@@ -118,16 +118,18 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
           {priority.label}
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', marginBottom: '12px' }}>
-        <GripVertical size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: '-4px', cursor: 'grab' }} />
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0, boxShadow: `0 0 8px ${accentColor}` }} />
-        <span 
-          className="text-xs font-semibold tracking-wider uppercase truncate" 
-          style={{ color: accentColor, flex: 1 }}
-        >
-          {courseObj?.name || 'General'}
-        </span>
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+      <div className="flex items-start gap-2 w-full mb-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <GripVertical size={16} color="var(--text-muted)" className="shrink-0" style={{ marginLeft: '-4px', cursor: 'grab' }} />
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor, flexShrink: 0, boxShadow: `0 0 8px ${accentColor}` }} />
+          <span 
+            className="text-xs font-semibold tracking-wider uppercase truncate" 
+            style={{ color: accentColor }}
+          >
+            {courseObj?.name || 'General'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
           <motion.button 
             whileHover={{ scale: 1.1, backgroundColor: 'rgba(0, 243, 255, 0.15)', borderColor: 'rgba(0, 243, 255, 0.4)', boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)' }}
             whileTap={{ scale: 0.95 }}
@@ -158,8 +160,8 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
           </motion.button>
         </div>
       </div>
-      <h4 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{task.title}</h4>
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: 'auto', width: '100%' }}>
+      <h4 className="break-words" style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{task.title}</h4>
+      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: 'auto', width: '100%' }}>
         {compactDateTime ? (
           <span className="text-[11px]" style={{ color: 'var(--accent-primary)', fontWeight: 700, whiteSpace: 'pre' }}>
             {compactDateTime}
