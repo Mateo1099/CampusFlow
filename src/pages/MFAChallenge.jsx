@@ -34,7 +34,7 @@ const MFAChallenge = () => {
           const totpFactors = factors.totp || [];
           const hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
           if (!hasVerifiedTotp) {
-            console.log('[MFAChallenge] No hay factores TOTP, redirigiendo a /');
+            
             navigate('/');
           }
         }
@@ -85,15 +85,15 @@ const MFAChallenge = () => {
       if (verifyError) throw verifyError;
 
       // 🔥 CRÍTICO: Refrescar la sesión del navegador para que reconozca AAL2
-      console.log('[MFA] Verificación exitosa, refrescando sesión de Supabase...');
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      const { error: refreshError } = await supabase.auth.refreshSession();
       
       if (refreshError) {
         console.error('[MFA] Error refrescando sesión de Supabase:', refreshError);
         throw refreshError;
       }
       
-      console.log('[MFA] Sesión de Supabase refrescada, AAL ahora es:', refreshData?.session?.user?.aal);
+      
       
       // Refrescar el estado de la aplicación después de la sesión de Supabase
       const sessionRefreshed = await refreshSession();
@@ -106,7 +106,7 @@ const MFAChallenge = () => {
       
       
       // Navegar al dashboard después de que TODO se actualice
-      console.log('[MFA] Navegando a / después de verificar AAL2');
+      
       navigate('/');
 
     } catch (err) {

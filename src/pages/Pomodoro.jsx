@@ -212,7 +212,7 @@ const Pomodoro = () => {
     if (audioRef.current) {
       audioRef.current.load(); // Forzar carga del nuevo archivo
       if (isActive && ambientSound) {
-        audioRef.current.play().catch(e => console.log('Autoplay blocked', e));
+        audioRef.current.play().catch(() => {});
       }
     }
   }, [ambientSound, customAudioUrl, isActive]);
@@ -221,7 +221,7 @@ const Pomodoro = () => {
   useEffect(() => {
     if (audioRef.current) {
       if (isActive && ambientSound) {
-        audioRef.current.play().catch(e => console.log('Autoplay blocked', e));
+        audioRef.current.play().catch(() => {});
       } else {
         audioRef.current.pause();
       }

@@ -260,7 +260,7 @@ function WeeklyPlanner() {
       window.__CF_PERF_LOGS = window.__CF_PERF_LOGS || [];
       window.__CF_PERF_LOGS.push(entry);
     }
-    console.log('[PERF]', entry);
+    
   }, []);
 
   const { user } = useAuth();

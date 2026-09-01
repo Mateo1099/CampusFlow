@@ -602,7 +602,27 @@ const TaskBoard = () => {
               {(!isMobile || colTasks.length > 0) && (
                 <div style={{ display: 'flex', flexDirection: 'column', flex: isMobile ? 'none' : 1, minHeight: isMobile ? '0' : '200px' }}>
                   <AnimatePresence>
-                    {col.id === 'entregado'
+                    {colTasks.length === 0 ? (
+                      <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          height: '100px', 
+                          color: 'var(--text-muted)', 
+                          fontSize: '0.85rem', 
+                          fontWeight: 500,
+                          border: '1px dashed rgba(255,255,255,0.1)',
+                          borderRadius: '12px',
+                          marginTop: '10px'
+                        }}
+                      >
+                        No hay tareas en esta fase
+                      </motion.div>
+                    ) : col.id === 'entregado'
                       ? colTasks.slice(0, 5).map(task => (
                           <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
                         ))

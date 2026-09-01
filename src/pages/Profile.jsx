@@ -572,7 +572,6 @@ const Profile = () => {
         for (const factor of allTotpFactors) {
           try {
             await supabase.auth.mfa.unenroll({ factorId: factor.id });
-            console.log(`[MFA] Factor eliminado: ${factor.id} (${factor.status})`);
           } catch (unenrollErr) {
             console.warn(`[MFA] No se pudo eliminar factor ${factor.id}:`, unenrollErr.message);
           }
@@ -613,13 +612,12 @@ const Profile = () => {
         // Store QR code - Supabase devuelve data URL (data:image/svg+xml;utf-8,...)
         if (data.totp.qr_code) {
           setQrCodeSvg(data.totp.qr_code);
-          console.log('QR code type:', data.totp.qr_code.substring(0, 50));
         }
         // Store secret for manual entry
         if (data.totp.secret) {
           setManualSecret(data.totp.secret);
         }
-        console.log('QR generado exitosamente');
+        
       } else {
         setMfaError('❌ No se pudo obtener los datos de autenticación. Intenta de nuevo.');
         setMfaLoading(false);
@@ -815,7 +813,7 @@ const Profile = () => {
     updateSettings({ emailNotifications: newValue })
       .then(() => {
         // Éxito silencioso - el toast ya confirmó el cambio
-        console.log('[PROFILE] Email notifications guardado exitosamente:', newValue);
+        
       })
       .catch(err => {
         // Si falla, el context se revierte automáticamente y Profile recibe el evento de error
