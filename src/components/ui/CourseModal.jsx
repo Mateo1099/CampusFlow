@@ -298,6 +298,7 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
   return (
     <motion.button 
       type={type} 
+      className={`modal-btn modal-btn-${variant}`}
       onClick={onClick} 
       disabled={disabled}
       whileHover={!disabled ? { scale: 1.02, textShadow: variant === 'save' ? '0 0 10px rgba(0, 243, 255, 0.5)' : '0 0 10px rgba(255, 77, 77, 0.3)' } : {}}

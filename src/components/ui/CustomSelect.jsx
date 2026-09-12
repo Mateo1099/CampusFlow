@@ -44,6 +44,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Selecciona...',
       {/* Trigger button */}
       <button
         type="button"
+        className="custom-select-trigger"
         onClick={() => setIsOpen(prev => !prev)}
         style={{
           width: '100%',
@@ -87,6 +88,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Selecciona...',
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            className="custom-select-dropdown"
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
@@ -117,6 +119,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = 'Selecciona...',
                 <button
                   key={option.value}
                   type="button"
+                  className={`custom-select-option ${isSelected ? 'selected' : ''}`}
                   onClick={() => {
                     onChange(option.value);
                     setIsOpen(false);

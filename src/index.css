@@ -507,6 +507,58 @@ h5,
   text-shadow: none !important;
 }
 
+/* CustomSelect Light Mode Fixes */
+[data-theme="light"] .custom-select-trigger,
+[data-theme="light"] .custom-select-dropdown {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .custom-select-dropdown {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .custom-select-option {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .custom-select-option:hover {
+  background: #f1f5f9 !important; /* slate-100 */
+}
+
+[data-theme="light"] .custom-select-option.selected {
+  background: #e2e8f0 !important; /* slate-200 */
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+/* Modal Button Light Mode Fixes */
+[data-theme="light"] .modal-btn-save {
+  background: #0ea5e9 !important; /* sky-500 */
+  color: #ffffff !important;
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light"] .modal-btn-save:hover {
+  background: #0284c7 !important; /* sky-600 */
+  border-color: #0284c7 !important;
+}
+
+[data-theme="light"] .modal-btn-cancel {
+  background: #fef2f2 !important; /* red-50 */
+  color: #ef4444 !important; /* red-500 */
+  border-color: #fca5a5 !important; /* red-300 */
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light"] .modal-btn-cancel:hover {
+  background: #fee2e2 !important; /* red-100 */
+}
+
 .input:focus,
 .textarea:focus,
 .select:focus {
