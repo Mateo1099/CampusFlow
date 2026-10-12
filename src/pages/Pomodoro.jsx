@@ -8,6 +8,7 @@ import { useTasks } from '../hooks/useTasks';
 import { playPhaseCompleteChime, resumeAudio } from '../lib/audioService';
 import { toast } from 'sonner';
 import { useGamification } from '../context/GamificationContext';
+import { trackEvent } from '../services/analyticsService';
 
 const STUDY_METHODS = {
   pomodoro: {
@@ -155,6 +156,10 @@ const Pomodoro = () => {
         if (mode === 'focus') {
           addXP(100);
           incrementStat('pomodorosCompleted');
+          trackEvent('pomodoro_session_finished', { 
+            durationMinutes: Math.round((customTimes?.focus || 1500) / 60) || 25, 
+            mode: 'focus' 
+          });
           toast.success("¡Tiempo Cumplido!", { 
             id: "pomodoro-toast", 
             description: "Sesión registrada con éxito.",
@@ -197,7 +202,7 @@ const Pomodoro = () => {
       }, 0);
     }
     return () => clearInterval(interval);
-  }, [isActive, timeLeft, mode, t, addXP, incrementStat, modeConfig]);
+  }, [isActive, timeLeft, mode, t, addXP, incrementStat, modeConfig, customTimes?.focus]);
 
   // El permiso de Notification debe solicitarse cuanto antes (no solo al
   // completar la primera fase) para que, si el usuario minimiza el

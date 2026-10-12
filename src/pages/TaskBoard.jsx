@@ -11,6 +11,10 @@ import { useBreakpoint } from '../hooks/useMediaQuery';
 import InstitutionFilterPills from '../components/ui/InstitutionFilterPills';
 import CustomSelect from '../components/ui/CustomSelect';
 import TaskHistoryView from '../components/ui/TaskHistoryView';
+import CrumpleTossItem from '../components/ui/CrumpleTossItem';
+import { UndoToastContainer } from '../components/ui/UndoToast';
+import { useUndoDelete } from '../hooks/useUndoDelete';
+import BinEatButton from '../components/ui/BinEatButton';
 
 // GSAP IMPORTS
 import { gsap } from "gsap";
@@ -202,6 +206,18 @@ const TaskBoard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const { pendingItems, requestDelete, undoDelete, isPending } = useUndoDelete({ defaultDuration: 5000 });
+
+  const handleTaskDeleteWithUndo = (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+    requestDelete({
+      id: taskId,
+      name: task?.title || 'Trabajo',
+      type: 'trabajo',
+      duration: 5000,
+      onFinalDelete: () => deleteTask(taskId)
+    });
+  };
   const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' });
   const [activePicker, setActivePicker] = useState(null);
   const [currentFilter, setCurrentFilter] = useState('TODAS');
@@ -624,14 +640,19 @@ const TaskBoard = () => {
                       >
                         No hay tareas en esta fase
                       </motion.div>
-                    ) : col.id === 'entregado'
-                      ? colTasks.slice(0, 5).map(task => (
-                          <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
-                        ))
-                      : colTasks.map(task => (
-                          <TaskCard key={task.id} task={task} onDelete={(id) => setTaskToDelete(id)} onEdit={handleEdit} courses={courses} onDragEnd={handleDragEnd} />
-                        ))
-                    }
+                    ) : (
+                      (col.id === 'entregado' ? colTasks.slice(0, 5) : colTasks).map(task => (
+                        <CrumpleTossItem key={task.id} isCrumpled={Boolean(isPending(task.id))}>
+                          <TaskCard
+                            task={task}
+                            onDelete={handleTaskDeleteWithUndo}
+                            onEdit={handleEdit}
+                            courses={courses}
+                            onDragEnd={handleDragEnd}
+                          />
+                        </CrumpleTossItem>
+                      ))
+                    )}
                   </AnimatePresence>
                   
                 </div>
@@ -818,6 +839,7 @@ const TaskBoard = () => {
           />
         )}
       </AnimatePresence>
+      <UndoToastContainer pendingItems={pendingItems} onUndo={undoDelete} />
     </div>
   );
 };
@@ -916,29 +938,13 @@ function ConfirmDeleteModal({ onClose, onConfirm, title, message }) {
             <span style={{ position: 'relative', zIndex: 1 }}>CANCELAR</span>
           </button>
           
-          <button type="button" onClick={onConfirm} className="click-press" 
-            onMouseEnter={(e) => {
-              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
-              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
-            }}
-            onMouseLeave={(e) => {
-              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
-              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
-            }}
-            style={{ 
-              padding: '12px 24px', borderRadius: '50px', border: '1px solid rgba(255, 59, 48, 0.6)', background: 'linear-gradient(135deg, rgba(255,59,48,0.2), rgba(255,59,48,0.05))', 
-              color: '#ff7d7d', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 24px rgba(255,59,48,0.2), inset 0 0 12px rgba(255,59,48,0.1)',
-              transition: 'all 0.3s ease', letterSpacing: '1px', textTransform: 'uppercase',
-              position: 'relative', overflow: 'hidden', flex: 1
-            }}>
-            <div className="liquid-fill-delete" style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
-              width: '150%', aspectRatio: '1/1', borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,59,48,0.4) 0%, transparent 70%)',
-              opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
-            }} />
-            <span style={{ position: 'relative', zIndex: 1, textShadow: '0 0 8px rgba(255,59,48,0.4)' }}>ELIMINAR</span>
-          </button>
+          <BinEatButton
+            onConfirm={onConfirm}
+            label="ELIMINAR"
+            size="md"
+            ariaLabel="Confirmar eliminación de trabajo"
+            style={{ flex: 1, height: '46px' }}
+          />
         </div>
       </motion.div>
     </div>

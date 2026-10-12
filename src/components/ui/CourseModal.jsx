@@ -7,6 +7,7 @@ import { useGSAP } from "@gsap/react";
 import ColorPicker from './ColorPicker';
 import CustomCalendar from './CustomCalendar';
 import CustomSelect from './CustomSelect';
+import BinEatButton from './BinEatButton';
 
 const INSTITUTIONS = ['UNAD', 'SENA'];
 
@@ -17,6 +18,7 @@ const CourseModal = ({
   formData, 
   setFormData, 
   handleSubmit, 
+  onDelete,
   t 
 }) => {
   const [showCalendar, setShowCalendar] = useState(false);
@@ -108,12 +110,12 @@ const CourseModal = ({
               style={{ 
                 width: '480px',
                 maxWidth: '92vw',
-                background: 'rgba(15, 15, 20, 0.95)', 
+                background: 'var(--bg-panel)', 
                 borderRadius: '16px',
-                border: '1px solid rgba(0, 243, 255, 0.2)',
+                border: '1px solid var(--border-glass-top)',
                 padding: '20px',
                 backdropFilter: 'blur(30px)',
-                boxShadow: '0 0 20px rgba(0, 243, 255, 0.1), 0 12px 40px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.06)',
+                boxShadow: 'var(--shadow-glass)',
                 maxHeight: '85vh',
                 overflowY: 'auto',
                 margin: 'auto'
@@ -121,7 +123,7 @@ const CourseModal = ({
             >
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '1.8rem', color: '#00f3ff', fontWeight: 950, textShadow: '0 0 10px rgba(0, 243, 255, 0.5)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h2 style={{ fontSize: '1.8rem', color: 'var(--accent-primary)', fontWeight: 950, textShadow: 'var(--shadow-neon)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             {isEditing ? <Pencil size={24} /> : <Plus size={24} />}
             {isEditing ? 'EDITAR MATERIA' : 'NUEVA MATERIA'}
           </h2>
@@ -137,38 +139,38 @@ const CourseModal = ({
               justifyContent: 'center'
             }}
           >
-            <div ref={closeIconRef} style={{ display: 'flex', filter: 'drop-shadow(0 0 8px #ff0033)' }}>
-              <X size={28} color="#ff0033" strokeWidth={3} />
+            <div ref={closeIconRef} style={{ display: 'flex', filter: 'drop-shadow(0 0 8px var(--accent-danger))' }}>
+              <X size={28} color="var(--accent-danger)" strokeWidth={3} />
             </div>
           </button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE DEL CURSO *</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE DEL CURSO *</label>
             <input 
               className="input" 
               required 
               value={formData.name} 
               onChange={e => setFormData({ ...formData, name: e.target.value })} 
               placeholder="Ej. Cálculo Diferencial" 
-              style={{ background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
+              style={{ color: 'var(--text-primary)', background: 'var(--bg-glass)', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-glass-top)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>CÓDIGO</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>CÓDIGO</label>
               <input 
                 className="input" 
                 value={formData.code} 
                 onChange={e => setFormData({ ...formData, code: e.target.value })} 
                 placeholder="100410" 
-                style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text' }} 
+                style={{ color: 'var(--text-primary)', background: 'var(--bg-glass)', padding: '14px 16px', borderRadius: '14px', border: '1px solid var(--border-glass-top)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>INSTITUCIÓN</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>INSTITUCIÓN</label>
               <CustomSelect
                 value={formData.institution}
                 onChange={(val) => handleInstitutionChange(val)}
@@ -183,34 +185,34 @@ const CourseModal = ({
 
           {showCustom && (
             <div className="animate-fade-in">
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE INSTITUCIÓN</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>NOMBRE INSTITUCIÓN</label>
               <input 
                 className="input" 
                 value={formData.customInstitution || ''} 
                 onChange={e => setFormData({ ...formData, customInstitution: e.target.value })} 
                 placeholder="Ej. Universidad Nacional" 
-                style={{ background: 'rgba(255,255,255,0.04)', padding: '14px 16px', borderRadius: '14px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
+                style={{ color: 'var(--text-primary)', background: 'var(--bg-glass)', padding: '14px 16px', borderRadius: '14px', border: '1px solid var(--border-glass-top)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
               />
             </div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>PROFESOR *</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>PROFESOR *</label>
               <input 
                 className="input" 
                 required 
                 value={formData.teacher} 
                 onChange={e => setFormData({ ...formData, teacher: e.target.value })} 
                 placeholder="Ej. Ing. Mauricio Silva" 
-                style={{ background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
+                style={{ color: 'var(--text-primary)', background: 'var(--bg-glass)', padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-glass-top)', backdropFilter: 'blur(10px)', transition: 'all 0.3s ease', cursor: 'text', width: '100%' }} 
               />
             </div>
 
             <div style={{ position: 'relative', width: '100%' }}>
               <label 
                 onClick={handleDatePickerClick}
-                style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850, cursor: 'pointer' }}>
+                style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850, cursor: 'pointer' }}>
                 FECHA DE CREACIÓN
               </label>
               <div 
@@ -222,20 +224,21 @@ const CourseModal = ({
                   className="input" 
                   style={{ 
                     cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    background: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', 
-                    border: '1px solid rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(10px)', 
-                    transition: 'all 0.3s ease', width: '100%', userSelect: 'none', minHeight: '44px'
+                    background: 'var(--bg-glass)', padding: '12px 14px', borderRadius: '12px', 
+                    border: '1px solid var(--border-glass-top)', backdropFilter: 'blur(10px)', 
+                    transition: 'all 0.3s ease', width: '100%', userSelect: 'none', minHeight: '44px',
+                    color: 'var(--text-primary)'
                   }}
                 >
                   <span>{formData.created_at || 'SELECCIONAR FECHA...'}</span>
-                  <CalendarIcon size={18} color="#00f3ff" style={{ cursor: 'pointer', flexShrink: 0 }} />
+                  <CalendarIcon size={18} color="var(--accent-primary)" style={{ cursor: 'pointer', flexShrink: 0 }} />
                 </div>
               </div>
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', color: '#00f3ff', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>COLOR DE IDENTIFICACIÓN</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 850 }}>COLOR DE IDENTIFICACIÓN</label>
             <ColorPicker 
               selectedColor={formData.color} 
               onSelect={(color) => setFormData({ ...formData, color: color })}
@@ -246,8 +249,19 @@ const CourseModal = ({
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
             <ModalButton label="CANCELAR" onClick={handleClose} variant="cancel" />
+            {isEditing && onDelete && (
+              <BinEatButton
+                onConfirm={() => {
+                  onDelete(formData.id);
+                  handleClose();
+                }}
+                label="ELIMINAR"
+                size="sm"
+                ariaLabel="Eliminar materia actual"
+              />
+            )}
             <ModalButton 
               label={isEditing ? "GUARDAR CAMBIOS" : "REGISTRAR"} 
               type="submit" 
@@ -301,7 +315,7 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
       className={`modal-btn modal-btn-${variant}`}
       onClick={onClick} 
       disabled={disabled}
-      whileHover={!disabled ? { scale: 1.02, textShadow: variant === 'save' ? '0 0 10px rgba(0, 243, 255, 0.5)' : '0 0 10px rgba(255, 77, 77, 0.3)' } : {}}
+      whileHover={!disabled ? { scale: 1.02, textShadow: variant === 'save' ? 'var(--shadow-neon)' : '0 0 10px rgba(255, 77, 77, 0.3)' } : {}}
       whileTap={!disabled ? { scale: 0.98 } : {}}
       transition={{ hover: { duration: 0.2, ease: "easeOut" }, tap: { duration: 0.1 } }}
       style={{ 
@@ -311,9 +325,9 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
         fontWeight: 900,
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.3s ease',
-        background: variant === 'save' ? 'rgba(0, 243, 255, 0.12)' : 'rgba(255, 77, 77, 0.1)',
-        color: variant === 'save' ? '#00f3ff' : '#ff4d4d',
-        border: `1px solid ${variant === 'save' ? 'rgba(0, 243, 255, 0.35)' : 'rgba(255, 77, 77, 0.35)'}`,
+        background: variant === 'save' ? 'var(--bg-glass-hover)' : 'rgba(255, 77, 77, 0.1)',
+        color: variant === 'save' ? 'var(--accent-primary)' : 'var(--accent-danger)',
+        border: `1px solid ${variant === 'save' ? 'var(--accent-primary)' : 'var(--accent-danger)'}`,
         opacity: disabled ? 0.5 : 1,
         textTransform: 'uppercase',
         letterSpacing: '1px',
@@ -325,8 +339,8 @@ const ModalButton = ({ label, onClick, type = "button", variant, disabled }) => 
         minWidth: '0',
         whiteSpace: 'nowrap',
         boxShadow: variant === 'save' 
-          ? '0 0 20px rgba(0, 243, 255, 0.15)' 
-          : '0 0 20px rgba(255, 77, 77, 0.1)'
+          ? 'var(--shadow-neon)' 
+          : 'none'
       }}
     >
       {variant === 'save' ? (label.includes('GUARDAR') ? <Save size={16} /> : <Plus size={16} />) : <X size={16} />}

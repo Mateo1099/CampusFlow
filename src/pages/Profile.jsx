@@ -8,9 +8,18 @@ import { supabase } from '../lib/supabaseClient';
 import { emailService } from '../services/emailService';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X, Send, Mail, MailCheck
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X, Send, Mail, MailCheck, Sparkles
 } from 'lucide-react';
 import CustomTimePicker from '../components/ui/CustomTimePicker';
+import OrbitalOtpVerification from '../components/ui/OrbitalOtpVerification';
+import BinEatButton from '../components/ui/BinEatButton';
+import {
+  validateAvatarFile,
+  validateAndSanitizeDisplayName,
+  validateAndSanitizeTotpCode,
+  getSafeAuthErrorMessage,
+  safeDevLog
+} from '../lib/authSecurity';
 
 const THEMES = [
   { id: 'dark', labelKey: 'darkMode', icon: '🌙', gradient: 'linear-gradient(135deg, #0f172a, #1e293b)' },
@@ -525,24 +534,37 @@ const Profile = () => {
   }, [securityScreen, mfaData, closeMfaEnrollment, closeSecurityModal]);
 
   const handleProfileImageUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    // Validación estricta de archivo: MIME type, extensión y peso máximo (5 MB)
+    const fileValidation = validateAvatarFile(file, user.id);
+    if (!fileValidation.isValid) {
+      alert(fileValidation.error);
+      e.target.value = '';
+      return;
+    }
+
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const fileName = fileValidation.safeFileName;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
       if (uploadError) throw uploadError;
       await supabase.auth.updateUser({ data: { avatar_path: fileName } });
       await updateSettings({ avatarUrl: fileName });
       downloadAvatar(fileName);
     } catch (error) {
-      alert('Error subiendo imagen: ' + error.message);
+      safeDevLog('warn', 'Error subiendo avatar', { message: error?.message });
+      alert(getSafeAuthErrorMessage(error, 'No se pudo subir la imagen de perfil. Verifica el formato e inténtalo de nuevo.'));
+    } finally {
+      e.target.value = '';
     }
   };
 
   const handleNameSave = () => {
-    if (tempName.trim() && tempName !== settings.name) {
-      updateSettings({ name: tempName.trim() });
+    // Sanitización estricta contra inyección XSS y caracteres de control
+    const nameValidation = validateAndSanitizeDisplayName(tempName);
+    if (nameValidation.isValid && nameValidation.value !== settings.name) {
+      updateSettings({ name: nameValidation.value });
     }
     setIsEditingName(false);
   };
@@ -559,13 +581,12 @@ const Profile = () => {
       // Verify email is confirmed before enrolling
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser?.email_confirmed_at) {
-        setMfaError('❌ Debes verificar tu email antes de activar 2FA. Revisa tu bandeja de entrada.');
+        setMfaError('Debes verificar tu email antes de activar 2FA. Revisa tu bandeja de entrada.');
         setMfaLoading(false);
         return;
       }
 
       // Limpiar TODOS los factores TOTP existentes (verificados o no) para evitar conflicto 422
-      // Supabase puede devolver 422 si ya existe un factor del mismo tipo
       const { data: existingFactors, error: listError } = await supabase.auth.mfa.listFactors();
       if (!listError && existingFactors) {
         const allTotpFactors = [...(existingFactors.totp || [])];
@@ -573,19 +594,17 @@ const Profile = () => {
           try {
             await supabase.auth.mfa.unenroll({ factorId: factor.id });
           } catch (unenrollErr) {
-            console.warn(`[MFA] No se pudo eliminar factor ${factor.id}:`, unenrollErr.message);
+            safeDevLog('warn', `No se pudo eliminar factor ${factor.id}`, { message: unenrollErr?.message });
           }
         }
       }
 
-      // Pequeño delay tras cleanup para que Supabase procese los cambios
+      // Delay controlado tras cleanup para que Supabase procese los cambios
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Refrescar sesión nuevamente después del cleanup
       await supabase.auth.refreshSession();
 
       // Usar friendlyName único con timestamp para evitar conflicto "mfa_factor_name_conflict" (422)
-      // Supabase cachea los nombres de factores incluso después de eliminarlos
       const uniqueFriendlyName = `CampusFlow MFA - ${Date.now()}`;
 
       // Direct enroll
@@ -595,13 +614,8 @@ const Profile = () => {
       });
 
       if (error) {
-        console.error('Error detallado al enrolar MFA:', {
-          message: error.message,
-          status: error.status,
-          code: error.code,
-          fullError: JSON.stringify(error)
-        });
-        setMfaError(`❌ ${error.message || 'Error al generar QR'}`);
+        safeDevLog('warn', 'Error enrolando factor MFA', { message: error.message, code: error.code });
+        setMfaError(getSafeAuthErrorMessage(error, 'No se pudo generar el código QR de seguridad.'));
         setMfaLoading(false);
         return;
       }
@@ -609,37 +623,34 @@ const Profile = () => {
       // Store QR code and data
       if (data?.totp) {
         setMfaData(data);
-        // Store QR code - Supabase devuelve data URL (data:image/svg+xml;utf-8,...)
         if (data.totp.qr_code) {
           setQrCodeSvg(data.totp.qr_code);
         }
-        // Store secret for manual entry
         if (data.totp.secret) {
           setManualSecret(data.totp.secret);
         }
-        
       } else {
-        setMfaError('❌ No se pudo obtener los datos de autenticación. Intenta de nuevo.');
+        setMfaError('No se pudo obtener la configuración de autenticación. Intenta de nuevo.');
         setMfaLoading(false);
         return;
       }
     } catch (err) {
-      console.error('Error en handleEnrollMfa:', {
-        message: err.message,
-        stack: err.stack,
-        error: err
-      });
-      setMfaError(`❌ Error inesperado: ${err.message || 'Error al generar QR'}`);
+      safeDevLog('error', 'Excepción en handleEnrollMfa', { message: err?.message });
+      setMfaError(getSafeAuthErrorMessage(err, 'Error inesperado al inicializar la autenticación de dos pasos.'));
     } finally {
       setMfaLoading(false);
     }
   };
 
-  const handleVerifyMfa = async () => {
-    if (!verifyCode || verifyCode.length !== 6) {
-      setMfaError('Por favor ingresa un código de 6 dígitos');
+  const handleVerifyMfa = async (codeParam) => {
+    // Sanitización estricta del código de verificación
+    const targetCode = typeof codeParam === 'string' ? codeParam : verifyCode;
+    const codeValidation = validateAndSanitizeTotpCode(targetCode);
+    if (!codeValidation.isValid) {
+      setMfaError(codeValidation.error || 'Por favor ingresa un código de 6 dígitos.');
       return;
     }
+    const cleanVerifyCode = codeValidation.value;
 
     setMfaLoading(true);
     setMfaError('');
@@ -650,22 +661,17 @@ const Profile = () => {
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: mfaData.id,
         challengeId: challengeData.id,
-        code: verifyCode
+        code: cleanVerifyCode
       });
       if (verifyError) throw verifyError;
 
-      // Refrescar sesión para actualizar AAL
+      // Refrescar sesión para actualizar AAL a AAL2
       await supabase.auth.refreshSession();
 
-      // Sincronizar las 3 fuentes de verdad
-      // 1. profiles.two_factor_enabled
+      // Sincronizar las fuentes de verdad
       await updateSettings({ two_factor_enabled: true });
       if (user) {
         await supabase.from('profiles').update({ two_factor_enabled: true }).eq('id', user.id);
-      }
-
-      // 2. user_security (lo que lee AuthContext)
-      if (user) {
         await supabase
           .from('user_security')
           .update({ mfa_enabled: true, mfa_status: 'PROTEGIDA' })
@@ -681,26 +687,29 @@ const Profile = () => {
         setMfaSuccessMessage('');
       }, 2000);
     } catch (err) {
-      setMfaError(err.message || 'Código incorrecto');
+      safeDevLog('warn', 'Error verificando código MFA', { message: err?.message });
+      setMfaError(getSafeAuthErrorMessage(err, 'Código de verificación incorrecto.'));
     } finally {
       setMfaLoading(false);
     }
   };
 
   const handleDisableMfa = async () => {
-    if (!disableVerifyCode || disableVerifyCode.length !== 6) {
-      setDisableMfaError('Por favor ingresa un código de 6 dígitos');
+    const codeValidation = validateAndSanitizeTotpCode(disableVerifyCode);
+    if (!codeValidation.isValid) {
+      setDisableMfaError(codeValidation.error || 'Por favor ingresa un código de 6 dígitos.');
       return;
     }
+    const cleanDisableCode = codeValidation.value;
 
     setDisableMfaLoading(true);
     setDisableMfaError('');
     try {
-      // 1. Listar factores MFA - Supabase devuelve { totp: [], phone: [] }
+      // 1. Listar factores MFA
       const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
       if (factorsError) throw factorsError;
 
-      // 2. Buscar factor TOTP verificado - usar factors.totp[] que es la estructura real
+      // 2. Buscar factor TOTP verificado
       const totpFactors = factorsData?.totp || [];
       const totpFactor = totpFactors.find(f => f.status === 'verified');
       if (!totpFactor) throw new Error("No se encontró 2FA activo.");
@@ -712,7 +721,7 @@ const Profile = () => {
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: totpFactor.id,
         challengeId: challengeData.id,
-        code: disableVerifyCode
+        code: cleanDisableCode
       });
       if (verifyError) throw verifyError;
 
@@ -720,15 +729,10 @@ const Profile = () => {
       const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: totpFactor.id });
       if (unenrollError) throw unenrollError;
 
-      // 5. Sincronizar las 3 fuentes de verdad
-      // 5a. profiles.two_factor_enabled
+      // 5. Sincronizar fuentes de verdad
       await updateSettings({ two_factor_enabled: false });
       if (user) {
         await supabase.from('profiles').update({ two_factor_enabled: false }).eq('id', user.id);
-      }
-
-      // 5b. user_security (lo que lee AuthContext)
-      if (user) {
         await supabase
           .from('user_security')
           .update({ mfa_enabled: false, mfa_status: 'DESPROTEGIDA' })
@@ -738,54 +742,49 @@ const Profile = () => {
       // 6. Refrescar sesión para actualizar AAL
       await supabase.auth.refreshSession();
 
-      // 7. Forzar re-evaluación inmediata del estado MFA en AuthContext
-      // Esto evita que ProtectedRoute redirija a /mfa-challenge con estado stale
       if (user) {
         await checkMFAStatus(user.id);
       }
 
-      // 8. Pequeño delay para asegurar que React propague el nuevo estado de mfaRequired
-      // antes de que ProtectedRoute pueda hacer un redirect incorrecto
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 9. El estado local ya se actualizó en el paso 5a con
-      //    updateSettings({ two_factor_enabled: false }), que además persiste en
-      //    Supabase. Aquí antes había un setSettings(...) que NO existe en este
-      //    componente (es interno de SettingsContext): lanzaba
-      //    "ReferenceError: setSettings is not defined", caía en el catch y le
-      //    mostraba ese error al usuario aunque el 2FA sí se había desactivado.
       setIsDisablingMfa(false);
       setDisableVerifyCode('');
       setDisableMfaError('');
     } catch (err) {
-      setDisableMfaError(err.message || 'Error desactivando 2FA');
+      safeDevLog('warn', 'Error desactivando MFA', { message: err?.message });
+      setDisableMfaError(getSafeAuthErrorMessage(err, 'No se pudo desactivar 2FA. Verifica el código e intenta nuevamente.'));
     } finally {
       setDisableMfaLoading(false);
     }
   };
 
   const handleWallpaperUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    // Validación estricta del archivo de fondo de pantalla
+    const fileValidation = validateAvatarFile(file, user.id);
+    if (!fileValidation.isValid) {
+      alert(fileValidation.error);
+      e.target.value = '';
+      return;
+    }
+
     try {
-      // Subida directa a Supabase Storage (bucket 'avatars', mismo que el avatar de perfil)
-      // en lugar de convertir la imagen a Base64 y guardarla completa en la base de datos.
-      const fileExt = file.name.split('.').pop();
-      const fileName = `wallpapers/${user.id}-${Date.now()}.${fileExt}`;
+      const fileName = `wallpapers/${fileValidation.safeFileName}`;
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
       if (uploadError) throw uploadError;
 
-      // Obtener la URL pública del archivo recién subido
       const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const publicUrl = publicUrlData?.publicUrl;
       if (!publicUrl) throw new Error('No se pudo obtener la URL pública del fondo subido.');
 
-      // Guardar solo la URL (ligera) en lugar del Base64 completo
       await updateSettings({ wallpaper: 'custom', customWallpaper: publicUrl });
     } catch (error) {
-      alert('Error subiendo el fondo de pantalla: ' + (error.message || 'Error desconocido. Verifica tu conexión o el peso del archivo.'));
+      safeDevLog('warn', 'Error subiendo wallpaper', { message: error?.message });
+      alert(getSafeAuthErrorMessage(error, 'Error al subir el fondo de pantalla. Verifica el formato e intenta nuevamente.'));
     } finally {
-      // Permite volver a seleccionar el mismo archivo si se quiere reintentar
       e.target.value = '';
     }
   };
@@ -1738,9 +1737,17 @@ const Profile = () => {
                           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Ingresa tu código para confirmar la desactivación.</p>
                           <input type="text" maxLength="6" value={disableVerifyCode} onChange={e => setDisableVerifyCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" className="mfa-input" style={{ padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--text-primary)', borderRadius: '12px', width: '100%' }} />
                           {disableMfaError && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '0', textAlign: 'center' }}>{disableMfaError}</p>}
-                          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '4px', alignItems: 'center' }}>
                             <button onClick={() => setIsDisablingMfa(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '12px', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>CANCELAR</button>
-                            <button onClick={handleDisableMfa} disabled={disableMfaLoading} style={{ flex: 1, padding: '12px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', borderRadius: '12px', color: '#ef4444', cursor: 'pointer', opacity: disableMfaLoading ? 0.6 : 1, fontWeight: 900 }}>{disableMfaLoading ? <Loader2 size={16} className="animate-spin" /> : 'DESACTIVAR'}</button>
+                            <BinEatButton
+                              onConfirm={handleDisableMfa}
+                              label="DESACTIVAR"
+                              isLoading={disableMfaLoading}
+                              disabled={disableMfaLoading || !disableVerifyCode || disableVerifyCode.length !== 6}
+                              size="md"
+                              ariaLabel="Confirmar desactivación de autenticación en dos pasos"
+                              style={{ flex: 1, borderRadius: '12px', height: '42px' }}
+                            />
                           </div>
                         </div>
                       ) : (
@@ -2010,66 +2017,26 @@ const Profile = () => {
                           2. Ingresa el código de 6 dígitos.
                         </p>
 
-                        {/* Input de 6 dígitos */}
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          maxLength="6"
+                        {/* Componente de Verificación OTP con Animación Orbital */}
+                        <OrbitalOtpVerification
                           value={verifyCode}
-                          onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
-                          placeholder="000000"
-                          style={{
-                            padding: '14px 10px',
-                            background: 'rgba(0,0,0,0.3)',
-                            border: '1.5px solid rgba(255,255,255,0.1)',
-                            color: 'var(--text-primary)',
-                            borderRadius: '12px',
-                            width: '100%',
-                            textAlign: 'center',
-                            letterSpacing: '12px',
-                            fontSize: '1.5rem',
-                            fontWeight: 700,
-                            fontFamily: "'JetBrains Mono', monospace",
-                            boxSizing: 'border-box',
-                            outline: 'none',
-                            transition: 'border-color 0.2s, box-shadow 0.2s'
+                          onChange={(val) => {
+                            setVerifyCode(val);
+                            if (mfaError) setMfaError('');
                           }}
-                          onFocus={(e) => {
-                            e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.4)';
-                            e.currentTarget.style.boxShadow = '0 0 15px rgba(0, 243, 255, 0.1)';
+                          onComplete={(fullCode) => {
+                            setVerifyCode(fullCode);
+                            handleVerifyMfa(fullCode);
                           }}
-                          onBlur={(e) => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
+                          isVerifying={mfaLoading}
+                          isSuccess={Boolean(mfaSuccessMessage)}
+                          errorMessage={mfaError}
+                          disabled={mfaLoading}
+                          size="compact"
+                          autoFocus={true}
+                          onClearError={() => setMfaError('')}
+                          ariaLabel="Código de 6 dígitos para activar 2FA"
                         />
-
-                        {/* Mensajes de error / éxito */}
-                        {mfaError && (
-                          <p style={{
-                            color: '#ef4444',
-                            fontSize: '0.75rem',
-                            margin: 0,
-                            textAlign: 'center',
-                            fontWeight: 600,
-                            lineHeight: 1.4
-                          }}>
-                            {mfaError}
-                          </p>
-                        )}
-                        {mfaSuccessMessage && (
-                          <p style={{
-                            color: '#22c55e',
-                            fontSize: '0.75rem',
-                            margin: 0,
-                            textAlign: 'center',
-                            fontWeight: 600,
-                            lineHeight: 1.4
-                          }}>
-                            {mfaSuccessMessage}
-                          </p>
-                        )}
                       </div>
 
                       {/* ── Footer: fijo, CTA siempre visible ── */}
@@ -2214,6 +2181,34 @@ const Profile = () => {
                 );
               })()}
             </BottomRowMenu>
+          </div>
+
+          {/* Botón para revivir el Tour de Bienvenida */}
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-onboarding'))}
+              className="btn-open-onboarding-tour"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                borderRadius: '14px',
+                background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
+                border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
+                color: 'var(--accent-primary, #00f3ff)',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Sparkles size={16} />
+              Ver Tour de Bienvenida
+            </button>
           </div>
 
         </div>

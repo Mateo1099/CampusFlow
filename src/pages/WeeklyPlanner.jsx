@@ -12,6 +12,10 @@ import ColorPicker from '../components/ui/ColorPicker';
 import WeeklyPlannerSkeleton from '../components/ui/WeeklyPlannerSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { prefetchAnalyticsData } from '../lib/prefetchAnalyticsData';
+import CrumpleTossItem from '../components/ui/CrumpleTossItem';
+import { UndoToastContainer } from '../components/ui/UndoToast';
+import { useUndoDelete } from '../hooks/useUndoDelete';
+import BinEatButton from '../components/ui/BinEatButton';
 
 const DAY_OPTIONS = [
   { value: 'monday', label: 'Lunes' },
@@ -282,6 +286,7 @@ function WeeklyPlanner() {
   const [editingPlanner, setEditingPlanner] = useState(null);
   const [plannerToDelete, setPlannerToDelete] = useState(null);
   const prefetchGuardRef = useRef({ key: '', ts: 0 });
+  const { pendingItems, requestDelete, undoDelete, isPending } = useUndoDelete({ defaultDuration: 5000 });
 
   useEffect(() => {
     perfLog('weeklyplanner_mount', {
@@ -375,7 +380,18 @@ function WeeklyPlanner() {
             setIsBlockModalOpen(true);
           }}
           onUpdateBlock={(blockId, updates) => updateBlock(activePlanner.id, blockId, updates)}
-          onDeleteBlock={(blockId) => deleteBlock(activePlanner.id, blockId)}
+          onDeleteBlock={(block) => {
+            const id = typeof block === 'object' ? block.id : block;
+            const title = typeof block === 'object' ? block.title : 'Sesión';
+            requestDelete({
+              id,
+              name: title,
+              type: 'sesión',
+              duration: 5000,
+              onFinalDelete: () => deleteBlock(activePlanner.id, id)
+            });
+          }}
+          isPending={isPending}
           onEditBlock={(block) => {
             setEditingBlock(block);
             setBlockDayTarget(block.day);
@@ -433,6 +449,7 @@ function WeeklyPlanner() {
           }}
         />
       )}
+      <UndoToastContainer pendingItems={pendingItems} onUndo={undoDelete} />
     </div>
   );
 }
@@ -797,7 +814,7 @@ function PlannersList({ planners, filter, setFilter, isLightMode, onOpenPlanner,
   );
 }
 
-function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBlock, onUpdateBlock, onDeleteBlock, onEditBlock }) {
+function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBlock, onUpdateBlock, onDeleteBlock, onEditBlock, isPending }) {
   const navigate = useNavigate();
   const DAYS = DAY_OPTIONS.map(option => option.value);
   const BLOCKS = TIME_OPTIONS.map(option => option.value);
@@ -1319,6 +1336,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                           const hasDuration = Boolean(b.duration_minutes);
 
                           return (
+                            <CrumpleTossItem key={b.id} isCrumpled={Boolean(isPending?.(b.id))}>
                             <motion.div
                               className="glass-card"
                               key={b.id}
@@ -1478,7 +1496,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                                           </button>
                                           <button 
                                             type="button"
-                                            onClick={(event) => { event.stopPropagation(); onDeleteBlock(b.id); }}
+                                            onClick={(event) => { event.stopPropagation(); onDeleteBlock(b); }}
                                             style={{ background: 'rgba(255,59,48,0.10)', border: '1px solid rgba(255,59,48,0.22)', color: 'var(--accent-danger)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}
                                             title="Eliminar bloque"
                                             className="click-press liquid-glass-hover liquid-glass-hover-danger"
@@ -1492,6 +1510,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                                 )}
                               </AnimatePresence>
                             </motion.div>
+                            </CrumpleTossItem>
                           );
                         })}
                       </AnimatePresence>
@@ -2056,29 +2075,13 @@ function ConfirmDeleteModal({ onClose, onConfirm }) {
             <span style={{ position: 'relative', zIndex: 1 }}>CANCELAR</span>
           </button>
           
-          <button type="button" onClick={onConfirm} className="click-press" 
-            onMouseEnter={(e) => {
-              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
-              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(1.2)'; liquid.style.opacity = '1'; }
-            }}
-            onMouseLeave={(e) => {
-              const liquid = e.currentTarget.querySelector('.liquid-fill-delete');
-              if (liquid) { liquid.style.transform = 'translate(-50%, -50%) scale(0)'; liquid.style.opacity = '0'; }
-            }}
-            style={{ 
-              padding: '12px 24px', borderRadius: '50px', border: '1px solid rgba(255, 59, 48, 0.6)', background: 'linear-gradient(135deg, rgba(255,59,48,0.2), rgba(255,59,48,0.05))', 
-              color: '#ff7d7d', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 24px rgba(255,59,48,0.2), inset 0 0 12px rgba(255,59,48,0.1)',
-              transition: 'all 0.3s ease', letterSpacing: '1px', textTransform: 'uppercase',
-              position: 'relative', overflow: 'hidden', flex: 1
-            }}>
-            <div className="liquid-fill-delete" style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)',
-              width: '150%', aspectRatio: '1/1', borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,59,48,0.4) 0%, transparent 70%)',
-              opacity: 0, transition: 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)', pointerEvents: 'none', zIndex: 0
-            }} />
-            <span style={{ position: 'relative', zIndex: 1, textShadow: '0 0 8px rgba(255,59,48,0.4)' }}>ELIMINAR</span>
-          </button>
+          <BinEatButton
+            onConfirm={onConfirm}
+            label="ELIMINAR"
+            size="md"
+            ariaLabel="Confirmar eliminación de planificación"
+            style={{ flex: 1, height: '46px' }}
+          />
         </div>
       </motion.div>
     </div>

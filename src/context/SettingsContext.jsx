@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
+import { trackEvent } from '../services/analyticsService';
 
 import glassWallpaper from '../assets/glass_wallpaper.png';
 import natureGlass from '../assets/nature_glass.png';
@@ -239,6 +240,7 @@ export function SettingsProvider({ children }) {
       if (processedUpdates.theme) {
         cloudMapping.theme = processedUpdates.theme;
         localStorage.setItem('campusflow_theme', processedUpdates.theme);
+        trackEvent('theme_switched', { theme: processedUpdates.theme });
       }
       if (processedUpdates.language) cloudMapping.language = processedUpdates.language;
       if (processedUpdates.font) cloudMapping.typography = processedUpdates.font;

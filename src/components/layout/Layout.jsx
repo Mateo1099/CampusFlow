@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import BottomNavigation from './BottomNavigation';
+import OnboardingModal from '../ui/OnboardingModal';
 import { useSettings, WALLPAPERS } from '../../context/SettingsContext';
 import { useBreakpoint } from '../../hooks/useMediaQuery';
 import { resumeAudio } from '../../lib/audioService';
@@ -100,6 +101,9 @@ const Layout = () => {
           </div>
         ))}
       </div>
+
+      {/* Guided Student Onboarding Tour */}
+      <OnboardingModal />
     </>
   );
 };

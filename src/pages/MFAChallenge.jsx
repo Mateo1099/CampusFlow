@@ -2,7 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { Lock, AlertCircle, ArrowRight, CheckCircle } from 'lucide-react';
+import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
+import OrbitalOtpVerification from '../components/ui/OrbitalOtpVerification';
+import {
+  validateAndSanitizeTotpCode,
+  getSafeAuthErrorMessage,
+  safeDevLog
+} from '../lib/authSecurity';
+
+const MAX_FAILED_ATTEMPTS = 5;
+const COOLDOWN_SECONDS = 30;
 
 const MFAChallenge = () => {
   const { user, logout, aal, refreshSession } = useAuth();
@@ -11,7 +20,17 @@ const MFAChallenge = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+
+  // Manejo del contador de enfriamiento (Rate limiting en cliente contra fuerza bruta)
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return undefined;
+    const timer = setInterval(() => {
+      setCooldownRemaining((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownRemaining]);
 
   useEffect(() => {
     // Si no hay usuario, ir a login
@@ -26,7 +45,7 @@ const MFAChallenge = () => {
       return;
     }
 
-    // Verificar si siquiera hay factores TOTP activos
+    // Verificar si existen factores TOTP verificados
     const checkFactors = async () => {
       try {
         const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
@@ -34,157 +53,130 @@ const MFAChallenge = () => {
           const totpFactors = factors.totp || [];
           const hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
           if (!hasVerifiedTotp) {
-            
+            safeDevLog('info', 'No verified TOTP factors, redirecting to home');
             navigate('/');
           }
         }
       } catch (err) {
-        console.error('[MFAChallenge] Error verificando factores:', err);
+        safeDevLog('warn', 'Error verificando factores en MFAChallenge', { message: err?.message });
       }
     };
 
     checkFactors();
   }, [user, aal, navigate]);
 
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    if (!code || code.length !== 6) {
-      setError('El código debe tener 6 dígitos');
+  const handleVerify = async (eOrCode) => {
+    if (eOrCode && typeof eOrCode.preventDefault === 'function') {
+      eOrCode.preventDefault();
+    }
+    if (loading || cooldownRemaining > 0) return;
+
+    const rawCode = typeof eOrCode === 'string' ? eOrCode : code;
+
+    // Validación estricta del código de 6 dígitos
+    const codeValidation = validateAndSanitizeTotpCode(rawCode);
+    if (!codeValidation.isValid) {
+      setError(codeValidation.error || 'El código debe tener 6 dígitos numéricos.');
       return;
     }
 
+    const cleanCode = codeValidation.value;
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      // Obtener factores MFA (TOTP)
+      // 1. Obtener factor TOTP verificado
       const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
-      
       if (factorsError) throw factorsError;
-      if (!factors?.totp?.length) {
-        throw new Error('No TOTP factor found. Please enable TOTP first.');
+
+      const totpFactors = factors?.totp || [];
+      const verifiedFactor = totpFactors.find(f => f.status === 'verified') || totpFactors[0];
+
+      if (!verifiedFactor) {
+        throw new Error('No se encontró ningún factor de autenticación configurado.');
       }
-      
-      const totpFactor = factors.totp[0];
 
-      // Crear challenge MFA
+      // 2. Crear challenge MFA criptográfico
       const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
-        factorId: totpFactor.id
+        factorId: verifiedFactor.id
       });
-
       if (challengeError) throw challengeError;
 
-      // Verificar el código contra el challenge
+      // 3. Verificar código contra el challenge
       const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId: totpFactor.id,
+        factorId: verifiedFactor.id,
         challengeId: challengeData.id,
-        code
+        code: cleanCode
       });
-
       if (verifyError) throw verifyError;
 
-      // 🔥 CRÍTICO: Refrescar la sesión del navegador para que reconozca AAL2
-      
+      // 4. Refrescar sesión para elevar la credencial a AAL2
       const { error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError) {
-        console.error('[MFA] Error refrescando sesión de Supabase:', refreshError);
-        throw refreshError;
-      }
-      
-      
-      
-      // Refrescar el estado de la aplicación después de la sesión de Supabase
-      const sessionRefreshed = await refreshSession();
-      
-      if (!sessionRefreshed) {
-        console.warn('[MFA] No se pudo refrescar la sesión de la aplicación');
-      }
-      
-      setSuccess('¡Verificación exitosa!');
-      
-      
-      // Navegar al dashboard después de que TODO se actualice
-      
-      navigate('/');
+      if (refreshError) throw refreshError;
 
+      await refreshSession();
+
+      setSuccess('¡Verificación exitosa! Accediendo a tu espacio seguro...');
+      setFailedAttempts(0);
+
+      // Redirigir al inicio una vez consolidada la sesión segura con tiempo para la animación orbital
+      setTimeout(() => {
+        navigate('/');
+      }, 750);
     } catch (err) {
-      console.error('MFA Verification Error:', err);
-      setError(err.message || 'Error verificando el código. Intenta de nuevo.');
+      safeDevLog('warn', 'Fallo en verificación MFA', { message: err?.message });
+      const nextFailures = failedAttempts + 1;
+      setFailedAttempts(nextFailures);
+
+      if (nextFailures >= MAX_FAILED_ATTEMPTS) {
+        setCooldownRemaining(COOLDOWN_SECONDS);
+        setError(`Demasiados intentos fallidos. Bloqueado temporalmente por ${COOLDOWN_SECONDS} segundos.`);
+      } else {
+        const safeMessage = getSafeAuthErrorMessage(err, 'Código de verificación incorrecto o expirado.');
+        setError(`${safeMessage} (Intento ${nextFailures}/${MAX_FAILED_ATTEMPTS})`);
+      }
+
       setCode('');
     } finally {
       setLoading(false);
     }
   };
 
+  const isBlocked = loading || cooldownRemaining > 0;
+
   return (
     <div style={{
-      width: '100vw', height: '100vh',
+      width: '100vw', minHeight: '100vh',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'radial-gradient(circle at 20% 50%, rgba(30, 41, 59, 0.8), #0f172a 50%), radial-gradient(circle at 80% 80%, rgba(15, 23, 42, 0.9), #0f172a)',
-      position: 'relative', overflow: 'hidden'
+      position: 'relative', overflow: 'hidden', padding: '24px'
     }}>
       {/* Animated Background Orbs */}
       <div style={{ 
         position: 'absolute', top: '10%', left: '5%', width: '400px', height: '400px', 
-        background: 'radial-gradient(circle, rgba(0, 243, 255, 0.2), transparent)', 
-        filter: 'blur(80px)', borderRadius: '50%', zIndex: 0,
-        animation: 'float 8s ease-in-out infinite',
-        animationDelay: '0s'
+        background: 'radial-gradient(circle, var(--orb1, rgba(0, 243, 255, 0.2)), transparent)', 
+        filter: 'blur(80px)', borderRadius: '50%', zIndex: 0
       }} />
       <div style={{ 
         position: 'absolute', bottom: '5%', right: '10%', width: '350px', height: '350px', 
-        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent)', 
-        filter: 'blur(70px)', borderRadius: '50%', zIndex: 0,
-        animation: 'float 10s ease-in-out infinite',
-        animationDelay: '2s'
+        background: 'radial-gradient(circle, var(--orb2, rgba(188, 19, 254, 0.15)), transparent)', 
+        filter: 'blur(70px)', borderRadius: '50%', zIndex: 0
       }} />
 
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
-        @keyframes slideInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes slideInDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 10px rgba(0, 243, 255, 0.3), inset 0 0 10px rgba(0, 243, 255, 0.1); }
-          50% { box-shadow: 0 0 20px rgba(0, 243, 255, 0.5), inset 0 0 15px rgba(0, 243, 255, 0.2); }
-        }
-      `}</style>
-      
       <div style={{
-        width: '100%', maxWidth: '420px', padding: '40px',
-        background: 'rgba(30, 41, 59, 0.4)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(148, 163, 184, 0.1)',
+        width: '100%', maxWidth: '440px', padding: '40px 32px',
+        background: 'var(--bg-panel, rgba(30, 41, 59, 0.4))',
+        backdropFilter: 'blur(16px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        border: '1px solid var(--border-glass-top, rgba(148, 163, 184, 0.15))',
         borderRadius: '24px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
-        zIndex: 1, textAlign: 'center',
-        animation: 'slideInUp 0.6s ease-out'
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+        zIndex: 1, textAlign: 'center'
       }}>
         <div style={{
           width: '64px', height: '64px',
-          background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.8), rgba(188, 19, 254, 0.8))',
+          background: 'linear-gradient(135deg, var(--accent-primary, #00f3ff), var(--accent-secondary, #bc13fe))',
           borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 24px', boxShadow: '0 8px 16px rgba(0, 243, 255, 0.3), 0 0 20px rgba(0, 243, 255, 0.2)'
         }}>
@@ -192,122 +184,87 @@ const MFAChallenge = () => {
         </div>
 
         <h1 className="font-display" style={{ 
-          fontSize: '2rem', fontWeight: 950, color: '#f1f5f9', margin: '0 0 12px',
-          animation: 'slideInDown 0.6s ease-out 0.1s both'
+          fontSize: '1.9rem', fontWeight: 950, color: 'var(--text-primary, #f1f5f9)', margin: '0 0 12px',
+          letterSpacing: '-0.02em'
         }}>
           Verificación de Seguridad
         </h1>
         <p style={{ 
-          color: '#cbd5e1', marginBottom: '32px', fontSize: '0.95rem', lineHeight: '1.5',
-          animation: 'slideInDown 0.6s ease-out 0.2s both'
+          color: 'var(--text-secondary, #cbd5e1)', marginBottom: '28px', fontSize: '0.92rem', lineHeight: '1.5'
         }}>
-          Ingresa el código de 6 dígitos de tu aplicación authenticator para completar la verificación.
+          Ingresa el código numérico de 6 dígitos de tu app autenticadora para acceder a CampusFlow.
         </p>
 
-        {error && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#fca5a5',
-            padding: '14px', borderRadius: '12px', marginBottom: '24px',
-            fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px',
-            animation: 'slideInDown 0.4s ease-out'
-          }}>
-            <AlertCircle size={18} /> {error}
+        {cooldownRemaining > 0 && (
+          <div
+            role="alert"
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: 'var(--accent-danger, #ef4444)',
+              padding: '14px', borderRadius: '12px', marginBottom: '20px',
+              fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left'
+            }}
+          >
+            <ShieldAlert size={18} style={{ flexShrink: 0 }} />
+            <span>Demasiados intentos fallidos. Bloqueado temporalmente por {cooldownRemaining}s.</span>
           </div>
         )}
 
-        {success && (
-          <div style={{
-            background: 'rgba(34, 197, 94, 0.1)',
-            border: '1px solid rgba(34, 197, 94, 0.3)',
-            color: '#86efac',
-            padding: '14px', borderRadius: '12px', marginBottom: '24px',
-            fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            animation: 'slideInDown 0.4s ease-out',
-            backdropFilter: 'blur(5px)'
-          }}>
-            <CheckCircle size={18} /> {success}
-          </div>
-        )}
-
-        <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              placeholder="000000"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              maxLength="6"
-              disabled={loading}
-              autoFocus
-              style={{
-                width: '100%', padding: '20px', background: 'rgba(15, 23, 42, 0.6)',
-                border: code ? '2px solid rgba(0, 122, 255, 0.5)' : '2px solid rgba(148, 163, 184, 0.2)',
-                borderRadius: '16px',
-                color: '#f1f5f9', fontSize: '2.5rem', outline: 'none',
-                textAlign: 'center', letterSpacing: '16px', fontFamily: 'monospace',
-                fontWeight: 600,
-                opacity: loading ? 0.6 : 1,
-                transition: 'all 0.3s ease',
-                boxShadow: code ? '0 0 20px rgba(0, 122, 255, 0.2), inset 0 0 10px rgba(0, 122, 255, 0.05)' : 'none',
-                cursor: loading ? 'not-allowed' : 'text'
-              }}
-              onFocus={(e) => {
-                e.target.style.boxShadow = '0 0 30px rgba(0, 122, 255, 0.3), inset 0 0 15px rgba(0, 122, 255, 0.1)';
-                e.target.style.borderColor = 'rgba(0, 122, 255, 0.8)';
-              }}
-              onBlur={(e) => {
-                if (!code) {
-                  e.target.style.boxShadow = 'none';
-                  e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-                }
-              }}
-            />
-          </div>
+        <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+          <OrbitalOtpVerification
+            value={code}
+            onChange={(newCode) => {
+              setCode(newCode);
+              if (error) setError('');
+            }}
+            onComplete={(fullCode) => {
+              setCode(fullCode);
+              handleVerify(fullCode);
+            }}
+            isVerifying={loading}
+            isSuccess={Boolean(success)}
+            errorMessage={error}
+            disabled={isBlocked}
+            autoFocus={true}
+            onClearError={() => setError('')}
+            ariaLabel="Código de verificación TOTP de 6 dígitos"
+          />
 
           <button
             type="submit"
-            disabled={loading || code.length !== 6}
+            disabled={isBlocked || code.length !== 6}
             style={{
               padding: '16px',
-              background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.9), rgba(139, 92, 246, 0.8))',
-              border: 'none', borderRadius: '12px',
-              color: 'white', fontSize: '1rem', fontWeight: 700, cursor: loading || code.length !== 6 ? 'not-allowed' : 'pointer',
+              background: 'linear-gradient(135deg, var(--accent-primary, #00f3ff), var(--accent-secondary, #bc13fe))',
+              border: 'none', borderRadius: '14px',
+              color: 'white', fontSize: '0.95rem', fontWeight: 800,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              cursor: isBlocked || code.length !== 6 ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              opacity: (loading || code.length !== 6) ? 0.5 : 1,
-              transition: 'all 0.3s',
-              boxShadow: '0 4px 15px rgba(0, 122, 255, 0.2)',
+              opacity: (isBlocked || code.length !== 6) ? 0.45 : 1,
+              transition: 'all 0.3s ease',
+              boxShadow: (isBlocked || code.length !== 6) ? 'none' : '0 4px 18px rgba(0, 243, 255, 0.25)',
               backdropFilter: 'blur(10px)'
             }}
-            onMouseEnter={(e) => {
-              if (!loading && code.length === 6) {
-                e.target.style.boxShadow = '0 8px 25px rgba(0, 122, 255, 0.4)';
-                e.target.style.transform = 'translateY(-2px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading && code.length === 6) {
-                e.target.style.boxShadow = '0 4px 15px rgba(0, 122, 255, 0.2)';
-                e.target.style.transform = 'translateY(0)';
-              }
-            }}
           >
-            {loading ? 'Verificando...' : <>Verificar <ArrowRight size={18} /></>}
+            {loading ? 'Verificando...' : cooldownRemaining > 0 ? `Espera (${cooldownRemaining}s)` : <>Verificar Acceso <ArrowRight size={18} /></>}
           </button>
         </form>
 
         <button
+          type="button"
           onClick={logout}
           style={{
             width: '100%', margin: '16px 0 0', padding: '12px',
             background: 'transparent', border: 'none',
-            color: '#94a3b8', fontSize: '0.9rem',
-            cursor: 'pointer', transition: 'color 0.3s',
-            fontWeight: 500
+            color: 'var(--text-secondary, #94a3b8)', fontSize: '0.88rem',
+            cursor: 'pointer', transition: 'color 0.2s',
+            fontWeight: 600
           }}
-          onMouseEnter={(e) => e.target.style.color = '#cbd5e1'}
-          onMouseLeave={(e) => e.target.style.color = '#94a3b8'}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary, #ffffff)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)'; }}
         >
           ← Cerrar sesión
         </button>

@@ -4,6 +4,7 @@ const baseURL = 'http://127.0.0.1:5173';
 
 export default defineConfig({
   testDir: './e2e',
+  timeout: 60_000,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
@@ -18,7 +19,7 @@ export default defineConfig({
     viewport: { width: 1365, height: 768 }
   },
   webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 5173',
+    command: process.platform === 'win32' ? 'npm.cmd run dev -- --host 127.0.0.1 --port 5173' : 'npm run dev -- --host 127.0.0.1 --port 5173',
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,

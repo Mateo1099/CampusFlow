@@ -1,6 +1,7 @@
-/* eslint-disable react-hooks/exhaustive-deps, react-refresh/only-export-components */
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { safeDevLog } from '../lib/authSecurity';
 
 const AuthContext = createContext();
 
@@ -18,64 +19,183 @@ const E2E_MOCK_USER = Object.freeze({
   created_at: '2026-01-01T00:00:00.000Z'
 });
 
+/**
+ * Ensures a user profile exists in public.profiles.
+ * If the user logs in for the first time via Google OAuth or email,
+ * this function guarantees default fields: full_name, email, avatar_url,
+ * and email_notifications: true.
+ * @param {object} user - Supabase user object
+ * @returns {Promise<object | null>} The synchronized profile or null
+ */
+export async function syncUserProfile(user) {
+  if (!user || !user.id) return null;
+
+  try {
+    // 1. Verificar si el perfil ya existe
+    const { data: existingProfile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, email_notifications')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      safeDevLog('warn', '[AuthContext] Error comprobando perfil existente:', { message: fetchError.message });
+    }
+
+    if (!existingProfile) {
+      // 2. Extraer metadatos seguros de Google OAuth
+      const rawName = user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.user_metadata?.display_name ||
+        (user.email ? user.email.split('@')[0] : 'Estudiante');
+
+      const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+      const newProfile = {
+        id: user.id,
+        email: user.email || '',
+        full_name: rawName,
+        avatar_url: avatar,
+        email_notifications: true
+      };
+
+      safeDevLog('info', '[AuthContext] Creando perfil inicial para nuevo usuario Google OAuth...', { userId: user.id });
+
+      const { data: insertedData, error: insertError } = await supabase
+        .from('profiles')
+        .upsert(newProfile, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (insertError) {
+        safeDevLog('warn', '[AuthContext] Error en upsert de perfil inicial:', { message: insertError.message });
+        return null;
+      }
+
+      return insertedData || newProfile;
+    }
+
+    return existingProfile;
+  } catch (err) {
+    safeDevLog('error', '[AuthContext] Excepción en syncUserProfile:', { message: err?.message });
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(E2E_MOCK_AUTH_ENABLED ? E2E_MOCK_USER : null);
   const [loading, setLoading] = useState(!E2E_MOCK_AUTH_ENABLED);
   const [aal, setAal] = useState('aal1'); // Authentication Assurance Level - default aal1
   const [mfaRequired, setMfaRequired] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
+
+  const checkMFAStatus = useCallback(async (userId) => {
+    if (!userId) return false;
+
+    try {
+      safeDevLog('info', `Verificando MFA status para user ${userId}...`);
+
+      // 1. Obtener el AAL actual de Supabase
+      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+      if (!aalError && aalData?.currentLevel) {
+        setAal(aalData.currentLevel);
+      } else if (aalError) {
+        safeDevLog('warn', 'Error obteniendo AAL de Supabase', { message: aalError.message });
+      }
+
+      // 2. Verificar factores MFA reales en Supabase Auth (fuente criptográfica)
+      let hasVerifiedTotp = false;
+      try {
+        const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+        if (!factorsError && factorsData) {
+          const totpFactors = factorsData.totp || [];
+          hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
+          safeDevLog('info', 'Factores MFA listados', {
+            totpCount: totpFactors.length,
+            hasVerified: hasVerifiedTotp
+          });
+        } else if (factorsError) {
+          safeDevLog('warn', 'Error listando factores MFA', { message: factorsError.message });
+        }
+      } catch (factorsErr) {
+        safeDevLog('warn', 'Excepción listando factores MFA', { message: factorsErr.message });
+      }
+
+      // 3. Verificar tabla user_security como fuente secundaria protegida por RLS
+      const { data, error } = await supabase
+        .from('user_security')
+        .select('mfa_enabled, mfa_status')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        safeDevLog('warn', 'Error en consulta user_security', { code: error.code });
+        setMfaRequired(hasVerifiedTotp);
+        return hasVerifiedTotp;
+      }
+
+      if (!data) {
+        setMfaRequired(hasVerifiedTotp);
+        return hasVerifiedTotp;
+      }
+
+      // Determinar si MFA está realmente activo combinando las fuentes
+      const mfaFromDB = data?.mfa_enabled === true && data?.mfa_status === 'PROTEGIDA';
+      const hasMFA = hasVerifiedTotp || mfaFromDB;
+
+      setMfaRequired(hasMFA);
+      return hasMFA;
+    } catch (err) {
+      safeDevLog('error', 'Excepción en checkMFAStatus', { message: err?.message });
+      setMfaRequired(false);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     if (E2E_MOCK_AUTH_ENABLED) return undefined;
 
-    let isMounted = true; // Prevenir memory leaks si el componente se desmonta
+    let isMounted = true; // Prevenir memory leaks y race conditions al desmontar
 
     const initializeAuth = async () => {
       try {
-        console.log('[AUTH] Iniciando autenticación...');
-        // Get initial session
+        safeDevLog('info', 'Iniciando verificación de sesión Supabase...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.warn('[AUTH] Error obteniendo sesión:', sessionError);
+          safeDevLog('warn', 'Error obteniendo sesión inicial', { message: sessionError.message });
           if (isMounted) {
             setUser(null);
-            setAal('aal1'); // Default a aal1
+            setAal('aal1');
             setMfaRequired(false);
-            setSessionId(null);
           }
         } else if (session?.user) {
-          console.log('[AUTH] Sesión encontrada para:', session.user.email, 'AAL:', session.user.aal);
+          safeDevLog('info', 'Sesión activa detectada');
           if (isMounted) {
             setUser(session.user);
-            // Si AAL es undefined, asignar 'aal1' por defecto
             setAal(session.user.aal || 'aal1');
-            setSessionId(session.access_token);
           }
-          
-          // ⚠️ NO ESPERAR a checkMFAStatus - hacerlo en background
-          // Esto permite que setLoading(false) se ejecute inmediatamente
+          // Sincronizar perfil inicial en background para usuarios nuevos / Google OAuth
+          syncUserProfile(session.user);
+          // Comprobar MFA en background sin bloquear el flujo principal
           checkMFAStatus(session.user.id);
         } else {
-          console.log('[AUTH] Sin sesión activa');
+          safeDevLog('info', 'Sin sesión activa');
           if (isMounted) {
             setUser(null);
-            setAal('aal1'); // Default a aal1
+            setAal('aal1');
             setMfaRequired(false);
-            setSessionId(null);
           }
         }
       } catch (err) {
-        console.error('[AUTH] Error en initializeAuth:', err);
+        safeDevLog('error', 'Error en initializeAuth', { message: err?.message });
         if (isMounted) {
           setUser(null);
-          setAal('aal1'); // Default a aal1
+          setAal('aal1');
           setMfaRequired(false);
         }
       } finally {
-        // 🔥 CRÍTICO: setLoading SIEMPRE se ejecuta INMEDIATAMENTE
         if (isMounted) {
-          console.log('[AUTH] ✅ setLoading(false) - Inicialización completada');
           setLoading(false);
         }
       }
@@ -83,28 +203,26 @@ export function AuthProvider({ children }) {
 
     initializeAuth();
 
-    // Listen to auth changes - validar MFA de forma asíncrona
+    // Escuchar eventos de cambio de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('[AUTH] onAuthStateChange:', _event, '- User:', session?.user?.email);
+      safeDevLog('info', `onAuthStateChange: ${_event}`);
       
       if (session?.user) {
         if (isMounted) {
           setUser(session.user);
-          // Si AAL es undefined, asignar 'aal1' por defecto
           setAal(session.user.aal || 'aal1');
-          setSessionId(session.access_token);
         }
-        
-        // Validar MFA de forma asíncrona (en background, no bloquea)
+        if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED' || _event === 'INITIAL_SESSION') {
+          syncUserProfile(session.user);
+        }
         if (session.user.id) {
           checkMFAStatus(session.user.id);
         }
       } else {
         if (isMounted) {
           setUser(null);
-          setAal('aal1'); // Default a aal1
+          setAal('aal1');
           setMfaRequired(false);
-          setSessionId(null);
         }
       }
     });
@@ -113,189 +231,90 @@ export function AuthProvider({ children }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  const checkMFAStatus = useCallback(async (userId) => {
-    try {
-      console.log(`[AUTH] Verificando MFA status para user ${userId}...`);
-
-      // 🔑 PRIMERO: Obtener el AAL actual de Supabase
-      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-
-      if (!aalError && aalData?.currentLevel) {
-        console.log(`[AUTH] AAL actual de Supabase: ${aalData.currentLevel}`);
-        setAal(aalData.currentLevel);
-      } else if (aalError) {
-        console.warn('[AUTH] Error obteniendo AAL de Supabase:', aalError);
-      }
-
-      // 🔒 SEGUNDO: Verificar factores MFA reales en Supabase Auth
-      let hasVerifiedTotp = false;
-      try {
-        const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
-        if (!factorsError && factorsData) {
-          const totpFactors = factorsData.totp || [];
-          hasVerifiedTotp = totpFactors.some(f => f.status === 'verified');
-          console.log(`[AUTH] Factores MFA reales: ${totpFactors.length} TOTP, ${hasVerifiedTotp ? 'al menos 1 verificado' : 'ninguno verificado'}`);
-        } else if (factorsError) {
-          console.warn('[AUTH] Error listando factores MFA:', factorsError.message);
-        }
-      } catch (factorsErr) {
-        console.warn('[AUTH] Exception listando factores MFA:', factorsErr.message);
-      }
-
-      // TERCERO: Verificar tabla user_security como fuente secundaria
-      const { data, error } = await supabase
-        .from('user_security')
-        .select('mfa_enabled, mfa_status')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) {
-        console.warn(`[AUTH] Error en consulta user_security:`, error.code, error.message);
-        // Si hay error en user_security, usar factores reales como fuente de verdad
-        const mfaFromFactors = hasVerifiedTotp;
-        console.log(`[AUTH] Usando factores reales como fuente: mfaRequired = ${mfaFromFactors}`);
-        setMfaRequired(mfaFromFactors);
-        return mfaFromFactors;
-      }
-
-      if (!data) {
-        console.log('[AUTH] Sin datos de security, verificando factores reales');
-        // Sin registro en user_security, usar factores reales
-        setMfaRequired(hasVerifiedTotp);
-        return hasVerifiedTotp;
-      }
-
-      // Determinar si MFA está realmente activo - combinar ambas fuentes
-      const mfaFromDB = data?.mfa_enabled === true && data?.mfa_status === 'PROTEGIDA';
-      const hasMFA = hasVerifiedTotp || mfaFromDB;
-
-      console.log(`[AUTH] MFA status para user ${userId}:`, {
-        mfa_enabled_db: data?.mfa_enabled,
-        mfa_status_db: data?.mfa_status,
-        hasVerifiedTotp,
-        resolved: hasMFA,
-        currentLevel: aalData?.currentLevel
-      });
-      setMfaRequired(hasMFA);
-      return hasMFA;
-    } catch (err) {
-      // IMPORTANTE: Capturar TODOS los errores y no lanzarlos
-      console.error('[AUTH] Exception en checkMFAStatus:', err);
-      console.log('[AUTH] Asumiendo mfaRequired = false por excepción');
-      setMfaRequired(false);
-      return false;
-    }
-  }, []);
+  }, [checkMFAStatus]);
 
   const login = useCallback((userData) => {
     setUser(userData);
   }, []);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setAal('aal1');
-    setMfaRequired(false);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      safeDevLog('warn', 'Excepción en supabase.auth.signOut', { message: err?.message });
+    } finally {
+      setUser(null);
+      setAal('aal1');
+      setMfaRequired(false);
+    }
   }, []);
 
   const refreshSession = useCallback(async () => {
     try {
-      console.log('[AUTH] Refrescando sesión...');
-      
-      // Obtener la sesión actualizada del servidor
+      safeDevLog('info', 'Refrescando sesión con Supabase Auth...');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error('[AUTH] Error al refrescar sesión:', sessionError);
+        safeDevLog('error', 'Error al refrescar sesión', { message: sessionError.message });
         return false;
       }
       
       if (!session?.user) {
-        console.warn('[AUTH] No hay sesión después de refrescar');
+        safeDevLog('warn', 'No hay sesión activa tras refresco');
         return false;
       }
       
-      // Actualizar los estados con los valores más recientes
       const newAal = session.user.aal || 'aal1';
-      console.log('[AUTH] Sesión refrescada - AAL anterior:', aal, '-> AAL nuevo:', newAal);
-      
       setUser(session.user);
       setAal(newAal);
-      setSessionId(session.access_token);
       
-      // Verificar el estado de MFA con la información más reciente
       if (session.user.id) {
         await checkMFAStatus(session.user.id);
       }
       
       return true;
     } catch (err) {
-      console.error('[AUTH] Exception al refrescar sesión:', err);
+      safeDevLog('error', 'Excepción al refrescar sesión', { message: err?.message });
       return false;
     }
-  }, [aal, checkMFAStatus]);
+  }, [checkMFAStatus]);
 
   const refreshSessionAfterMFA = useCallback(async () => {
     try {
-      // Obtener la sesión actualizada después de MFA
       const { data: { session }, error } = await supabase.auth.getSession();
-      
       if (error) throw error;
       
       if (session?.user) {
-        // Actualizar el estado con los nuevos valores
         setUser(session.user);
-        setAal(session.user.aal); // Esto debería ser 'aal2' después de MFA
-        setSessionId(session.access_token);
-        
-        // Pequeño retraso para asegurar que el sistema reconozca AAL2
+        setAal(session.user.aal || 'aal2');
         await new Promise(resolve => setTimeout(resolve, 300));
-        
         return true;
       }
       return false;
     } catch (err) {
-      console.error('Error refreshing session after MFA:', err);
+      safeDevLog('error', 'Error refreshing session after MFA', { message: err?.message });
       throw err;
     }
   }, []);
 
-  // Memoizado: sin esto, el Provider crea un objeto `value` nuevo en cada render
-  // (y AuthContext cambia de estado a menudo: loading, user, aal, mfaRequired),
-  // forzando a re-renderizar TODOS los componentes que usan useAuth() en toda la
-  // app (Sidebar, rutas protegidas, Dashboard, etc.) aunque no les afecte el cambio.
+  // Memoizado para evitar re-renders innecesarios en la app.
+  // Nota de seguridad: NO guardamos ni exponemos tokens de acceso JWT en el contexto
+  // para mitigar exposición en DevTools y ataques de extracción de estado.
   const value = useMemo(() => ({
     user,
     loading,
-    aal, // AAL1 = apenas autenticado, AAL2 = con MFA
+    aal,
     mfaRequired,
-    sessionId,
+    sessionId: null, // Propiedad mantenida para compatibilidad retroactiva sin filtrar tokens
     login,
     logout,
-    refreshSession, // ← Función para refrescar la sesión
+    refreshSession,
     refreshSessionAfterMFA,
+    syncUserProfile,
     isAuthenticated: !!user,
-    needsMFAChallenge: aal === 'aal1' && mfaRequired, // True si necesita pasar MFA
+    needsMFAChallenge: aal === 'aal1' && mfaRequired,
     checkMFAStatus
-  }), [user, loading, aal, mfaRequired, sessionId, login, logout, refreshSession, refreshSessionAfterMFA, checkMFAStatus]);
-
-  // DEBUG: solo en desarrollo, para no generar overhead ni ruido en producción.
-  if (import.meta.env.DEV) {
-    console.log(
-      `[AUTH-DEBUG] ${loading ? '⏳ LOADING' : '✅ READY'}`,
-      { 
-        loading, 
-        'user?': !!user,
-        'user.email': user?.email,
-        aal, 
-        mfaRequired,
-        'isAuthenticated': !!user,
-        'needsMFAChallenge': aal === 'aal1' && mfaRequired
-      }
-    );
-  }
+  }), [user, loading, aal, mfaRequired, login, logout, refreshSession, refreshSessionAfterMFA, checkMFAStatus]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

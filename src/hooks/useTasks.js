@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { tasksService } from '../lib/tasksService';
 import { dataStoreService } from '../lib/dataStoreService';
+import { trackEvent } from '../services/analyticsService';
 
 export const useTasks = (userId) => {
   const [tasks, setTasks] = useState([]);
@@ -44,6 +45,7 @@ export const useTasks = (userId) => {
       const newTask = await tasksService.createTask(userId, task);
       setTasks(prev => [{ ...newTask, xpClaimed: false }, ...prev]);
       dataStoreService.invalidate('tasks', userId);
+      trackEvent('task_created', { taskId: newTask?.id, title: newTask?.title });
       return newTask;
     } catch (err) {
       setError(err.message);
@@ -76,7 +78,10 @@ export const useTasks = (userId) => {
 
       const updatedTask = await tasksService.updateTask(id, updates);
       // La lógica de XP ahora se maneja completamente en TaskBoard.jsx para evitar duplicados
-      const isNowDelivered = String(newStatus).toLowerCase() === 'entregado';
+      const isNowDelivered = ['entregado', 'submitted', 'completado', 'done'].includes(String(newStatus).toLowerCase());
+      if (isNowDelivered) {
+        trackEvent('task_completed', { taskId: id, status: newStatus });
+      }
       setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...updatedTask, xpClaimed: isNowDelivered } : t));
       dataStoreService.invalidate('tasks', userId);
     } catch (err) {

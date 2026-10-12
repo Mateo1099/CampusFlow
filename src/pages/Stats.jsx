@@ -1,6 +1,8 @@
 import React from 'react';
 import { usePrefetchedAnalyticsData } from '../hooks/usePrefetchedAnalyticsData';
 import { useAuth } from '../context/AuthContext';
+import { useTasksContext } from '../context/TaskContext';
+import { getUserStats } from '../services/analyticsService';
 import { Clock, Flame, BookOpen, BarChart3, AlertTriangle, CheckCircle2, Info, TrendingUp, Target } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, YAxis, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -94,25 +96,40 @@ const Stats = React.memo(() => {
     loading
   } = usePrefetchedAnalyticsData(user?.id);
 
-  const safeMinutesByDay = Array.isArray(minutesByDay) ? minutesByDay : [0, 0, 0, 0, 0, 0, 0];
+  const safeMinutesByDay = React.useMemo(() => {
+    return Array.isArray(minutesByDay) ? minutesByDay : [0, 0, 0, 0, 0, 0, 0];
+  }, [minutesByDay]);
   
-  const chartData = weekDays.map((label, index) => ({
-    name: label,
-    minutes: safeMinutesByDay[index] || 0
-  }));
+  const chartData = React.useMemo(() => {
+    return weekDays.map((label, index) => ({
+      name: label,
+      minutes: safeMinutesByDay[index] || 0
+    }));
+  }, [safeMinutesByDay]);
 
   const hasWeeklyMinutes = safeMinutesByDay.some((minutes) => minutes > 0);
 
+  const taskContext = useTasksContext();
+  const rawTasks = taskContext?.tasks;
+
+  const userStats = React.useMemo(() => {
+    const tasks = Array.isArray(rawTasks) ? rawTasks : [];
+    return getUserStats({
+      tasks,
+      minutesByDay: safeMinutesByDay
+    });
+  }, [rawTasks, safeMinutesByDay]);
+
   // KPIs
-  const currentWeekMinutes = historicalSummary?.semanaActual?.minutos || 0;
+  const currentWeekMinutes = historicalSummary?.semanaActual?.minutos || userStats.pomodoroMinutes || 0;
   const diffMinutes = historicalSummary?.diferenciaMinutos || 0;
   const isUp = historicalSummary?.tendencia === 'up';
   
   const dailyAvg = Math.round(currentWeekMinutes / 7);
   
-  // Mock data for streak and main subject
-  const streak = hasWeeklyMinutes ? 4 : 0; 
-  const compliance = hasWeeklyMinutes ? 85 : 0;
+  // Métricas reales y dinámicas calculadas desde el servicio de telemetría y tareas
+  const streak = userStats.activeStreak; 
+  const compliance = userStats.deliverySuccessRate;
 
   if (loading) {
     return (

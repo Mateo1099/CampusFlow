@@ -127,8 +127,8 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     await expect(page).toHaveURL(/\/planner$/);
     await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible();
 
-    // 2. Clic en "+ NUEVA PLANIFICACIÓN".
-    await page.getByRole('button', { name: /NUEVA PLANIFICACIÓN/i }).click();
+    // 2. Clic en "+ NUEVA PLANIFICACIÓN" o "CREAR PLANIFICACIÓN"
+    await page.getByRole('button', { name: /(NUEVA|CREAR) PLANIFICACIÓN/i }).click();
 
     // 3. Verificar que abre la interfaz/modal para crear una planificación.
     // El modal usa el mismo texto "NUEVA PLANIFICACIÓN" pero como <h2>, así
@@ -179,7 +179,7 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     // Analítica
     await page.getByRole('link', { name: 'Analítica', exact: true }).click();
     await expect(page).toHaveURL(/\/stats$/);
-    await expect(page.getByRole('heading', { name: 'Analitica PRO', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Anal[íi]tica PRO/i, level: 1 })).toBeVisible();
 
     // Ajustes (el enlace del sidebar hacia /profile no expone un nombre
     // accesible fijo porque muestra el nombre del usuario; se localiza por
