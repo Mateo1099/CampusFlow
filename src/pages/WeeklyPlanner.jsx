@@ -1474,7 +1474,7 @@ function PlannerDetail({ planner, courses, tasks, isLightMode, onBack, onAddBloc
                                               event.stopPropagation();
                                               if (b.status !== 'en_proceso') {
                                                 try {
-                                                  await supabase.from('weekly_planner_blocks').update({ status: 'en_proceso' }).eq('id', b.id);
+                                                  await supabase.from('planner_blocks').update({ status: 'en_proceso' }).eq('id', b.id);
                                                 } catch (e) { console.error(e); }
                                               }
                                               navigate('/pomodoro', { state: { sourceBlock: { ...b, status: 'en_proceso' } } }); 
