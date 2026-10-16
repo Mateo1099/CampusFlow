@@ -14,7 +14,7 @@ const E2E_MOCK_USER = Object.freeze({
   aud: 'authenticated',
   role: 'authenticated',
   app_metadata: { provider: 'email', providers: ['email'] },
-  user_metadata: { full_name: 'CampusFlow QA' },
+  user_metadata: { full_name: 'CampusFlow QA', has_completed_onboarding: true },
   email_confirmed_at: '2026-01-01T00:00:00.000Z',
   created_at: '2026-01-01T00:00:00.000Z'
 });

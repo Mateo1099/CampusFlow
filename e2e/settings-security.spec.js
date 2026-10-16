@@ -19,7 +19,8 @@ const MOCK_PROFILE = {
   green_alert_freq: 'diario',
   red_alert_custom_days: 1,
   yellow_alert_custom_days: 1,
-  green_alert_custom_days: 1
+  green_alert_custom_days: 1,
+  has_completed_onboarding: true
 };
 
 const JSON_HEADERS = {
@@ -29,6 +30,10 @@ const JSON_HEADERS = {
 };
 
 test('Ajustes abre Seguridad y recupera el scroll al cerrar', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('campusflow_has_completed_onboarding', 'true');
+  });
+
   const attemptedMutations = [];
   const runtimeErrors = [];
 

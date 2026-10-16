@@ -57,5 +57,49 @@ export const emailService = {
         return { success: false, error: fallbackErr.message };
       }
     }
+  },
+
+  /**
+   * Envía una alerta de entregas pendientes del semáforo hacia la Edge Function desacoplada
+   * @param {Object} params
+   * @param {string} params.email Correo del estudiante
+   * @param {string} [params.name] Nombre del estudiante
+   * @param {Array<Object>} params.pendingTasks Lista de tareas pendientes
+   * @param {string} [params.subject] Asunto opcional
+   * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
+   */
+  async sendDeadlineAlerts({ email, name = 'Estudiante', pendingTasks = [], subject }) {
+    const payload = {
+      user_email: email,
+      student_name: name,
+      pending_tasks: pendingTasks,
+      ...(subject ? { subject } : {})
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-deadline-alerts', {
+        body: payload
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Error al invocar la función Edge send-deadline-alerts');
+      }
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
+      return { success: true, messageId: data?.messageId };
+    } catch (err) {
+      console.warn('[emailService] Edge Function send-deadline-alerts falló, intentando RPC fallback:', err.message);
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('test_send_deadline_alerts_edge', {
+          p_email: email
+        });
+        if (rpcError) throw new Error(rpcError.message);
+        return { success: true, messageId: 'rpc-' + (rpcData?.http_request_id || 'ok') };
+      } catch (fallbackErr) {
+        console.error('[emailService] Error en fallback de sendDeadlineAlerts:', fallbackErr);
+        return { success: false, error: fallbackErr.message };
+      }
+    }
   }
 };

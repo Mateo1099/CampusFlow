@@ -185,7 +185,8 @@ const AlertFrequencyRow = ({ zoneLabel, dot, colorVar, freq, onSelectFreq, custo
       padding: '12px 14px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px'
+      gap: '10px',
+      position: 'relative'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{ fontSize: '0.85rem', flexShrink: 0, lineHeight: 1 }}>{dot}</span>
@@ -1439,7 +1440,9 @@ const Profile = () => {
             display: 'grid',
             gridTemplateRows: settings.emailNotifications ? '1fr' : '0fr',
             transition: 'grid-template-rows 0.3s ease-out',
-            overflow: 'hidden',
+            overflow: settings.emailNotifications ? 'visible' : 'hidden',
+            position: 'relative',
+            zIndex: 30,
             marginTop: 0
           }}>
             <div style={{ minHeight: 0 }}>

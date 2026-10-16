@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Plus, Minus, Check } from 'lucide-react';
 
-const CustomTimePicker = ({ value, onChange }) => {
+const CustomTimePicker = ({ value, onChange, accentColor = '#00f3ff' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
-  const accentColor = '#00f3ff';
   
 
   // Parse initial value (HH:MM in 24h format)
@@ -74,7 +73,7 @@ const CustomTimePicker = ({ value, onChange }) => {
   };
 
   return (
-    <div style={{ position: 'relative' }} ref={containerRef}>
+    <div style={{ position: 'relative', zIndex: isOpen ? 1000 : 'auto' }} ref={containerRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -110,7 +109,7 @@ const CustomTimePicker = ({ value, onChange }) => {
               position: 'absolute',
               top: 'calc(100% + 10px)',
               left: 0,
-              zIndex: 100,
+              zIndex: 1000,
               background: 'linear-gradient(135deg, rgba(15,15,20,0.95), rgba(10,10,12,0.98))',
               backdropFilter: 'blur(20px)',
               border: `1px solid ${accentColor}40`,

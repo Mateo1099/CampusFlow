@@ -23,7 +23,8 @@ const MOCK_PROFILE = {
   green_alert_freq: 'diario',
   red_alert_custom_days: 1,
   yellow_alert_custom_days: 1,
-  green_alert_custom_days: 1
+  green_alert_custom_days: 1,
+  has_completed_onboarding: true
 };
 
 const JSON_HEADERS = {
@@ -43,6 +44,10 @@ const isExpectedBackgroundWrite = (entry) => entry.endsWith('/rest/v1/analytics_
 
 test.describe('Recorrido interactivo largo por CampusFlow', () => {
   test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('campusflow_has_completed_onboarding', 'true');
+    });
+
     const attemptedMutations = [];
     // Se cuelga en `page` para poder leerlo desde el propio test tras cada paso.
     page.attemptedMutations = attemptedMutations;

@@ -348,16 +348,17 @@ const Pomodoro = () => {
 
   return (
     <div className="animate-fade-in pomodoro-page" style={{ 
-      height: '100%',
+      minHeight: '100%',
       width: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: '28px',
       padding: '24px',
+      paddingBottom: '48px',
       boxSizing: 'border-box',
-      position: 'relative',
-      overflow: 'hidden'
+      position: 'relative'
     }}>
 
       {/* ─── BANNER PRINCIPAL LIQUID Glass ─── */}
