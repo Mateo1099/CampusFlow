@@ -18,7 +18,7 @@ export function TaskProvider({ children }) {
 
   // Hooks de Datos
   const { 
-    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading 
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading 
   } = useTasks(user?.id);
 
   const { 
@@ -55,12 +55,12 @@ export function TaskProvider({ children }) {
   // forzando a re-renderizar TODOS los componentes que usan useTasksContext()
   // (Dashboard, TaskBoard, Agenda, Sidebar) aunque el cambio no les afecte.
   const value = useMemo(() => ({
-    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading,
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading,
     courses, addCourse, updateCourse, deleteCourse, coursesLoading,
     dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
     analytics
   }), [
-    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, tasksLoading,
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading,
     courses, addCourse, updateCourse, deleteCourse, coursesLoading,
     dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
     analytics

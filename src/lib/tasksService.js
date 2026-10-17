@@ -82,11 +82,23 @@ export const tasksService = {
       cloudMapping.status = statusMap[rawStatus] || rawStatus;
     }
 
+    // Mapeo de Subtareas (JSONB) y Notas de Estudio (TEXT)
+    if (updates.subtasks !== undefined) {
+      cloudMapping.subtasks = Array.isArray(updates.subtasks) ? updates.subtasks : [];
+    }
+    if (updates.task_notes !== undefined) {
+      cloudMapping.task_notes = typeof updates.task_notes === 'string' ? updates.task_notes : (updates.task_notes == null ? '' : String(updates.task_notes));
+    } else if (updates.taskNotes !== undefined) {
+      cloudMapping.task_notes = typeof updates.taskNotes === 'string' ? updates.taskNotes : (updates.taskNotes == null ? '' : String(updates.taskNotes));
+    } else if (updates.notes !== undefined) {
+      cloudMapping.task_notes = typeof updates.notes === 'string' ? updates.notes : (updates.notes == null ? '' : String(updates.notes));
+    }
+
     const { data, error } = await supabase
       .from('assignments')
       .update(cloudMapping)
       .eq('id', id)
-      .select();
+      .select('*, courses(name, color)');
     
     if (error) {
       console.error("ALFA_SAVE_ERROR (Update):", error);
@@ -95,9 +107,18 @@ export const tasksService = {
     return data[0];
   },
 
+  async updateSubtasks(id, subtasks) {
+    return this.updateTask(id, { subtasks });
+  },
+
+  async updateTaskNotes(id, notes) {
+    return this.updateTask(id, { task_notes: notes });
+  },
+
   async deleteTask(id) {
     const { error } = await supabase.from('assignments').delete().eq('id', id);
     if (error) throw error;
     return true;
   }
 };
+

@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
 import { useGamification } from '../context/GamificationContext';
-import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock, AlertCircle, Flame, Eye, CheckCircle2 } from 'lucide-react';
+import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock, AlertCircle, Flame, Eye, CheckCircle2, ListTodo, FileText } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,7 @@ import CrumpleTossItem from '../components/ui/CrumpleTossItem';
 import { UndoToastContainer } from '../components/ui/UndoToast';
 import { useUndoDelete } from '../hooks/useUndoDelete';
 import BinEatButton from '../components/ui/BinEatButton';
+import TaskDetailDrawer from '../components/ui/TaskDetailDrawer';
 
 // GSAP IMPORTS
 import { gsap } from "gsap";
@@ -32,7 +33,7 @@ const COLUMNS = [
   { id: 'entregado',    label: 'ENTREGADO',    accent: '#10b981', icon: CheckCircle2 },
 ];
 
-const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
+const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) => {
   const courseObj = courses?.find(c => c.id === task.course_id);
   const accentColor = courseObj?.color || 'var(--accent-primary)';
 
@@ -76,6 +77,12 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
   };
 
   const priority = calculatePriority(task.deadline || task.due_date);
+
+  // Desglose de ejercicios y notas
+  const subtasksList = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const completedSubtasks = subtasksList.filter(s => s.completed).length;
+  const totalSubtasks = subtasksList.length;
+  const hasNotes = typeof task.task_notes === 'string' && task.task_notes.trim().length > 0;
 
   return (
     <motion.div
@@ -134,6 +141,24 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Botón Bloc de Notas y Desglose de Ejercicios */}
+          <motion.button 
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(188, 19, 254, 0.18)', borderColor: 'rgba(188, 19, 254, 0.45)', boxShadow: '0 0 12px rgba(188, 19, 254, 0.4), inset 0 0 6px rgba(188, 19, 254, 0.2)' }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-icon-alfa"
+            title="Desglose de ejercicios y bloc de notas"
+            style={{ 
+              opacity: 1, cursor: 'pointer', color: 'rgba(188, 19, 254, 0.95)',
+              background: (totalSubtasks > 0 || hasNotes) ? 'rgba(188, 19, 254, 0.12)' : 'rgba(188, 19, 254, 0.04)',
+              border: (totalSubtasks > 0 || hasNotes) ? '1px solid rgba(188, 19, 254, 0.35)' : '1px solid rgba(188, 19, 254, 0.15)',
+              backdropFilter: 'blur(10px)', padding: '4px 6px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: '8px', transition: 'all 0.3s ease'
+            }}
+            onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
+          >
+            <ListTodo size={13} style={{ filter: 'drop-shadow(0 0 2px rgba(188,19,254,0.5))' }} />
+          </motion.button>
           <motion.button 
             whileHover={{ scale: 1.1, backgroundColor: 'rgba(0, 243, 255, 0.15)', borderColor: 'rgba(0, 243, 255, 0.4)', boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)' }}
             whileTap={{ scale: 0.95 }}
@@ -173,19 +198,75 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd }) => {
         ) : (
           <div style={{ width: '1px' }} />
         )}
+
+        {/* Micro-indicadores de Desglose de Ejercicios y Notas */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {totalSubtasks > 0 && (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
+              title={`${completedSubtasks} de ${totalSubtasks} ejercicios completados`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: completedSubtasks === totalSubtasks ? 'rgba(16, 185, 129, 0.14)' : 'rgba(0, 243, 255, 0.08)',
+                border: completedSubtasks === totalSubtasks ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(0, 243, 255, 0.22)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                color: completedSubtasks === totalSubtasks ? '#10b981' : 'var(--accent-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: completedSubtasks === totalSubtasks ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
+              }}
+            >
+              <CheckCircle2 size={11} />
+              <span>{completedSubtasks}/{totalSubtasks}</span>
+            </motion.div>
+          )}
+
+          {hasNotes && (
+            <motion.div
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
+              title="Tiene notas de estudio vinculadas"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+                padding: '2px 6px',
+                borderRadius: '12px',
+                background: 'rgba(188, 19, 254, 0.12)',
+                border: '1px solid rgba(188, 19, 254, 0.3)',
+                fontSize: '0.68rem',
+                color: 'var(--accent-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <FileText size={10} />
+            </motion.div>
+          )}
+        </div>
       </div>
     </motion.div>
   );
 };
 
 const TaskBoard = () => {
-  const { tasks, setTasks, updateTaskStatus, deleteTask, updateTask, addTask, courses, tasksLoading } = useTasksContext();
+  const { tasks, setTasks, updateTaskStatus, deleteTask, updateTask, updateSubtasks, updateTaskNotes, addTask, courses, tasksLoading } = useTasksContext();
   const { t } = useSettings();
   const { addXP } = useGamification();
   const navigate = useNavigate();
   const location = useLocation();
   const { isMobile } = useBreakpoint();
   const [showModal, setShowModal] = useState(false);
+  const [detailTaskId, setDetailTaskId] = useState(null);
+  const detailTask = useMemo(() => tasks.find(t => t.id === detailTaskId) || null, [tasks, detailTaskId]);
 
   // Bloquea el scroll de fondo mientras el modal Nuevo/Editar Trabajo está abierto.
   React.useEffect(() => {
@@ -649,6 +730,7 @@ const TaskBoard = () => {
                             onEdit={handleEdit}
                             courses={courses}
                             onDragEnd={handleDragEnd}
+                            onOpenDetail={() => setDetailTaskId(task.id)}
                           />
                         </CrumpleTossItem>
                       ))
@@ -840,6 +922,16 @@ const TaskBoard = () => {
         )}
       </AnimatePresence>
       <UndoToastContainer pendingItems={pendingItems} onUndo={undoDelete} />
+
+      {/* Drawer Cyber Luxe de Desglose de Ejercicios y Bloc de Notas */}
+      <TaskDetailDrawer
+        isOpen={Boolean(detailTask)}
+        onClose={() => setDetailTaskId(null)}
+        task={detailTask}
+        courses={courses}
+        onUpdateSubtasks={updateSubtasks}
+        onUpdateNotes={updateTaskNotes}
+      />
     </div>
   );
 };

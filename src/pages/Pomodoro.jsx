@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Pause, RotateCcw, Music, Volume2, VolumeX, Square, ChevronDown, Check, Target, X, Timer } from 'lucide-react';
+import { Play, Pause, RotateCcw, Music, Volume2, VolumeX, Square, ChevronDown, Check, Target, X, Timer, ListTodo } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
+import { useBreakpoint } from '../hooks/useMediaQuery';
 import { playPhaseCompleteChime, resumeAudio } from '../lib/audioService';
 import { toast } from 'sonner';
 import { useGamification } from '../context/GamificationContext';
 import { trackEvent } from '../services/analyticsService';
+import TaskDetailDrawer from '../components/ui/TaskDetailDrawer';
 
 const STUDY_METHODS = {
   pomodoro: {
@@ -54,9 +56,13 @@ const Pomodoro = () => {
   const [activePlannerBlock, setActivePlannerBlock] = useState(incomingBlock || null);
 
   const { user } = useAuth();
-  const { tasks } = useTasks(user?.id);
+  const { tasks, updateSubtasks, updateTaskNotes } = useTasks(user?.id);
   const { t, incrementStat } = useSettings();
   const { addXP } = useGamification();
+  const { isMobile } = useBreakpoint();
+  
+  // Drawer de Desglose de Ejercicios y Notas
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
   const [selectedStudyMethod, setSelectedStudyMethod] = useState('pomodoro');
   const [mode, setMode] = useState(STUDY_METHODS['pomodoro'].defaultMode);
@@ -93,6 +99,17 @@ const Pomodoro = () => {
   const [selectedTaskId, setSelectedTaskId] = useState('');
   const [isTaskDropdownOpen, setIsTaskDropdownOpen] = useState(false);
   const taskDropdownRef = useRef(null);
+
+  // Tarea vinculada como objetivo (por dropdown directo o por bloque activo de planificador)
+  const linkedTask = useMemo(() => {
+    if (selectedTaskId) {
+      return tasks.find(t => String(t.id) === String(selectedTaskId)) || null;
+    }
+    if (activePlannerBlock?.task_id) {
+      return tasks.find(t => String(t.id) === String(activePlannerBlock.task_id)) || null;
+    }
+    return null;
+  }, [tasks, selectedTaskId, activePlannerBlock]);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -739,6 +756,37 @@ const Pomodoro = () => {
                       {(t.deadline || t.due_date) ? <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.55)' }}>Vence: {new Date(t.deadline || t.due_date).toLocaleDateString('es-CO')}</div> : <div />}
                       <div style={{ fontSize: '0.75rem', color: t.status === 'en proceso' ? color : 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase', fontWeight: 800 }}>{t.status}</div>
                     </div>
+
+                    {/* Botón directo para desglose de ejercicios */}
+                    <motion.button
+                      whileHover={{ scale: 1.02, backgroundColor: `${color}20` }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setIsDrawerOpen(true)}
+                      style={{
+                        marginTop: '6px',
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        background: `${color}12`,
+                        border: `1px solid ${color}35`,
+                        color: color,
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <ListTodo size={14} />
+                      <span>📝 Desglose de Tarea y Notas</span>
+                      {Array.isArray(t.subtasks) && t.subtasks.length > 0 && (
+                        <span style={{ fontSize: '0.72rem', background: `${color}25`, padding: '1px 6px', borderRadius: '8px', marginLeft: 'auto' }}>
+                          {t.subtasks.filter(s => s.completed).length}/{t.subtasks.length}
+                        </span>
+                      )}
+                    </motion.button>
                   </div>
                 );
               })()}
@@ -901,6 +949,73 @@ const Pomodoro = () => {
           )}
         </div>
       </div>
+
+      {/* Botón flotante accesible para desglose de ejercicios durante la sesión de estudio */}
+      {linkedTask && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 20 }}
+          whileHover={{ 
+            scale: 1.05, 
+            boxShadow: `0 10px 30px rgba(0, 0, 0, 0.6), 0 0 25px ${color}60`,
+            borderColor: color
+          }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsDrawerOpen(true)}
+          aria-label="📝 Desglose de Tarea"
+          title="Ver desglose de ejercicios y bloc de notas"
+          style={{
+            position: 'fixed',
+            bottom: isMobile ? '82px' : '32px',
+            right: isMobile ? '16px' : '32px',
+            zIndex: 900,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '12px 20px',
+            borderRadius: '999px',
+            background: 'rgba(15, 17, 26, 0.92)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            border: `1.5px solid ${color}`,
+            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px ${color}35`,
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontSize: '0.88rem',
+            fontWeight: 800,
+            outline: 'none',
+            letterSpacing: '0.02em',
+          }}
+        >
+          <span style={{ fontSize: '1.1rem' }}>📝</span>
+          <span>Desglose de Tarea</span>
+          {Array.isArray(linkedTask.subtasks) && linkedTask.subtasks.length > 0 && (
+            <span
+              style={{
+                background: `${color}25`,
+                color: color,
+                border: `1px solid ${color}40`,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+              }}
+            >
+              {linkedTask.subtasks.filter(s => s.completed).length}/{linkedTask.subtasks.length}
+            </span>
+          )}
+        </motion.button>
+      )}
+
+      {/* TaskDetailDrawer para Pomodoro */}
+      <TaskDetailDrawer
+        isOpen={isDrawerOpen && Boolean(linkedTask)}
+        onClose={() => setIsDrawerOpen(false)}
+        task={linkedTask}
+        onUpdateSubtasks={updateSubtasks}
+        onUpdateNotes={updateTaskNotes}
+      />
 
     </div>
   );

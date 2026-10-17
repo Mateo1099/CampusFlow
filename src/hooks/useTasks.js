@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { tasksService } from '../lib/tasksService';
+import { assignmentService } from '../services/assignmentService';
 import { dataStoreService } from '../lib/dataStoreService';
 import { trackEvent } from '../services/analyticsService';
 
@@ -65,6 +66,36 @@ export const useTasks = (userId) => {
     }
   }, [userId]);
 
+  const updateSubtasks = useCallback(async (id, subtasks) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...t, subtasks } : t));
+    try {
+      const updatedTask = await assignmentService.updateSubtasks(id, subtasks);
+      setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...t, ...updatedTask } : t));
+      dataStoreService.invalidate('tasks', userId);
+      return updatedTask;
+    } catch (err) {
+      setError(err.message);
+      fetchTasks();
+      throw err;
+    }
+  }, [userId, fetchTasks]);
+
+  const updateTaskNotes = useCallback(async (id, notes) => {
+    // Optimistic update
+    setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...t, task_notes: notes } : t));
+    try {
+      const updatedTask = await assignmentService.updateTaskNotes(id, notes);
+      setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...t, ...updatedTask } : t));
+      dataStoreService.invalidate('tasks', userId);
+      return updatedTask;
+    } catch (err) {
+      setError(err.message);
+      fetchTasks();
+      throw err;
+    }
+  }, [userId, fetchTasks]);
+
   const updateTaskStatus = useCallback(async (id, newStatus) => {
     try {
       const task = tasksRef.current.find(t => String(t.id) === String(id));
@@ -124,9 +155,12 @@ export const useTasks = (userId) => {
     error,
     addTask,
     updateTask,
+    updateSubtasks,
+    updateTaskNotes,
     updateTaskStatus,
     deleteTask,
     updateTaskSchedule,
     refreshTasks: fetchTasks
   };
 };
+
