@@ -81,9 +81,24 @@ const ProtectedRoute = ({ children }) => {
 // Componente para proteger /login: redirige a / si ya está autenticado con AAL2 o sin MFA
 const LoginRoute = ({ children }) => {
   const { isAuthenticated, aal, mfaRequired, loading } = useAuth();
+  const [timedOut, setTimedOut] = React.useState(false);
 
-  if (loading) {
-    return <LoadingGlass message="Verificando sesión..." />;
+  // Fallback con timeout de 3 segundos para descongelamiento total en móviles:
+  // Si la sesión no se confirma en 3 segundos, quita Loading y muestra la interfaz de Login
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Solo mostrar pantalla de carga si loading está activo y aún no vence el timeout de 3s
+  if (loading && !timedOut) {
+    return (
+      <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--accent-primary)' }}>
+        <div className="animate-pulse font-display" style={{ fontSize: '1.5rem', letterSpacing: '0.2em' }}>CAMPUSFLOW_SYNCING...</div>
+      </div>
+    );
   }
 
   if (isAuthenticated && (aal === 'aal2' || !mfaRequired)) {
@@ -210,14 +225,14 @@ function AppRoutes() {
     });
   }, [location.pathname, perfLog]);
 
-  // Timeout de seguridad: después de 5 segundos, forzar loading = false
+  // Timeout de seguridad: después de 3 segundos, forzar loading = false para descongelar móvil
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.warn('[APP-ROUTES] ⚠️ TIMEOUT: Loading sigue true después de 5s, forzando false');
+        console.warn('[APP-ROUTES] ⚠️ TIMEOUT: Loading sigue true después de 3s, forzando false');
         setLoading(false);
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(timeoutId);
   }, [loading]);
@@ -227,7 +242,7 @@ function AppRoutes() {
     setLoading(authLoading);
   }, [authLoading]);
 
-  if (loading) {
+  if (loading && location.pathname !== '/login') {
     return (
       <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--accent-primary)' }}>
         <div className="animate-pulse font-display" style={{ fontSize: '1.5rem', letterSpacing: '0.2em' }}>CAMPUSFLOW_SYNCING...</div>

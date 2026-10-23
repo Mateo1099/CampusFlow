@@ -226,14 +226,16 @@ export function AuthProvider({ children }) {
       window.location.search.includes('code=')
     );
 
-    // Safety timeout de 4 segundos que fuerza descongelar la pantalla (loading = false)
-    // si la red móvil, proveedor o navegador retrasan la respuesta
+    // Safety timeout incondicional de 3.5 segundos: fuerza SIEMPRE setLoading(false)
+    // bajo cualquier circunstancia, incluso si detecta hash OAuth en la URL o eventos lentos en móvil,
+    // evitando que navegadores móviles (Brave, Chrome) se queden congelados.
     const safetyTimeoutId = setTimeout(() => {
       if (isMounted) {
-        safeDevLog('warn', '[AuthContext] Safety timeout de 4s alcanzado en initializeAuth; forzando setLoading(false)');
+        safeDevLog('warn', '[AuthContext] Safety timeout incondicional de 3.5s alcanzado; forzando setLoading(false)');
         setLoading(false);
+        setUser((currentUser) => currentUser || null);
       }
-    }, 4000);
+    }, 3500);
 
     const initializeAuth = async () => {
       try {
@@ -266,9 +268,9 @@ export function AuthProvider({ children }) {
           });
         } else {
           // Si no hay sesión en storage pero hay parámetros OAuth en la URL,
-          // esperar que onAuthStateChange reciba SIGNED_IN (o que el safety timeout de 4s desbloquee)
+          // esperar que onAuthStateChange reciba SIGNED_IN (o que el safety timeout de 3.5s desbloquee)
           if (hasOAuthParams) {
-            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando evento SIGNED_IN...');
+            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando evento SIGNED_IN o safety timeout...');
           } else {
             safeDevLog('info', 'Sin sesión activa ni parámetros OAuth');
             if (isMounted) {
@@ -295,10 +297,9 @@ export function AuthProvider({ children }) {
     // Escuchar eventos de cambio de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       safeDevLog('info', `onAuthStateChange: ${_event}`);
-      
-      clearTimeout(safetyTimeoutId);
 
       if (session?.user) {
+        clearTimeout(safetyTimeoutId);
         if (isMounted) {
           // Descongelar de inmediato la UI al confirmar session.user
           setUser(session.user);
@@ -323,6 +324,7 @@ export function AuthProvider({ children }) {
           });
         }
       } else if (_event === 'SIGNED_OUT') {
+        clearTimeout(safetyTimeoutId);
         if (isMounted) {
           setUser(null);
           setAal('aal1');
@@ -331,6 +333,7 @@ export function AuthProvider({ children }) {
         }
       } else if (!hasOAuthParams) {
         // Si no hay sesión y no estamos en medio de un redirect OAuth, marcar no autenticado
+        clearTimeout(safetyTimeoutId);
         if (isMounted) {
           setUser(null);
           setAal('aal1');

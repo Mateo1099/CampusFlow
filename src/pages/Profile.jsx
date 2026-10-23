@@ -2186,58 +2186,90 @@ const Profile = () => {
             </BottomRowMenu>
           </div>
 
-          {/* Botones de Inducción, Centro de Ayuda & FAQ */}
-          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-onboarding'))}
-              className="btn-open-onboarding-tour"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 20px',
-                borderRadius: '14px',
-                background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
-                border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
-                color: 'var(--accent-primary, #00f3ff)',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <Sparkles size={16} />
-              Ver Tour Guiado (6 Pasos)
-            </button>
+          {/* SOPORTE Y GUÍAS (Tour Guiado de 6 Pasos & Centro de Ayuda / FAQ) */}
+          <div style={{ gridColumn: '1 / -1', maxWidth: '1050px', margin: '20px auto 0', width: '100%' }}>
+            <div className="glass-panel settings-card" style={{ padding: '24px', border: '1px solid var(--border-glass-top)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <SectionTitle icon={<HelpCircle />} label="SOPORTE Y GUÍAS" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', width: '100%' }}>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-onboarding'))}
+                  className="btn-open-onboarding-tour"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
+                    border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
+                    color: 'var(--accent-primary, #00f3ff)',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-glass-hover, rgba(0, 243, 255, 0.1))';
+                    e.currentTarget.style.borderColor = 'var(--accent-primary, #00f3ff)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 243, 255, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-glass, rgba(255, 255, 255, 0.05))';
+                    e.currentTarget.style.borderColor = 'var(--border-glass-top, rgba(255, 255, 255, 0.12))';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
+                  }}
+                >
+                  <Sparkles size={17} />
+                  Ver Tour Guiado (6 Pasos)
+                </button>
 
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-faq'))}
-              className="btn-open-faq-modal"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 20px',
-                borderRadius: '14px',
-                background: 'rgba(0, 243, 255, 0.08)',
-                border: '1px solid rgba(0, 243, 255, 0.3)',
-                color: 'var(--accent-primary, #00f3ff)',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 0 16px rgba(0, 243, 255, 0.12)'
-              }}
-            >
-              <HelpCircle size={16} />
-              Centro de Ayuda & FAQ
-            </button>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-faq'))}
+                  className="btn-open-faq-modal"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    background: 'rgba(0, 243, 255, 0.08)',
+                    border: '1px solid rgba(0, 243, 255, 0.3)',
+                    color: 'var(--accent-primary, #00f3ff)',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    boxShadow: '0 0 16px rgba(0, 243, 255, 0.12)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 243, 255, 0.16)';
+                    e.currentTarget.style.borderColor = 'var(--accent-primary, #00f3ff)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 0 24px rgba(0, 243, 255, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 243, 255, 0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.3)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 0 16px rgba(0, 243, 255, 0.12)';
+                  }}
+                >
+                  <HelpCircle size={17} />
+                  Centro de Ayuda & FAQ
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>

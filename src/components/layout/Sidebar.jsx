@@ -68,80 +68,67 @@ const Sidebar = () => {
       <div className={isHorizontal ? undefined : 'sidebar-top-block'} style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: '14px', 
+        gap: '10px', 
+        overflow: 'visible',
         paddingBottom: isHorizontal ? '0' : '12px', 
-        marginBottom: isHorizontal ? '0' : '2px', 
+        marginBottom: isHorizontal ? '0' : '4px', 
         borderBottom: isHorizontal ? 'none' : '1px solid var(--border-glass-top)',
         borderRight: isHorizontal ? '1px solid var(--border-glass-top)' : 'none',
-        paddingRight: isHorizontal ? '24px' : '0'
+        paddingRight: isHorizontal ? '20px' : '0',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         <div style={{
           position: 'relative',
-          width: isHorizontal ? '50px' : '56px', height: isHorizontal ? '50px' : '56px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: isHorizontal ? '38px' : '42px',
+          height: isHorizontal ? '38px' : '42px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           flexShrink: 0,
+          overflow: 'visible'
         }}>
           {/* Lápiz de Vidrio 1 */}
-          <div className="glass-pencil-container" style={{ position: 'absolute', top: '-12px', right: '-8px', transform: 'rotate(25deg)', animation: 'float 4s ease-in-out infinite' }}>
-            <div style={{ width: '6px', height: '24px', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(4px)', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '2px' }} />
-            <div style={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderTop: '6px solid rgba(255,255,255,0.6)' }} />
-          </div>
-
-          {/* Lápiz de Vidrio 2 */}
-          <div className="glass-pencil-container" style={{ position: 'absolute', bottom: '-4px', right: '-12px', transform: 'rotate(-45deg)', animation: 'float 5s ease-in-out infinite reverse' }}>
-            <div style={{ width: '5px', height: '20px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(3px)', border: '1.2px solid rgba(255,255,255,0.4)', borderRadius: '2px' }} />
-            <div style={{ width: 0, height: 0, borderLeft: '2.5px solid transparent', borderRight: '2.5px solid transparent', borderTop: '5px solid rgba(255,255,255,0.5)' }} />
+          <div className="glass-pencil-container" style={{ position: 'absolute', top: '-6px', right: '-4px', transform: 'rotate(25deg)', animation: 'float 4s ease-in-out infinite' }}>
+            <div style={{ width: '4px', height: '16px', background: 'rgba(255,255,255,0.25)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.6)', borderRadius: '2px' }} />
+            <div style={{ width: 0, height: 0, borderLeft: '2px solid transparent', borderRight: '2px solid transparent', borderTop: '4px solid rgba(255,255,255,0.7)' }} />
           </div>
 
           {/* Logo Diamante C (CSS Puro) - Sincronizado con Temas */}
           <div style={{
-            width: '100%', height: '100%',
+            width: '100%',
+            height: '100%',
             background: `radial-gradient(circle at 30% 30%, #fff 0%, transparent 15%), radial-gradient(circle at 70% 30%, var(--accent-primary) 0%, transparent 15%), conic-gradient(from 180deg at 50% 50%, #e2e8f0, var(--accent-primary), #cbd5e1, var(--accent-primary), #e2e8f0)`,
             mask: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M85 50C85 69.33 69.33 85 50 85C30.67 85 15 69.33 15 50C15 30.67 30.67 15 50 15C60.5 15 69.8 19.6 76.1 26.9L86.4 16.6C77.4 6.2 64.5 0 50 0C22.4 0 0 22.4 0 50C0 77.6 22.4 100 50 100C77.6 100 100 77.6 100 50H85Z\' fill=\'black\' /%3E%3C/svg%3E") no-repeat center',
             WebkitMask: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M85 50C85 69.33 69.33 85 50 85C30.67 85 15 69.33 15 50C15 30.67 30.67 15 50 15C60.5 15 69.8 19.6 76.1 26.9L86.4 16.6C77.4 6.2 64.5 0 50 0C22.4 0 0 22.4 0 50C0 77.6 22.4 100 50 100C77.6 100 100 77.6 100 50H85Z\' fill=\'black\' /%3E%3C/svg%3E") no-repeat center',
-            boxShadow: '0 0 30px rgba(255,255,255,0.4)',
+            boxShadow: '0 0 24px rgba(0, 243, 255, 0.45)',
             transition: 'background 0.5s ease, transform 0.4s ease',
             transform: 'rotate(12deg)'
           }} />
         </div>
         {!isHorizontal && (
-          <div style={{ marginLeft: '6px' }}>
-            {/* El logo en diamante hace de letra "C", por eso el texto visible
-                empieza en "ampusFlow". Se expone el nombre completo vía
-                aria-label para que lectores de pantalla y buscadores lean
-                "CampusFlow" y no "ampusFlow". */}
+          <div style={{ display: 'flex', alignItems: 'center', overflow: 'visible', minWidth: 0, flex: 1 }}>
             <h2
               aria-label="CampusFlow"
               style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '1.8rem',
-                fontWeight: 950,
+                fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                fontSize: '1.42rem',
+                fontWeight: 900,
                 margin: 0,
-                letterSpacing: '-0.06em',
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                /* El halo blanco solo tiene sentido sobre fondo oscuro; en tema
-                   claro desaparecería el texto contra el panel. */
+                letterSpacing: '-0.04em',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                color: isLightMode ? '#0f172a' : '#ffffff',
                 textShadow: isLightMode
-                  ? '0 1px 2px rgba(15, 23, 42, 0.12)'
-                  : '0 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(255,255,255,0.2)',
-                filter: isLightMode
-                  ? 'none'
-                  : 'drop-shadow(0 1px 1px rgba(255,255,255,0.3))'
+                  ? '0 1px 2px rgba(15, 23, 42, 0.1)'
+                  : '0 0 20px rgba(0, 243, 255, 0.35), 0 2px 4px rgba(0,0,0,0.5)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                overflow: 'visible'
               }}
             >
-              {/* Texto plano con el token del tema. El degradado recortado
-                  (background-clip: text) se pintaba como un bloque sólido gris
-                  encima del texto cuando el navegador ignoraba el recorte, y
-                  dejaba el logo "censurado". */}
-              <span
-                aria-hidden="true"
-                style={{
-                  color: isLightMode ? '#101828' : '#ffffff',
-                  background: 'none',
-                }}
-              >ampusFlow</span>
+              <span>Campus</span>
+              <span style={{ color: 'var(--accent-primary, #00f3ff)' }}>Flow</span>
             </h2>
           </div>
         )}
