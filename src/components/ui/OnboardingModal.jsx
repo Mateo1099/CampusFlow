@@ -889,39 +889,14 @@ export default function OnboardingModal({
               />
             </div>
 
-            {/* Botón de cierre rápido / omitir */}
-            <button
-              type="button"
-              onClick={handleSkip}
-              aria-label="Omitir introducción"
-              className="btn-onboarding-skip-cross"
-              style={{
-                position: 'absolute',
-                top: '20px',
-                right: '20px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-secondary, #a1a1aa)',
-                cursor: 'pointer',
-                transition: 'all var(--transition-fast, 0.2s ease)'
-              }}
-            >
-              <X size={16} />
-            </button>
-
-            {/* Stepper Header */}
+            {/* Stepper Header con indicador de paso y botón cerrar integrados sin colisión */}
             <div 
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '20px'
+                marginBottom: '20px',
+                gap: '16px'
               }}
             >
               <div 
@@ -955,17 +930,59 @@ export default function OnboardingModal({
                 })}
               </div>
 
-              <span 
-                style={{
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  color: 'var(--text-muted, #71717a)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em'
-                }}
-              >
-                Paso {currentStep + 1} de {ONBOARDING_STEPS.length}
-              </span>
+              {/* Contenedor derecho: Contador de pasos + Botón Cerrar (X) separados */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span 
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    color: 'var(--text-muted, #71717a)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)'
+                  }}
+                >
+                  Paso {currentStep + 1} de {ONBOARDING_STEPS.length}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  aria-label="Cerrar tour de bienvenida"
+                  className="btn-onboarding-skip-cross"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.10)',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-secondary, #a1a1aa)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast, 0.2s ease)',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.borderColor = 'rgba(0, 243, 255, 0.4)';
+                    e.currentTarget.style.transform = 'scale(1.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                    e.currentTarget.style.color = 'var(--text-secondary, #a1a1aa)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.10)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Step Content con transiciones animadas */}

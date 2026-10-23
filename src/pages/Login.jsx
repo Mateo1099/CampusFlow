@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { supabase } from '../lib/supabaseClient';
-import { User, Lock, ArrowRight, Zap, GraduationCap, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Lock, ArrowRight, Zap, GraduationCap, AlertCircle, CheckCircle, Loader2, UserPlus } from 'lucide-react';
 import {
   validateAndSanitizeEmail,
   validatePassword,
@@ -22,6 +22,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
@@ -44,7 +45,7 @@ const Login = () => {
 
   const handleAuth = async (e) => {
     e.preventDefault();
-    if (isLoading) return; // Prevención de doble envío / condición de carrera
+    if (isLoading || isGoogleLoading) return; // Prevención de doble envío / condición de carrera
 
     setErrorMsg('');
     setSuccessMsg('');
@@ -121,10 +122,11 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async () => {
-    if (isLoading) return;
+    if (isLoading || isGoogleLoading) return;
 
     setErrorMsg('');
     setSuccessMsg('');
+    setIsGoogleLoading(true);
     setIsLoading(true);
 
     try {
@@ -146,6 +148,7 @@ const Login = () => {
     } catch (err) {
       safeDevLog('warn', 'Error en Google OAuth login', { message: err?.message });
       setErrorMsg(getSafeAuthErrorMessage(err, 'Error al conectar con Google. Por favor intenta más tarde.'));
+      setIsGoogleLoading(false);
       setIsLoading(false);
     }
   };
@@ -155,7 +158,7 @@ const Login = () => {
       return handleGoogleLogin();
     }
 
-    if (isLoading) return;
+    if (isLoading || isGoogleLoading) return;
 
     setErrorMsg('');
     setSuccessMsg('');
@@ -179,36 +182,107 @@ const Login = () => {
     }
   };
 
+  const isSignup = mode === 'signup';
+
   return (
     <div style={{
       width: '100vw', height: '100vh',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'var(--bg-primary)', position: 'relative', overflow: 'hidden'
     }}>
-      {/* Background Orbs */}
-      <div style={{ position: 'absolute', top: '10%', left: '10%', width: '300px', height: '300px', background: 'var(--accent-primary)', filter: 'blur(150px)', opacity: 0.15, borderRadius: '50%', zIndex: 0 }} />
-      <div style={{ position: 'absolute', bottom: '10%', right: '10%', width: '400px', height: '400px', background: 'var(--accent-secondary)', filter: 'blur(150px)', opacity: 0.1, borderRadius: '50%', zIndex: 0 }} />
-
+      {/* Background Orbs reactivos al modo Login/Registro */}
       <div style={{
-        width: '100%', maxWidth: '420px', padding: '40px',
-        background: 'var(--bg-glass)', backdropFilter: 'blur(20px)',
-        border: '1px solid var(--border-glass-top)', borderRadius: '24px',
-        boxShadow: 'var(--shadow-glass)', zIndex: 1, textAlign: 'center'
-      }}>
+        position: 'absolute', top: '10%', left: '10%', width: '320px', height: '320px',
+        background: isSignup ? '#bc13fe' : 'var(--accent-primary)',
+        filter: 'blur(150px)', opacity: isSignup ? 0.22 : 0.15,
+        borderRadius: '50%', zIndex: 0,
+        transition: 'all 0.6s ease'
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '10%', right: '10%', width: '420px', height: '420px',
+        background: isSignup ? '#ff007f' : 'var(--accent-secondary)',
+        filter: 'blur(150px)', opacity: isSignup ? 0.18 : 0.10,
+        borderRadius: '50%', zIndex: 0,
+        transition: 'all 0.6s ease'
+      }} />
+
+      {/* Tarjeta de Autenticación con Diferenciación Visual Cyber Luxe */}
+      <div 
+        className="login-card-container"
+        style={{
+          position: 'relative',
+          width: '100%', maxWidth: '420px', padding: '36px 36px 30px',
+          background: isSignup 
+            ? 'linear-gradient(145deg, rgba(22, 16, 36, 0.95) 0%, rgba(13, 15, 24, 0.96) 100%)' 
+            : 'var(--bg-glass, rgba(15, 17, 26, 0.94))',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: isSignup 
+            ? '1px solid rgba(188, 19, 254, 0.50)' 
+            : '1px solid var(--border-glass-top, rgba(0, 243, 255, 0.25))',
+          borderRadius: '24px',
+          boxShadow: isSignup 
+            ? '0 0 50px rgba(188, 19, 254, 0.25), var(--shadow-glass, 0 32px 64px rgba(0,0,0,0.6)), inset 0 1px 0 rgba(255, 255, 255, 0.12)' 
+            : '0 0 35px rgba(0, 243, 255, 0.12), var(--shadow-glass, 0 32px 64px rgba(0,0,0,0.6)), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+          zIndex: 1, textAlign: 'center',
+          overflow: 'hidden',
+          transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+      >
+        {/* Barra superior de acento neón según modo */}
         <div style={{
-          width: '64px', height: '64px',
-          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-          borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 24px', boxShadow: '0 8px 16px rgba(0, 243, 255, 0.3)'
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '3px',
+          background: isSignup 
+            ? 'linear-gradient(90deg, #bc13fe 0%, #ff007f 50%, #bc13fe 100%)' 
+            : 'linear-gradient(90deg, var(--accent-primary, #00f3ff) 0%, var(--accent-secondary, #bc13fe) 100%)',
+          boxShadow: isSignup ? '0 0 14px #bc13fe' : '0 0 12px var(--accent-primary, #00f3ff)',
+          transition: 'all 0.4s ease'
+        }} />
+
+        {/* Badge distintivo del modo actual */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '4px 12px',
+          borderRadius: '999px',
+          fontSize: '0.68rem',
+          fontWeight: 800,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          marginBottom: '16px',
+          background: isSignup ? 'rgba(188, 19, 254, 0.16)' : 'rgba(0, 243, 255, 0.10)',
+          border: isSignup ? '1px solid rgba(188, 19, 254, 0.38)' : '1px solid rgba(0, 243, 255, 0.25)',
+          color: isSignup ? '#e879f9' : 'var(--accent-primary, #00f3ff)',
+          transition: 'all 0.3s ease'
         }}>
-          <GraduationCap size={32} color="white" />
+          {isSignup ? <UserPlus size={13} /> : <GraduationCap size={13} />}
+          <span>{isSignup ? 'MODO: NUEVA CUENTA ACADÉMICA' : 'MODO: INICIO DE SESIÓN'}</span>
         </div>
 
-        <h1 className="font-display" style={{ fontSize: '2.5rem', fontWeight: 950, color: 'var(--text-primary)', margin: '0 0 8px' }}>
+        {/* Icono central de graduación / nuevo usuario con gradiente adaptativo */}
+        <div style={{
+          width: '58px', height: '58px',
+          background: isSignup 
+            ? 'linear-gradient(135deg, #bc13fe 0%, #ff007f 100%)' 
+            : 'linear-gradient(135deg, var(--accent-primary, #00f3ff) 0%, var(--accent-secondary, #bc13fe) 100%)',
+          borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 14px',
+          boxShadow: isSignup ? '0 8px 24px rgba(188, 19, 254, 0.45)' : '0 8px 18px rgba(0, 243, 255, 0.3)',
+          transition: 'all 0.4s ease'
+        }}>
+          {isSignup ? <UserPlus size={28} color="white" /> : <GraduationCap size={30} color="white" />}
+        </div>
+
+        <h1 className="font-display" style={{ fontSize: '2.2rem', fontWeight: 950, color: 'var(--text-primary)', margin: '0 0 6px', letterSpacing: '-0.03em' }}>
           CampusFlow
         </h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>
-          {mode === 'signup' ? 'Crea tu nueva cuenta académica' : t.enterDetails}
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.90rem' }}>
+          {isSignup ? 'Crea tu cuenta académica para gestionar tu semestre' : t.enterDetails}
         </p>
 
         {errorMsg && (
@@ -255,12 +329,14 @@ const Login = () => {
               autoCorrect="off"
               spellCheck="false"
               maxLength={254}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
               style={{
                 width: '100%', padding: '14px 16px 14px 48px', background: 'rgba(0,0,0,0.2)',
-                border: '1px solid var(--border-glass-top)', borderRadius: '12px',
+                border: isSignup ? '1px solid rgba(188, 19, 254, 0.3)' : '1px solid var(--border-glass-top)',
+                borderRadius: '12px',
                 color: 'var(--text-primary)', fontSize: '1rem', outline: 'none',
-                opacity: isLoading ? 0.7 : 1
+                opacity: (isLoading || isGoogleLoading) ? 0.7 : 1,
+                boxSizing: 'border-box'
               }}
             />
           </div>
@@ -275,45 +351,54 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
               maxLength={72}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
               style={{
                 width: '100%', padding: '14px 16px 14px 48px', background: 'rgba(0,0,0,0.2)',
-                border: '1px solid var(--border-glass-top)', borderRadius: '12px',
+                border: isSignup ? '1px solid rgba(188, 19, 254, 0.3)' : '1px solid var(--border-glass-top)',
+                borderRadius: '12px',
                 color: 'var(--text-primary)', fontSize: '1rem', outline: 'none',
-                opacity: isLoading ? 0.7 : 1
+                opacity: (isLoading || isGoogleLoading) ? 0.7 : 1,
+                boxSizing: 'border-box'
               }}
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
             style={{
-              marginTop: '8px', padding: '14px',
-              background: 'var(--accent-primary)', border: 'none', borderRadius: '12px',
-              color: 'white', fontSize: '1rem', fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer',
+              marginTop: '6px', padding: '14px',
+              background: isSignup 
+                ? 'linear-gradient(135deg, #bc13fe 0%, #ff007f 100%)' 
+                : 'linear-gradient(135deg, var(--accent-primary, #00f3ff) 0%, rgba(0, 243, 255, 0.85) 100%)',
+              border: 'none', borderRadius: '12px',
+              color: isSignup ? '#ffffff' : '#080b11',
+              fontSize: '1rem', fontWeight: 800,
+              cursor: (isLoading || isGoogleLoading) ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              opacity: isLoading ? 0.7 : 1, transition: 'all 0.3s'
+              opacity: (isLoading || isGoogleLoading) ? 0.7 : 1,
+              transition: 'all 0.3s ease',
+              boxShadow: isSignup ? '0 4px 18px rgba(188, 19, 254, 0.35)' : '0 4px 16px rgba(0, 243, 255, 0.3)'
             }}
           >
-            {isLoading ? 'Procesando...' : <>{mode === 'signup' ? 'Registrarme' : t.login} <ArrowRight size={18} /></>}
+            {isLoading && !isGoogleLoading ? 'Procesando...' : <>{isSignup ? 'Crear mi Cuenta' : t.login} <ArrowRight size={18} /></>}
           </button>
         </form>
 
-        <div style={{ margin: '24px 0', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <div style={{ margin: '22px 0 18px', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           <div style={{ flex: 1, height: '1px', background: 'var(--border-glass-top)' }} />
           <span>O CONTINÚA CON</span>
           <div style={{ flex: 1, height: '1px', background: 'var(--border-glass-top)' }} />
         </div>
 
         {/* Social Login: Continuar con Google & GitHub */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
           <button
             type="button"
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
             aria-label="Iniciar sesión con Google"
             className="btn-google-oauth glass-panel click-press"
             style={{
@@ -323,33 +408,50 @@ const Login = () => {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '12px',
-              background: 'var(--bg-glass, rgba(255, 255, 255, 0.04))',
-              border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
+              background: isGoogleLoading 
+                ? 'rgba(0, 243, 255, 0.10)' 
+                : 'var(--bg-glass, rgba(255, 255, 255, 0.04))',
+              border: isGoogleLoading 
+                ? '1px solid var(--accent-primary, #00f3ff)' 
+                : '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
               borderRadius: '14px',
               color: 'var(--text-primary, #f5f5f7)',
               fontSize: '0.94rem',
-              fontWeight: 600,
-              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontWeight: 700,
+              cursor: (isLoading || isGoogleLoading) ? 'not-allowed' : 'pointer',
               transition: 'all var(--transition-fast, 0.2s ease)',
-              opacity: isLoading ? 0.6 : 1,
-              boxShadow: 'var(--shadow-glass, 0 4px 16px rgba(0, 0, 0, 0.12))',
+              opacity: (isLoading && !isGoogleLoading) ? 0.6 : 1,
+              boxShadow: isGoogleLoading 
+                ? '0 0 20px rgba(0, 243, 255, 0.3)' 
+                : 'var(--shadow-glass, 0 4px 16px rgba(0, 0, 0, 0.12))',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)'
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.18 1-.78 1.85-1.63 2.42v2.84h2.64c1.55-1.42 2.43-3.5 2.43-5.27z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-2.64-2.84c-.73.49-1.66.78-2.64.78-2.85 0-5.27-1.92-6.13-4.51H2.18v3.01C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.87 13.77c-.22-.65-.35-1.35-.35-2.07s.13-1.42.35-2.07V6.62H2.18C1.43 8.09 1 9.74 1 11.25s.43 3.16 1.18 4.63l3.69-3.01z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.69 3.01c.86-2.59 3.28-4.51 6.13-4.51z" fill="#EA4335" />
-            </svg>
-            <span>{isLoading ? 'Conectando con Google...' : 'Continuar con Google'}</span>
+            {isGoogleLoading ? (
+              <Loader2 
+                size={20} 
+                color="var(--accent-primary, #00f3ff)" 
+                style={{ 
+                  animation: 'spin 1s linear infinite',
+                  flexShrink: 0 
+                }} 
+              />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.18 1-.78 1.85-1.63 2.42v2.84h2.64c1.55-1.42 2.43-3.5 2.43-5.27z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-2.64-2.84c-.73.49-1.66.78-2.64.78-2.85 0-5.27-1.92-6.13-4.51H2.18v3.01C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                <path d="M5.87 13.77c-.22-.65-.35-1.35-.35-2.07s.13-1.42.35-2.07V6.62H2.18C1.43 8.09 1 9.74 1 11.25s.43 3.16 1.18 4.63l3.69-3.01z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.69 3.01c.86-2.59 3.28-4.51 6.13-4.51z" fill="#EA4335" />
+              </svg>
+            )}
+            <span>{isGoogleLoading ? 'Conectando con Google...' : 'Continuar con Google'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleSocialLogin('github')}
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
             aria-label="Iniciar sesión con GitHub"
             className="glass-panel click-press"
             style={{
@@ -365,9 +467,9 @@ const Login = () => {
               color: 'var(--text-secondary, #a1a1aa)',
               fontSize: '0.86rem',
               fontWeight: 600,
-              cursor: isLoading ? 'not-allowed' : 'pointer',
+              cursor: (isLoading || isGoogleLoading) ? 'not-allowed' : 'pointer',
               transition: 'all var(--transition-fast, 0.2s ease)',
-              opacity: isLoading ? 0.6 : 1
+              opacity: (isLoading || isGoogleLoading) ? 0.6 : 1
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -380,20 +482,23 @@ const Login = () => {
         <button
           type="button"
           onClick={() => {
-            setMode(mode === 'login' ? 'signup' : 'login');
+            setMode(isSignup ? 'login' : 'signup');
             setErrorMsg('');
             setSuccessMsg('');
           }}
-          disabled={isLoading}
+          disabled={isLoading || isGoogleLoading}
           style={{
             width: '100%', padding: '12px', background: 'transparent',
-            border: 'none', color: 'var(--accent-primary)', fontSize: '0.9rem',
-            fontWeight: 600, cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', gap: '8px'
+            border: 'none',
+            color: isSignup ? '#d946ef' : 'var(--accent-primary)',
+            fontSize: '0.9rem',
+            fontWeight: 700, cursor: 'pointer', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', gap: '8px',
+            transition: 'color 0.3s ease'
           }}
         >
           <Zap size={16} />
-          {mode === 'login' ? 'Crear una cuenta académica' : '¿Ya tienes cuenta? Inicia sesión'}
+          {isSignup ? '¿Ya tienes cuenta? Inicia sesión' : 'Crear una cuenta académica'}
         </button>
       </div>
     </div>
@@ -401,3 +506,4 @@ const Login = () => {
 };
 
 export default Login;
+

@@ -34,7 +34,7 @@ export async function syncUserProfile(user) {
     // 1. Verificar si el perfil ya existe
     const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
-      .select('id, full_name, email, email_notifications')
+      .select('id, full_name, email, email_notifications, avatar_url')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -42,40 +42,68 @@ export async function syncUserProfile(user) {
       safeDevLog('warn', '[AuthContext] Error comprobando perfil existente:', { message: fetchError.message });
     }
 
-    if (!existingProfile) {
-      // 2. Extraer metadatos seguros de Google OAuth
-      const rawName = user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.user_metadata?.display_name ||
-        (user.email ? user.email.split('@')[0] : 'Estudiante');
+    if (existingProfile && existingProfile.id) {
+      return existingProfile;
+    }
 
-      const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+    // 2. Extraer metadatos seguros de Google OAuth o email
+    const rawName = user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.user_metadata?.display_name ||
+      (user.email ? user.email.split('@')[0] : 'Estudiante');
 
-      const newProfile = {
-        id: user.id,
-        email: user.email || '',
-        full_name: rawName,
-        avatar_url: avatar,
-        email_notifications: true
-      };
+    const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
 
-      safeDevLog('info', '[AuthContext] Creando perfil inicial para nuevo usuario Google OAuth...', { userId: user.id });
+    const defaultProfile = {
+      id: user.id,
+      email: user.email || '',
+      full_name: rawName,
+      avatar_url: avatar,
+      email_notifications: true
+    };
 
+    safeDevLog('info', '[AuthContext] Creando perfil inicial para nuevo usuario Google OAuth...', { userId: user.id });
+
+    // Intento 1: upsert completo con todas las columnas estándar
+    try {
       const { data: insertedData, error: insertError } = await supabase
         .from('profiles')
-        .upsert(newProfile, { onConflict: 'id' })
+        .upsert(defaultProfile, { onConflict: 'id' })
         .select()
         .single();
 
-      if (insertError) {
-        safeDevLog('warn', '[AuthContext] Error en upsert de perfil inicial:', { message: insertError.message });
-        return null;
+      if (!insertError && insertedData) {
+        return insertedData;
       }
 
-      return insertedData || newProfile;
+      if (insertError) {
+        safeDevLog('warn', '[AuthContext] Error en upsert de perfil inicial:', { message: insertError.message });
+      }
+    } catch (upsertErr) {
+      safeDevLog('warn', '[AuthContext] Excepción en upsert completo de perfil:', { message: upsertErr?.message });
     }
 
-    return existingProfile;
+    // Intento 2: Fallback mínimo si la tabla en DB aún no tiene columnas adicionales (ej. email_notifications)
+    try {
+      const basicProfile = {
+        id: user.id,
+        full_name: rawName
+      };
+      const { data: basicData, error: basicError } = await supabase
+        .from('profiles')
+        .upsert(basicProfile, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (!basicError && basicData) {
+        return { ...defaultProfile, ...basicData };
+      }
+    } catch (basicErr) {
+      safeDevLog('warn', '[AuthContext] Excepción en upsert básico de perfil:', { message: basicErr?.message });
+    }
+
+    // Fallback garantizado en memoria: nunca dejar al usuario sin perfil por defecto
+    return defaultProfile;
   } catch (err) {
     safeDevLog('error', '[AuthContext] Excepción en syncUserProfile:', { message: err?.message });
     return null;
@@ -121,12 +149,12 @@ export function AuthProvider({ children }) {
         safeDevLog('warn', 'Excepción listando factores MFA', { message: factorsErr.message });
       }
 
-      // 3. Verificar tabla user_security como fuente secundaria protegida por RLS
+      // 3. Verificar tabla user_security con maybeSingle() para no lanzar PGRST116 en usuarios nuevos
       const { data, error } = await supabase
         .from('user_security')
         .select('mfa_enabled, mfa_status')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         safeDevLog('warn', 'Error en consulta user_security', { code: error.code });
@@ -157,9 +185,19 @@ export function AuthProvider({ children }) {
 
     let isMounted = true; // Prevenir memory leaks y race conditions al desmontar
 
+    // Detectar si la URL actual trae parámetros de retorno OAuth (Google / PKCE)
+    const hasOAuthParams = typeof window !== 'undefined' && (
+      window.location.hash.includes('access_token=') ||
+      window.location.hash.includes('refresh_token=') ||
+      window.location.hash.includes('error=') ||
+      window.location.search.includes('code=')
+    );
+
+    let oauthTimeoutId = null;
+
     const initializeAuth = async () => {
       try {
-        safeDevLog('info', 'Iniciando verificación de sesión Supabase...');
+        safeDevLog('info', 'Iniciando verificación de sesión Supabase...', { hasOAuthParams });
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -168,23 +206,43 @@ export function AuthProvider({ children }) {
             setUser(null);
             setAal('aal1');
             setMfaRequired(false);
+            setLoading(false);
           }
         } else if (session?.user) {
-          safeDevLog('info', 'Sesión activa detectada');
+          safeDevLog('info', 'Sesión activa detectada en inicialización');
           if (isMounted) {
             setUser(session.user);
             setAal(session.user.aal || 'aal1');
+            setLoading(false);
           }
           // Sincronizar perfil inicial en background para usuarios nuevos / Google OAuth
-          syncUserProfile(session.user);
+          syncUserProfile(session.user).catch((e) => {
+            safeDevLog('warn', '[AuthContext] Error asíncrono en syncUserProfile inicial:', { message: e?.message });
+          });
           // Comprobar MFA en background sin bloquear el flujo principal
-          checkMFAStatus(session.user.id);
+          checkMFAStatus(session.user.id).catch((e) => {
+            safeDevLog('warn', '[AuthContext] Error asíncrono en checkMFAStatus inicial:', { message: e?.message });
+          });
         } else {
-          safeDevLog('info', 'Sin sesión activa');
-          if (isMounted) {
-            setUser(null);
-            setAal('aal1');
-            setMfaRequired(false);
+          // Si no hay sesión en storage pero hay parámetros OAuth en la URL,
+          // NO desactivar loading prematuramente: esperar que onAuthStateChange reciba SIGNED_IN.
+          if (hasOAuthParams) {
+            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando intercambio de tokens...');
+            // Timeout de seguridad por si el token es inválido o el proveedor falló
+            oauthTimeoutId = setTimeout(() => {
+              if (isMounted) {
+                safeDevLog('warn', 'Timeout de intercambio OAuth excedido; restaurando loading = false');
+                setLoading(false);
+              }
+            }, 5000);
+          } else {
+            safeDevLog('info', 'Sin sesión activa ni parámetros OAuth');
+            if (isMounted) {
+              setUser(null);
+              setAal('aal1');
+              setMfaRequired(false);
+              setLoading(false);
+            }
           }
         }
       } catch (err) {
@@ -193,9 +251,6 @@ export function AuthProvider({ children }) {
           setUser(null);
           setAal('aal1');
           setMfaRequired(false);
-        }
-      } finally {
-        if (isMounted) {
           setLoading(false);
         }
       }
@@ -207,28 +262,55 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       safeDevLog('info', `onAuthStateChange: ${_event}`);
       
+      if (oauthTimeoutId) {
+        clearTimeout(oauthTimeoutId);
+        oauthTimeoutId = null;
+      }
+
       if (session?.user) {
         if (isMounted) {
           setUser(session.user);
           setAal(session.user.aal || 'aal1');
+          // Garantizar que la aplicación desbloquee las rutas protegidas inmediatamente
+          setLoading(false);
         }
+
+        // Limpiar de forma segura los fragmentos hash de OAuth para estética y seguridad
+        if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
         if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED' || _event === 'INITIAL_SESSION') {
-          syncUserProfile(session.user);
+          syncUserProfile(session.user).catch((e) => {
+            safeDevLog('warn', '[AuthContext] Error asíncrono en syncUserProfile listener:', { message: e?.message });
+          });
         }
         if (session.user.id) {
-          checkMFAStatus(session.user.id);
+          checkMFAStatus(session.user.id).catch((e) => {
+            safeDevLog('warn', '[AuthContext] Error asíncrono en checkMFAStatus listener:', { message: e?.message });
+          });
         }
-      } else {
+      } else if (_event === 'SIGNED_OUT') {
         if (isMounted) {
           setUser(null);
           setAal('aal1');
           setMfaRequired(false);
+          setLoading(false);
+        }
+      } else if (!hasOAuthParams) {
+        // Si no hay sesión y no estamos en medio de un redirect OAuth, marcar no autenticado
+        if (isMounted) {
+          setUser(null);
+          setAal('aal1');
+          setMfaRequired(false);
+          setLoading(false);
         }
       }
     });
 
     return () => {
       isMounted = false;
+      if (oauthTimeoutId) clearTimeout(oauthTimeoutId);
       subscription.unsubscribe();
     };
   }, [checkMFAStatus]);

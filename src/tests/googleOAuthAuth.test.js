@@ -271,5 +271,91 @@ describe('Google OAuth Flow & Profile Synchronization', () => {
       const result = await syncUserProfile(badUser);
       expect(result).toBeNull();
     });
+
+    it('aplica fallback básico si el primer upsert con columnas extendidas falla', async () => {
+      const newUser = {
+        id: 'usr-fallback-123',
+        email: 'nuevo.alumno@campus.edu',
+        user_metadata: { full_name: 'Nuevo Alumno' }
+      };
+
+      const selectMock = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+        })
+      });
+
+      let callCount = 0;
+      const upsertMock = vi.fn().mockImplementation((payload) => {
+        callCount++;
+        if (callCount === 1) {
+          // Primer intento falla (ej. columna email_notifications no existe en DB)
+          return {
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: null,
+                error: { message: 'column "email_notifications" does not exist' }
+              })
+            })
+          };
+        }
+        // Segundo intento básico tiene éxito
+        return {
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: payload.id, full_name: payload.full_name },
+              error: null
+            })
+          })
+        };
+      });
+
+      vi.spyOn(supabase, 'from').mockImplementation(() => ({
+        select: selectMock,
+        upsert: upsertMock
+      }));
+
+      const profile = await syncUserProfile(newUser);
+
+      expect(callCount).toBe(2);
+      expect(profile).toBeDefined();
+      expect(profile.id).toBe('usr-fallback-123');
+      expect(profile.full_name).toBe('Nuevo Alumno');
+    });
+
+    it('retorna objeto de perfil por defecto si la base de datos rechaza ambos upserts', async () => {
+      const lockedUser = {
+        id: 'usr-locked-999',
+        email: 'estudiante.offline@campus.edu',
+        user_metadata: { full_name: 'Estudiante Temporal' }
+      };
+
+      const selectMock = vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+        })
+      });
+
+      const upsertMock = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'RLS check violation on insert' }
+          })
+        })
+      });
+
+      vi.spyOn(supabase, 'from').mockImplementation(() => ({
+        select: selectMock,
+        upsert: upsertMock
+      }));
+
+      const profile = await syncUserProfile(lockedUser);
+
+      expect(profile).toBeDefined();
+      expect(profile.id).toBe('usr-locked-999');
+      expect(profile.full_name).toBe('Estudiante Temporal');
+      expect(profile.email_notifications).toBe(true);
+    });
   });
 });

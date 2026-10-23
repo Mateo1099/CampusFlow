@@ -78,9 +78,13 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Componente para proteger /login: redirige a / si ya está autenticado con AAL2
+// Componente para proteger /login: redirige a / si ya está autenticado con AAL2 o sin MFA
 const LoginRoute = ({ children }) => {
-  const { isAuthenticated, aal, mfaRequired } = useAuth();
+  const { isAuthenticated, aal, mfaRequired, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingGlass message="Verificando sesión..." />;
+  }
 
   if (isAuthenticated && (aal === 'aal2' || !mfaRequired)) {
     safeDevLog('info', '[ROUTE-LOGIN] Usuario ya autenticado, redirigiendo a /');

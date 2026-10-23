@@ -290,19 +290,19 @@ export const translations = {
 const SettingsContext = createContext();
 
 export function SettingsProvider({ children }) {
-  const { user } = useAuth();
+  const { user, syncUserProfile } = useAuth();
   const [settings, setSettings] = useState({
     theme: localStorage.getItem('campusflow_theme') || 'dark',
     language: localStorage.getItem('campusflow_language') || 'es',
     font: 'space-grotesk',
-    name: 'Mateo',
+    name: user?.user_metadata?.full_name || (user?.email ? user.email.split('@')[0] : 'Estudiante'),
     experience: 0,
     level: 1,
     stats: { pomodorosCompleted: 0, tasksCompleted: 0 },
     wallpaper: 'cyber',
     sidebarPosition: 'left',
     fontSize: Number(localStorage.getItem('campusflow_font_size')) || 16,
-    avatarUrl: null,
+    avatarUrl: user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null,
     customWallpaper: null,
     two_factor_enabled: false,
     emailNotifications: localStorage.getItem('cf_email_notif') === 'true',
@@ -328,8 +328,17 @@ export function SettingsProvider({ children }) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
-  const fetchProfile = useCallback(async (uid) => {
+  const fetchProfile = useCallback(async (uid, currentUser = null) => {
     try {
+      const fallbackName = currentUser?.user_metadata?.full_name ||
+        currentUser?.user_metadata?.name ||
+        currentUser?.user_metadata?.display_name ||
+        (currentUser?.email ? currentUser.email.split('@')[0] : 'Estudiante');
+
+      const fallbackAvatar = currentUser?.user_metadata?.avatar_url ||
+        currentUser?.user_metadata?.picture ||
+        '';
+
       // CARGA BLINDADA Y SINCRONIZADA CON full_name, wallpaper_id, theme, two_factor_enabled Y email_notifications
       let { data, error } = await supabase
         .from('profiles')
@@ -345,17 +354,33 @@ export function SettingsProvider({ children }) {
           .select('id, full_name, language, typography, font_size, custom_wallpaper, wallpaper_id, avatar_url, xp, level, theme, two_factor_enabled, email_notifications, red_alert_freq, yellow_alert_freq, green_alert_freq, red_alert_custom_days, yellow_alert_custom_days, green_alert_custom_days, in_app_alerts_enabled')
           .eq('id', uid)
           .maybeSingle();
-        data = safeFetch.data || {};
+        data = safeFetch.data || null;
+      }
+
+      // Si el perfil no existe aún en la base de datos (usuario nuevo),
+      // inicializarlo en segundo plano y aplicar estado en memoria sin fallar
+      if (!data && currentUser) {
+        if (typeof syncUserProfile === 'function') {
+          syncUserProfile(currentUser).catch((e) => {
+            console.warn("[SettingsContext] Error asíncrono inicializando perfil nuevo:", e?.message);
+          });
+        }
+        setSettings(prev => ({
+          ...prev,
+          name: fallbackName,
+          avatarUrl: fallbackAvatar
+        }));
+        return;
       }
 
       if (data) {
         const fullAvatarUrl = data.avatar_url
           ? (data.avatar_url.startsWith('http') ? data.avatar_url : `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${data.avatar_url}`)
-          : '';
+          : fallbackAvatar;
 
         setSettings(prev => ({
           ...prev,
-          name: data.full_name || 'Mateo',
+          name: data.full_name || fallbackName || 'Estudiante',
           theme: data.theme || 'dark',
           language: data.language || 'es',
           font: data.typography || 'space-grotesk',
@@ -381,7 +406,7 @@ export function SettingsProvider({ children }) {
     } catch (err) {
       console.error("Error crítico al cargar perfil:", err.message);
     }
-  }, []);
+  }, [syncUserProfile]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -392,7 +417,7 @@ export function SettingsProvider({ children }) {
     }
 
     setSettingsLoading(true);
-    fetchProfile(user.id).finally(() => {
+    fetchProfile(user.id, user).finally(() => {
       if (isCurrent) setSettingsLoading(false);
     });
 
