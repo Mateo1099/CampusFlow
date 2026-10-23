@@ -110,9 +110,42 @@ export async function syncUserProfile(user) {
   }
 }
 
+/**
+ * Recupera síncronamente el usuario de sesión guardado en localStorage.
+ * Permite renderizado instantáneo en arranques en frío estilo Facebook,
+ * eliminando redirecciones preventivas a /login.
+ */
+function getStoredUserFromLocalStorage() {
+  if (E2E_MOCK_AUTH_ENABLED) return E2E_MOCK_USER;
+  if (typeof window === 'undefined') return null;
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && ((key.startsWith('sb-') && key.endsWith('-auth-token')) || key === 'supabase.auth.token')) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          if (parsed?.user) {
+            return parsed.user;
+          }
+        }
+      }
+    }
+  } catch {
+    // Si localStorage está bloqueado o parse falla, continuar de forma segura
+  }
+  return null;
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(E2E_MOCK_AUTH_ENABLED ? E2E_MOCK_USER : null);
-  const [loading, setLoading] = useState(!E2E_MOCK_AUTH_ENABLED);
+  // Inicialización instantánea desde localStorage para sesión permanente estilo Facebook
+  const [user, setUser] = useState(() => getStoredUserFromLocalStorage());
+  const [loading, setLoading] = useState(() => {
+    if (E2E_MOCK_AUTH_ENABLED) return false;
+    const stored = getStoredUserFromLocalStorage();
+    return stored ? false : true;
+  });
   const [aal, setAal] = useState('aal1'); // Authentication Assurance Level - default aal1
   const [mfaRequired, setMfaRequired] = useState(false);
 
@@ -193,7 +226,14 @@ export function AuthProvider({ children }) {
       window.location.search.includes('code=')
     );
 
-    let oauthTimeoutId = null;
+    // Safety timeout de 4 segundos que fuerza descongelar la pantalla (loading = false)
+    // si la red móvil, proveedor o navegador retrasan la respuesta
+    const safetyTimeoutId = setTimeout(() => {
+      if (isMounted) {
+        safeDevLog('warn', '[AuthContext] Safety timeout de 4s alcanzado en initializeAuth; forzando setLoading(false)');
+        setLoading(false);
+      }
+    }, 4000);
 
     const initializeAuth = async () => {
       try {
@@ -209,32 +249,26 @@ export function AuthProvider({ children }) {
             setLoading(false);
           }
         } else if (session?.user) {
-          safeDevLog('info', 'Sesión activa detectada en inicialización');
+          safeDevLog('info', 'Sesión activa confirmada en getSession');
           if (isMounted) {
+            // Descongelar de inmediato la interfaz de usuario
             setUser(session.user);
             setAal(session.user.aal || 'aal1');
             setLoading(false);
           }
-          // Sincronizar perfil inicial en background para usuarios nuevos / Google OAuth
+          // Fire-and-forget: Sincronizar perfil inicial en background sin bloquear la UI
           syncUserProfile(session.user).catch((e) => {
             safeDevLog('warn', '[AuthContext] Error asíncrono en syncUserProfile inicial:', { message: e?.message });
           });
-          // Comprobar MFA en background sin bloquear el flujo principal
+          // Fire-and-forget: Comprobar MFA en background sin bloquear la UI
           checkMFAStatus(session.user.id).catch((e) => {
             safeDevLog('warn', '[AuthContext] Error asíncrono en checkMFAStatus inicial:', { message: e?.message });
           });
         } else {
           // Si no hay sesión en storage pero hay parámetros OAuth en la URL,
-          // NO desactivar loading prematuramente: esperar que onAuthStateChange reciba SIGNED_IN.
+          // esperar que onAuthStateChange reciba SIGNED_IN (o que el safety timeout de 4s desbloquee)
           if (hasOAuthParams) {
-            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando intercambio de tokens...');
-            // Timeout de seguridad por si el token es inválido o el proveedor falló
-            oauthTimeoutId = setTimeout(() => {
-              if (isMounted) {
-                safeDevLog('warn', 'Timeout de intercambio OAuth excedido; restaurando loading = false');
-                setLoading(false);
-              }
-            }, 5000);
+            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando evento SIGNED_IN...');
           } else {
             safeDevLog('info', 'Sin sesión activa ni parámetros OAuth');
             if (isMounted) {
@@ -262,16 +296,13 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       safeDevLog('info', `onAuthStateChange: ${_event}`);
       
-      if (oauthTimeoutId) {
-        clearTimeout(oauthTimeoutId);
-        oauthTimeoutId = null;
-      }
+      clearTimeout(safetyTimeoutId);
 
       if (session?.user) {
         if (isMounted) {
+          // Descongelar de inmediato la UI al confirmar session.user
           setUser(session.user);
           setAal(session.user.aal || 'aal1');
-          // Garantizar que la aplicación desbloquee las rutas protegidas inmediatamente
           setLoading(false);
         }
 
@@ -280,6 +311,7 @@ export function AuthProvider({ children }) {
           window.history.replaceState(null, '', window.location.pathname + window.location.search);
         }
 
+        // Fire-and-forget en segundo plano sin await ni bloqueos de UI
         if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED' || _event === 'INITIAL_SESSION') {
           syncUserProfile(session.user).catch((e) => {
             safeDevLog('warn', '[AuthContext] Error asíncrono en syncUserProfile listener:', { message: e?.message });
@@ -310,7 +342,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       isMounted = false;
-      if (oauthTimeoutId) clearTimeout(oauthTimeoutId);
+      clearTimeout(safetyTimeoutId);
       subscription.unsubscribe();
     };
   }, [checkMFAStatus]);
