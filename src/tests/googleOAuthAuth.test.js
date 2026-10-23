@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { performGoogleOAuthSignIn, getSafeAuthErrorMessage } from '../lib/authSecurity';
+import { performGoogleOAuthSignIn, getSafeAuthErrorMessage, extractOAuthErrorFromUrl } from '../lib/authSecurity';
 import { syncUserProfile } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 
@@ -356,6 +356,55 @@ describe('Google OAuth Flow & Profile Synchronization', () => {
       expect(profile.id).toBe('usr-locked-999');
       expect(profile.full_name).toBe('Estudiante Temporal');
       expect(profile.email_notifications).toBe(true);
+    });
+  });
+
+  describe('4. Captura y Extracción de Errores OAuth (URL Callback & Hash)', () => {
+    it('extrae y decodifica errores devueltos en el hash de la URL', () => {
+      globalThis.window.location = {
+        origin: 'https://campusflow.app',
+        pathname: '/',
+        hash: '#error=access_denied&error_code=403&error_description=User+cancelled+the+sign-in+process',
+        search: ''
+      };
+
+      const extracted = extractOAuthErrorFromUrl();
+      expect(extracted).not.toBeNull();
+      expect(extracted.error).toBe('access_denied');
+      expect(extracted.code).toBe('403');
+      expect(extracted.message).toBe('User cancelled the sign-in process');
+    });
+
+    it('extrae errores devueltos en query search params (flujo PKCE)', () => {
+      globalThis.window.location = {
+        origin: 'https://campusflow.app',
+        pathname: '/login',
+        hash: '',
+        search: '?error=unauthorized_client&error_description=The+client+is+not+authorized'
+      };
+
+      const extracted = extractOAuthErrorFromUrl();
+      expect(extracted).not.toBeNull();
+      expect(extracted.error).toBe('unauthorized_client');
+      expect(extracted.message).toBe('The client is not authorized');
+    });
+
+    it('retorna null si la URL no contiene parámetros de error', () => {
+      globalThis.window.location = {
+        origin: 'https://campusflow.app',
+        pathname: '/',
+        hash: '#access_token=valid-jwt-token&refresh_token=valid-refresh&token_type=bearer',
+        search: ''
+      };
+
+      const extracted = extractOAuthErrorFromUrl();
+      expect(extracted).toBeNull();
+    });
+
+    it('retorna null de forma segura si window no está definido', () => {
+      globalThis.window = undefined;
+      const extracted = extractOAuthErrorFromUrl();
+      expect(extracted).toBeNull();
     });
   });
 });

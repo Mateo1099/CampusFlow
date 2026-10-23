@@ -81,19 +81,15 @@ const ProtectedRoute = ({ children }) => {
 // Componente para proteger /login: redirige a / si ya está autenticado con AAL2 o sin MFA
 const LoginRoute = ({ children }) => {
   const { isAuthenticated, aal, mfaRequired, loading } = useAuth();
-  const [timedOut, setTimedOut] = React.useState(false);
 
-  // Fallback con timeout de 3 segundos para descongelamiento total en móviles:
-  // Si la sesión no se confirma en 3 segundos, quita Loading y muestra la interfaz de Login
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setTimedOut(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Si hay parámetros OAuth en la URL, mostrar pantalla de carga mientras Supabase procesa el token
+  const hasOAuthParams = typeof window !== 'undefined' && (
+    window.location.hash.includes('access_token=') ||
+    window.location.hash.includes('refresh_token=') ||
+    window.location.search.includes('code=')
+  );
 
-  // Solo mostrar pantalla de carga si loading está activo y aún no vence el timeout de 3s
-  if (loading && !timedOut) {
+  if (loading && hasOAuthParams) {
     return (
       <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--accent-primary)' }}>
         <div className="animate-pulse font-display" style={{ fontSize: '1.5rem', letterSpacing: '0.2em' }}>CAMPUSFLOW_SYNCING...</div>
@@ -147,7 +143,6 @@ const MFARoute = ({ children }) => {
 
 function AppRoutes() {
   const { loading: authLoading, isAuthenticated, user } = useAuth();
-  const [loading, setLoading] = React.useState(authLoading);
   const location = useLocation();
 
   const perfLog = React.useCallback((event, payload = {}) => {
@@ -166,7 +161,7 @@ function AppRoutes() {
     console.log('[PERF]', entry);
   }, []);
 
-  console.log('[APP-ROUTES]', { authLoading, componentLoading: loading });
+  console.log('[APP-ROUTES]', { authLoading });
 
   // Enable intelligent prefetching of heavy routes after authentication
   usePrefetchRoutes(isAuthenticated, user?.id);
@@ -225,24 +220,8 @@ function AppRoutes() {
     });
   }, [location.pathname, perfLog]);
 
-  // Timeout de seguridad: después de 3 segundos, forzar loading = false para descongelar móvil
-  React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('[APP-ROUTES] ⚠️ TIMEOUT: Loading sigue true después de 3s, forzando false');
-        setLoading(false);
-      }
-    }, 3000);
-
-    return () => clearTimeout(timeoutId);
-  }, [loading]);
-
-  // Actualizar cuando authLoading cambia
-  React.useEffect(() => {
-    setLoading(authLoading);
-  }, [authLoading]);
-
-  if (loading && location.pathname !== '/login') {
+  // Si está autenticando/sincronizando y no estamos en /login, mostrar pantalla de carga
+  if (authLoading && location.pathname !== '/login') {
     return (
       <div style={{ height: '100vh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', color: 'var(--accent-primary)' }}>
         <div className="animate-pulse font-display" style={{ fontSize: '1.5rem', letterSpacing: '0.2em' }}>CAMPUSFLOW_SYNCING...</div>

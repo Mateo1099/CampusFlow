@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { safeDevLog } from '../lib/authSecurity';
+import { safeDevLog, extractOAuthErrorFromUrl } from '../lib/authSecurity';
 
 const AuthContext = createContext();
 
@@ -148,6 +148,11 @@ export function AuthProvider({ children }) {
   });
   const [aal, setAal] = useState('aal1'); // Authentication Assurance Level - default aal1
   const [mfaRequired, setMfaRequired] = useState(false);
+  const [authError, setAuthError] = useState(() => {
+    const urlErr = extractOAuthErrorFromUrl();
+    return urlErr?.message || null;
+  });
+  const clearAuthError = useCallback(() => setAuthError(null), []);
 
   const checkMFAStatus = useCallback(async (userId) => {
     if (!userId) return false;
@@ -218,24 +223,48 @@ export function AuthProvider({ children }) {
 
     let isMounted = true; // Prevenir memory leaks y race conditions al desmontar
 
-    // Detectar si la URL actual trae parámetros de retorno OAuth (Google / PKCE)
+    // 1. Interceptar errores explícitos devueltos por el proveedor OAuth en URL (hash o query)
+    const urlOAuthError = extractOAuthErrorFromUrl();
+    if (urlOAuthError) {
+      safeDevLog('warn', '[AuthContext] Error OAuth devuelto por proveedor en URL:', urlOAuthError);
+      if (isMounted) {
+        setAuthError(urlOAuthError.message);
+        setUser(null);
+        setAal('aal1');
+        setMfaRequired(false);
+        setLoading(false);
+      }
+      try {
+        sessionStorage.setItem('campusflow_auth_error', urlOAuthError.message);
+      } catch {
+        // Silencioso si sessionStorage no está disponible
+      }
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      return undefined;
+    }
+
+    // 2. Detectar si la URL actual trae parámetros de retorno OAuth (Google / PKCE)
     const hasOAuthParams = typeof window !== 'undefined' && (
       window.location.hash.includes('access_token=') ||
       window.location.hash.includes('refresh_token=') ||
-      window.location.hash.includes('error=') ||
       window.location.search.includes('code=')
     );
 
-    // Safety timeout incondicional de 3.5 segundos: fuerza SIEMPRE setLoading(false)
-    // bajo cualquier circunstancia, incluso si detecta hash OAuth en la URL o eventos lentos en móvil,
-    // evitando que navegadores móviles (Brave, Chrome) se queden congelados.
-    const safetyTimeoutId = setTimeout(() => {
-      if (isMounted) {
-        safeDevLog('warn', '[AuthContext] Safety timeout incondicional de 3.5s alcanzado; forzando setLoading(false)');
-        setLoading(false);
-        setUser((currentUser) => currentUser || null);
-      }
-    }, 3500);
+    // NOTA DE ARQUITECTURA CRÍTICA:
+    // Si hay parámetros OAuth en la URL, NO forzamos timeouts artificiales cortos (3.5s).
+    // Permitimos que Supabase complete el intercambio sin cortar el proceso en conexiones móviles.
+    let coldBootTimeoutId = null;
+    if (!hasOAuthParams) {
+      // Backstop de seguridad ÚNICAMENTE para arranques en frío normales sin OAuth en caso de red muerta
+      coldBootTimeoutId = setTimeout(() => {
+        if (isMounted) {
+          safeDevLog('warn', '[AuthContext] Cold-boot timeout alcanzado; forzando setLoading(false)');
+          setLoading(false);
+        }
+      }, 5000);
+    }
 
     const initializeAuth = async () => {
       try {
@@ -244,19 +273,28 @@ export function AuthProvider({ children }) {
         
         if (sessionError) {
           safeDevLog('warn', 'Error obteniendo sesión inicial', { message: sessionError.message });
+          const errorMsg = sessionError.message || 'Error al obtener sesión de autenticación';
           if (isMounted) {
+            setAuthError(errorMsg);
             setUser(null);
             setAal('aal1');
             setMfaRequired(false);
             setLoading(false);
           }
+          try {
+            sessionStorage.setItem('campusflow_auth_error', errorMsg);
+          } catch {
+            // Silencioso
+          }
         } else if (session?.user) {
           safeDevLog('info', 'Sesión activa confirmada en getSession');
+          if (coldBootTimeoutId) clearTimeout(coldBootTimeoutId);
           if (isMounted) {
             // Descongelar de inmediato la interfaz de usuario
             setUser(session.user);
             setAal(session.user.aal || 'aal1');
             setLoading(false);
+            setAuthError(null);
           }
           // Fire-and-forget: Sincronizar perfil inicial en background sin bloquear la UI
           syncUserProfile(session.user).catch((e) => {
@@ -268,11 +306,12 @@ export function AuthProvider({ children }) {
           });
         } else {
           // Si no hay sesión en storage pero hay parámetros OAuth en la URL,
-          // esperar que onAuthStateChange reciba SIGNED_IN (o que el safety timeout de 3.5s desbloquee)
+          // esperar que onAuthStateChange reciba SIGNED_IN sin cortar el proceso
           if (hasOAuthParams) {
-            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando evento SIGNED_IN o safety timeout...');
+            safeDevLog('info', 'Retorno OAuth detectado en URL; esperando intercambio en onAuthStateChange...');
           } else {
             safeDevLog('info', 'Sin sesión activa ni parámetros OAuth');
+            if (coldBootTimeoutId) clearTimeout(coldBootTimeoutId);
             if (isMounted) {
               setUser(null);
               setAal('aal1');
@@ -283,6 +322,7 @@ export function AuthProvider({ children }) {
         }
       } catch (err) {
         safeDevLog('error', 'Error en initializeAuth', { message: err?.message });
+        if (coldBootTimeoutId) clearTimeout(coldBootTimeoutId);
         if (isMounted) {
           setUser(null);
           setAal('aal1');
@@ -298,18 +338,20 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       safeDevLog('info', `onAuthStateChange: ${_event}`);
 
+      if (coldBootTimeoutId) clearTimeout(coldBootTimeoutId);
+
       if (session?.user) {
-        clearTimeout(safetyTimeoutId);
         if (isMounted) {
           // Descongelar de inmediato la UI al confirmar session.user
           setUser(session.user);
           setAal(session.user.aal || 'aal1');
           setLoading(false);
+          setAuthError(null);
         }
 
-        // Limpiar de forma segura los fragmentos hash de OAuth para estética y seguridad
-        if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
-          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        // Limpiar de forma segura los fragmentos hash o search de OAuth para estética y seguridad
+        if (typeof window !== 'undefined' && (window.location.hash.includes('access_token=') || window.location.search.includes('code='))) {
+          window.history.replaceState(null, '', window.location.pathname);
         }
 
         // Fire-and-forget en segundo plano sin await ni bloqueos de UI
@@ -324,7 +366,6 @@ export function AuthProvider({ children }) {
           });
         }
       } else if (_event === 'SIGNED_OUT') {
-        clearTimeout(safetyTimeoutId);
         if (isMounted) {
           setUser(null);
           setAal('aal1');
@@ -333,7 +374,6 @@ export function AuthProvider({ children }) {
         }
       } else if (!hasOAuthParams) {
         // Si no hay sesión y no estamos en medio de un redirect OAuth, marcar no autenticado
-        clearTimeout(safetyTimeoutId);
         if (isMounted) {
           setUser(null);
           setAal('aal1');
@@ -345,7 +385,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       isMounted = false;
-      clearTimeout(safetyTimeoutId);
+      if (coldBootTimeoutId) clearTimeout(coldBootTimeoutId);
       subscription.unsubscribe();
     };
   }, [checkMFAStatus]);
@@ -422,6 +462,8 @@ export function AuthProvider({ children }) {
     loading,
     aal,
     mfaRequired,
+    authError,
+    clearAuthError,
     sessionId: null, // Propiedad mantenida para compatibilidad retroactiva sin filtrar tokens
     login,
     logout,
@@ -431,7 +473,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     needsMFAChallenge: aal === 'aal1' && mfaRequired,
     checkMFAStatus
-  }), [user, loading, aal, mfaRequired, login, logout, refreshSession, refreshSessionAfterMFA, checkMFAStatus]);
+  }), [user, loading, aal, mfaRequired, authError, clearAuthError, login, logout, refreshSession, refreshSessionAfterMFA, checkMFAStatus]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

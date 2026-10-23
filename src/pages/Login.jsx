@@ -10,12 +10,13 @@ import {
   validateAndSanitizeDisplayName,
   getSafeAuthErrorMessage,
   performGoogleOAuthSignIn,
+  extractOAuthErrorFromUrl,
   safeDevLog
 } from '../lib/authSecurity';
 import { trackEvent } from '../services/analyticsService';
 
 const Login = () => {
-  const { login, checkMFAStatus } = useAuth();
+  const { login, checkMFAStatus, authError, clearAuthError } = useAuth();
   const { t } = useSettings();
   const navigate = useNavigate();
 
@@ -26,6 +27,24 @@ const Login = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
+
+  // Capturar y mostrar explícitamente cualquier error de OAuth (URL hash, query o context)
+  React.useEffect(() => {
+    const urlError = extractOAuthErrorFromUrl();
+    const storedError = typeof window !== 'undefined' ? sessionStorage.getItem('campusflow_auth_error') : null;
+    const effectiveError = urlError?.message || storedError || authError;
+
+    if (effectiveError) {
+      safeDevLog('warn', '[Login] Mostrando error capturado de OAuth en UI:', { effectiveError });
+      setErrorMsg(effectiveError);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('campusflow_auth_error');
+        if (window.location.hash.includes('error=') || window.location.search.includes('error=')) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    }
+  }, [authError]);
 
   const checkAndRouteMFA = async (user) => {
     try {
@@ -289,13 +308,42 @@ const Login = () => {
           <div
             role="alert"
             style={{
-              background: 'rgba(255, 59, 48, 0.1)', border: '1px solid rgba(255, 59, 48, 0.25)',
-              color: '#ff4500', padding: '12px', borderRadius: '12px', marginBottom: '20px',
-              fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left'
+              background: 'rgba(255, 59, 48, 0.12)',
+              border: '1px solid rgba(255, 68, 68, 0.45)',
+              color: '#ff6b6b',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              marginBottom: '20px',
+              fontSize: '0.84rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              textAlign: 'left',
+              boxShadow: '0 0 20px rgba(255, 68, 68, 0.18)',
+              lineHeight: 1.4
             }}
           >
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
-            <span>{errorMsg}</span>
+            <AlertCircle size={20} style={{ flexShrink: 0, color: '#ff4d4d' }} />
+            <span style={{ flex: 1, wordBreak: 'break-word' }}>{errorMsg}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg('');
+                if (clearAuthError) clearAuthError();
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                padding: '2px',
+                lineHeight: 1
+              }}
+              aria-label="Cerrar alerta"
+            >
+              ✕
+            </button>
           </div>
         )}
 

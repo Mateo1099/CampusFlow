@@ -279,3 +279,48 @@ export async function performGoogleOAuthSignIn(supabaseClient, options = {}) {
     }
   });
 }
+
+/**
+ * Extracts and decodes OAuth errors returned in the URL hash or query parameters.
+ * Handles both implicit flow (#error=...&error_description=...) and PKCE (?error=...).
+ * @returns {{ error: string, code?: string, message: string } | null}
+ */
+export function extractOAuthErrorFromUrl() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    // 1. Search in URL hash (e.g. #error=access_denied&error_description=...)
+    if (window.location.hash && (window.location.hash.includes('error=') || window.location.hash.includes('error_description='))) {
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+      const params = new URLSearchParams(hash);
+      const error = params.get('error');
+      const desc = params.get('error_description') || params.get('error_message');
+      const code = params.get('error_code');
+      if (error || desc) {
+        const decodedDesc = desc
+          ? decodeURIComponent(desc.replace(/\+/g, ' '))
+          : `Error en autenticación con Google (${error}${code ? `: ${code}` : ''})`;
+        return { error: error || 'oauth_error', code, message: decodedDesc };
+      }
+    }
+
+    // 2. Search in query search params (e.g. ?error=access_denied&error_description=...)
+    if (window.location.search && (window.location.search.includes('error=') || window.location.search.includes('error_description='))) {
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get('error');
+      const desc = params.get('error_description') || params.get('error_message');
+      const code = params.get('error_code');
+      if (error || desc) {
+        const decodedDesc = desc
+          ? decodeURIComponent(desc.replace(/\+/g, ' '))
+          : `Error en autenticación con Google (${error}${code ? `: ${code}` : ''})`;
+        return { error: error || 'oauth_error', code, message: decodedDesc };
+      }
+    }
+  } catch (err) {
+    safeDevLog('warn', '[authSecurity] Error extrayendo parámetros de error OAuth:', { message: err?.message });
+  }
+
+  return null;
+}
+
