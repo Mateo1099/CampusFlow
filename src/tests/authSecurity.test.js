@@ -176,6 +176,12 @@ describe('authSecurity - Input Validation & OWASP Protections', () => {
       expect(msg).toContain('Código de autenticación incorrecto');
     });
 
+    it('mapea errores de creación de usuario en base de datos a un mensaje amigable', () => {
+      const dbError = { message: 'Database error saving new user' };
+      const safeMsg = getSafeAuthErrorMessage(dbError);
+      expect(safeMsg).toBe('Hubo un inconveniente en el servidor al registrar tu cuenta. Por favor verifica tus datos o inténtalo nuevamente.');
+    });
+
     it('oculta trazas de base de datos o PostgreSQL y devuelve mensaje seguro', () => {
       const dbError = { message: 'relation "auth.users" does not exist at character 42 PG::Error' };
       const safeMsg = getSafeAuthErrorMessage(dbError);

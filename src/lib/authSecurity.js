@@ -200,6 +200,11 @@ export function getSafeAuthErrorMessage(error, defaultFallback = 'Ha ocurrido un
     return 'Debes confirmar tu correo electrónico antes de ingresar.';
   }
 
+  // Database / User creation errors
+  if (normalized.includes('database error saving new user') || normalized.includes('error saving new user')) {
+    return 'Hubo un inconveniente en el servidor al registrar tu cuenta. Por favor verifica tus datos o inténtalo nuevamente.';
+  }
+
   // MFA / Verification codes
   if (normalized.includes('invalid totp code') || normalized.includes('code is invalid') || normalized.includes('verification failed')) {
     return 'Código de autenticación incorrecto. Verifica el código en tu app e inténtalo de nuevo.';
