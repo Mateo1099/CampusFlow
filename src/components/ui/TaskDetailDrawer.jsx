@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Plus, Trash2, Check, CheckCircle2, 
   Sparkles, Calendar, Clock,
-  ArrowUp, ArrowDown, RefreshCw, FileText,
-  ListTodo
+  ArrowUp, ArrowDown, RefreshCw,
+  ListTodo, Link2, ExternalLink, BookOpen, AlertTriangle
 } from 'lucide-react';
+import { validateSecureUrl } from '../../lib/sanitize';
 
 /**
- * TaskDetailDrawer — Drawer Cyber Luxe para Desglose de Ejercicios y Bloc de Notas de Estudio
+ * TaskDetailDrawer — Drawer Cyber Luxe para Desglose de Ejercicios y Enlace de Entrega
  * Diseñado bajo el sistema visual Cyber Luxe de CampusFlow (Glassmorphism, gradientes neón, micro-animaciones).
+ * Enfoque 100% académico en Desglose de Ejercicios (#1, #2, #3...) y Enlace de Entrega.
  */
 export default function TaskDetailDrawer({
   isOpen,
@@ -18,7 +21,10 @@ export default function TaskDetailDrawer({
   courses = [],
   onUpdateSubtasks,
   onUpdateNotes,
+  onUpdateDeliveryUrl,
 }) {
+  const navigate = useNavigate();
+
   // Materia asociada
   const courseObj = useMemo(() => {
     if (!task) return null;
@@ -27,12 +33,15 @@ export default function TaskDetailDrawer({
 
   const accentColor = courseObj?.color || 'var(--accent-primary)';
 
-  // Subtareas y Notas en estado local para reactividad inmediata
+  // Estado local para Subtareas y Enlace de Entrega
   const [subtasks, setSubtasks] = useState(() => (Array.isArray(task?.subtasks) ? task.subtasks : []));
-  const [notes, setNotes] = useState(() => (typeof task?.task_notes === 'string' ? task.task_notes : ''));
+  const [deliveryUrl, setDeliveryUrl] = useState(() => {
+    if (typeof task?.delivery_url === 'string') return task.delivery_url;
+    if (typeof task?.task_notes === 'string') return task.task_notes;
+    return '';
+  });
   const [prevTaskId, setPrevTaskId] = useState(task?.id);
   const [newSubtaskText, setNewSubtaskText] = useState('');
-  const [activeTab, setActiveTab] = useState('subtasks'); // 'subtasks' | 'notes'
   const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'completed'
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
 
@@ -40,12 +49,17 @@ export default function TaskDetailDrawer({
   if (task?.id !== prevTaskId) {
     setPrevTaskId(task?.id);
     setSubtasks(Array.isArray(task?.subtasks) ? task.subtasks : []);
-    setNotes(typeof task?.task_notes === 'string' ? task.task_notes : '');
+    setDeliveryUrl(
+      typeof task?.delivery_url === 'string'
+        ? task.delivery_url
+        : typeof task?.task_notes === 'string'
+        ? task.task_notes
+        : ''
+    );
     setSaveStatus('idle');
   }
 
   const newSubtaskInputRef = useRef(null);
-  const notesTextareaRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
   // Manejo de scroll en body al abrir drawer
@@ -70,25 +84,34 @@ export default function TaskDetailDrawer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Guardado automático con debounce para task_notes
-  const persistNotes = useCallback(async (contentToSave) => {
-    if (!task?.id || !onUpdateNotes) return;
+  // Guardado persistente del enlace de entrega con debounce
+  const persistDeliveryUrl = useCallback(async (contentToSave) => {
+    if (!task?.id) return;
+    const validation = validateSecureUrl(contentToSave);
+    if (!validation.isValid) {
+      setSaveStatus('idle');
+      return;
+    }
+
+    const saveFn = onUpdateDeliveryUrl || onUpdateNotes;
+    if (!saveFn) return;
+
     try {
       setSaveStatus('saving');
-      await onUpdateNotes(task.id, contentToSave);
+      await saveFn(task.id, contentToSave);
       setSaveStatus('saved');
       setTimeout(() => {
         setSaveStatus('idle');
       }, 2000);
     } catch (err) {
-      console.error('[TaskDetailDrawer] Error guardando notas:', err);
+      console.error('[TaskDetailDrawer] Error guardando enlace de entrega:', err);
       setSaveStatus('idle');
     }
-  }, [task, onUpdateNotes]);
+  }, [task, onUpdateDeliveryUrl, onUpdateNotes]);
 
-  const handleNotesChange = (e) => {
+  const handleDeliveryUrlChange = (e) => {
     const newContent = e.target.value;
-    setNotes(newContent);
+    setDeliveryUrl(newContent);
     setSaveStatus('saving');
 
     if (debounceTimerRef.current) {
@@ -96,18 +119,22 @@ export default function TaskDetailDrawer({
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      persistNotes(newContent);
-    }, 700);
+      persistDeliveryUrl(newContent);
+    }, 600);
   };
 
-  const handleManualSaveNotes = () => {
+  const handleManualSaveDelivery = () => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    persistNotes(notes);
+    const validation = validateSecureUrl(deliveryUrl);
+    if (!validation.isValid) {
+      return;
+    }
+    persistDeliveryUrl(deliveryUrl);
   };
 
-  // Mutaciones de Subtareas
+  // Mutaciones de Subtareas (Ejercicios)
   const persistSubtasks = useCallback(async (updatedList) => {
     if (!task?.id || !onUpdateSubtasks) return;
     try {
@@ -123,7 +150,9 @@ export default function TaskDetailDrawer({
     if (!trimmed) return;
 
     const newItem = {
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : `st_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       text: trimmed,
       completed: false,
     };
@@ -133,7 +162,7 @@ export default function TaskDetailDrawer({
     setNewSubtaskText('');
     persistSubtasks(nextList);
 
-    // Mantener foco en el input para agregar más rápido
+    // Mantener foco en el input para agregar múltiples ejercicios fluidamente
     setTimeout(() => {
       newSubtaskInputRef.current?.focus();
     }, 50);
@@ -178,26 +207,13 @@ export default function TaskDetailDrawer({
     persistSubtasks(nextList);
   };
 
-  const insertSnippetAtCursor = (prefix, suffix = '') => {
-    const textarea = notesTextareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = notes.substring(start, end);
-    const replacement = `${prefix}${selected || 'texto'}${suffix}`;
-
-    const newNotes = notes.substring(0, start) + replacement + notes.substring(end);
-    setNotes(newNotes);
-    persistNotes(newNotes);
-
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + replacement.length - suffix.length);
-    }, 20);
+  const handleOpenNotes = () => {
+    onClose?.();
+    const query = courseObj?.id ? `?subjectId=${encodeURIComponent(courseObj.id)}` : '';
+    navigate(`/apuntes${query}`);
   };
 
-  // Estadísticas de progreso
+  // Estadísticas de progreso cuantitativo
   const totalSubtasks = subtasks.length;
   const completedCount = subtasks.filter(s => s.completed).length;
   const progressPercent = totalSubtasks > 0 ? Math.round((completedCount / totalSubtasks) * 100) : 0;
@@ -234,6 +250,13 @@ export default function TaskDetailDrawer({
     }
   }, [task]);
 
+  const urlValidation = useMemo(() => {
+    return validateSecureUrl(deliveryUrl);
+  }, [deliveryUrl]);
+
+  const isValidUrl = urlValidation.isValid && !urlValidation.isEmpty;
+  const urlError = urlValidation.error;
+
   if (!task) return null;
 
   return (
@@ -247,7 +270,7 @@ export default function TaskDetailDrawer({
             zIndex: 1100,
             display: 'flex',
             justifyContent: 'flex-end',
-            background: 'rgba(5, 7, 14, 0.72)',
+            background: 'rgba(5, 7, 14, 0.75)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
           }}
@@ -265,13 +288,13 @@ export default function TaskDetailDrawer({
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: '560px',
+              maxWidth: '580px',
               height: '100%',
-              background: 'linear-gradient(180deg, rgba(16, 20, 32, 0.96) 0%, rgba(10, 12, 20, 0.98) 100%)',
+              background: 'linear-gradient(180deg, rgba(16, 20, 32, 0.97) 0%, rgba(10, 12, 20, 0.99) 100%)',
               backdropFilter: 'blur(30px) saturate(190%)',
               WebkitBackdropFilter: 'blur(30px) saturate(190%)',
-              borderLeft: '1px solid rgba(0, 243, 255, 0.2)',
-              boxShadow: '-20px 0 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 243, 255, 0.08)',
+              borderLeft: '1px solid rgba(0, 243, 255, 0.22)',
+              boxShadow: '-20px 0 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 243, 255, 0.08)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -292,31 +315,31 @@ export default function TaskDetailDrawer({
               }}
             />
 
-            {/* ─── CABECERA DEL DRAWER ─── */}
+            {/* ─── CABECERA ACADÉMICA DEL DRAWER ─── */}
             <div 
               style={{
-                padding: '24px 28px 20px',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                padding: '22px 26px 18px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
                 background: 'rgba(255, 255, 255, 0.015)',
               }}
             >
-              {/* Fila superior: Materia + Badges + Botón Cerrar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Fila superior: Materia + Badges + Botón Apuntes + Cerrar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   {courseObj?.name && (
                     <div 
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        padding: '4px 12px',
+                        gap: '7px',
+                        padding: '4px 11px',
                         background: `${accentColor}15`,
                         border: `1px solid ${accentColor}40`,
                         borderRadius: '20px',
-                        fontSize: '0.75rem',
+                        fontSize: '0.74rem',
                         fontWeight: 700,
                         color: accentColor,
                         letterSpacing: '0.04em',
@@ -337,14 +360,40 @@ export default function TaskDetailDrawer({
                     </div>
                   )}
 
+                  {/* Botón sutil de contexto académico: Ver apuntes de la materia */}
+                  <motion.button
+                    whileHover={{ scale: 1.04, backgroundColor: 'rgba(188, 19, 254, 0.16)' }}
+                    whileTap={{ scale: 0.96 }}
+                    type="button"
+                    onClick={handleOpenNotes}
+                    title="Explora o vincula notas de clase para esta materia"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '4px 10px',
+                      borderRadius: '16px',
+                      background: 'rgba(188, 19, 254, 0.08)',
+                      border: '1px solid rgba(188, 19, 254, 0.3)',
+                      color: 'var(--accent-secondary)',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <BookOpen size={13} />
+                    <span>📖 Ver apuntes de {courseObj?.name || 'Materia'}</span>
+                  </motion.button>
+
                   {deadlineInfo?.priorityBadge && task.status !== 'entregado' && (
                     <span 
                       style={{
-                        padding: '3px 10px',
+                        padding: '3px 9px',
                         background: `${deadlineInfo.priorityBadge.color}15`,
                         border: `1px solid ${deadlineInfo.priorityBadge.color}60`,
                         borderRadius: '16px',
-                        fontSize: '0.68rem',
+                        fontSize: '0.67rem',
                         fontWeight: 800,
                         color: deadlineInfo.priorityBadge.color,
                         letterSpacing: '0.06em',
@@ -366,8 +415,8 @@ export default function TaskDetailDrawer({
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '10px',
                     color: 'var(--text-secondary)',
-                    width: '34px',
-                    height: '34px',
+                    width: '32px',
+                    height: '32px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -376,7 +425,7 @@ export default function TaskDetailDrawer({
                     outline: 'none',
                   }}
                 >
-                  <X size={18} />
+                  <X size={17} />
                 </motion.button>
               </div>
 
@@ -385,7 +434,7 @@ export default function TaskDetailDrawer({
                 id="task-detail-title"
                 style={{
                   margin: 0,
-                  fontSize: '1.35rem',
+                  fontSize: '1.3rem',
                   fontWeight: 800,
                   color: 'var(--text-primary)',
                   lineHeight: 1.35,
@@ -396,8 +445,8 @@ export default function TaskDetailDrawer({
                 {task.title}
               </h2>
 
-              {/* Fecha y estado */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              {/* Metadatos: Vence y Estado */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 {deadlineInfo?.formatted && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Calendar size={14} style={{ color: accentColor }} />
@@ -410,11 +459,11 @@ export default function TaskDetailDrawer({
                 </div>
               </div>
 
-              {/* ─── BARRA DE PROGRESO DINÁMICA ─── */}
+              {/* ─── BARRA DE PROGRESO CUANTITATIVA DINÁMICA ─── */}
               <div 
                 style={{
-                  marginTop: '4px',
-                  padding: '12px 16px',
+                  marginTop: '2px',
+                  padding: '12px 14px',
                   background: 'rgba(0, 243, 255, 0.03)',
                   border: '1px solid rgba(0, 243, 255, 0.12)',
                   borderRadius: '14px',
@@ -423,14 +472,14 @@ export default function TaskDetailDrawer({
                   gap: '8px',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
                   <span style={{ fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
                     Progreso de Ejercicios
                   </span>
-                  <span style={{ fontWeight: 700, color: progressPercent === 100 && totalSubtasks > 0 ? 'var(--accent-lime)' : 'var(--accent-primary)' }}>
+                  <span style={{ fontWeight: 700, color: progressPercent === 100 && totalSubtasks > 0 ? '#10b981' : 'var(--accent-primary)' }}>
                     {totalSubtasks === 0 
-                      ? 'Sin subtareas' 
+                      ? 'Sin ejercicios' 
                       : `${completedCount} de ${totalSubtasks} resueltos · ${progressPercent}%`}
                   </span>
                 </div>
@@ -438,7 +487,7 @@ export default function TaskDetailDrawer({
                 <div 
                   style={{
                     width: '100%',
-                    height: '8px',
+                    height: '7px',
                     background: 'rgba(255, 255, 255, 0.06)',
                     borderRadius: '999px',
                     overflow: 'hidden',
@@ -448,7 +497,7 @@ export default function TaskDetailDrawer({
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${progressPercent}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    transition={{ duration: 0.45, ease: 'easeOut' }}
                     style={{
                       height: '100%',
                       background: progressPercent === 100 && totalSubtasks > 0
@@ -464,7 +513,7 @@ export default function TaskDetailDrawer({
                   <motion.div 
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
                     <CheckCircle2 size={13} />
                     ¡Todos los ejercicios completados! Trabajo listo para entrega 🚀
@@ -473,541 +522,577 @@ export default function TaskDetailDrawer({
               </div>
             </div>
 
-            {/* ─── NAVEGACIÓN POR PESTAÑAS ─── */}
-            <div 
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                padding: '8px 24px 0',
-                background: 'rgba(255, 255, 255, 0.01)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                gap: '8px',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveTab('subtasks')}
-                style={{
-                  padding: '12px 16px',
-                  background: activeTab === 'subtasks' ? 'rgba(0, 243, 255, 0.08)' : 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === 'subtasks' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                  color: activeTab === 'subtasks' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  borderRadius: '8px 8px 0 0',
-                }}
-              >
-                <ListTodo size={16} />
-                <span>Ejercicios / Subtareas</span>
-                {totalSubtasks > 0 && (
-                  <span 
-                    style={{
-                      padding: '2px 7px',
-                      borderRadius: '999px',
-                      background: activeTab === 'subtasks' ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.1)',
-                      color: activeTab === 'subtasks' ? '#000' : 'var(--text-primary)',
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                    }}
-                  >
-                    {completedCount}/{totalSubtasks}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('notes')}
-                style={{
-                  padding: '12px 16px',
-                  background: activeTab === 'notes' ? 'rgba(188, 19, 254, 0.08)' : 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === 'notes' ? '2px solid var(--accent-secondary)' : '2px solid transparent',
-                  color: activeTab === 'notes' ? 'var(--accent-secondary)' : 'var(--text-secondary)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  borderRadius: '8px 8px 0 0',
-                }}
-              >
-                <FileText size={16} />
-                <span>Bloc de Notas</span>
-                {notes.trim().length > 0 && (
-                  <span 
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: 'var(--accent-secondary)',
-                      boxShadow: '0 0 6px var(--accent-secondary)',
-                    }}
-                  />
-                )}
-              </button>
-            </div>
-
-            {/* ─── CONTENIDO DE PESTAÑAS ─── */}
+            {/* ─── CUERPO PRINCIPAL DEL DRAWER (CHECKLIST + ENLACE DE ENTREGA) ─── */}
             <div 
               style={{
                 flex: 1,
                 overflowY: 'auto',
-                padding: '24px 28px',
+                padding: '20px 26px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '20px',
+                gap: '22px',
               }}
             >
-              {activeTab === 'subtasks' ? (
-                /* ─── SECCIÓN 1: CHECKLIST DE EJERCICIOS / SUBTAREAS ─── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Formulario de Inserción Rápida */}
-                  <form 
-                    onSubmit={handleAddSubtask}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(0, 243, 255, 0.2)',
-                      borderRadius: '14px',
-                      padding: '4px 6px 4px 14px',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
-                      transition: 'border-color 0.2s',
-                    }}
-                  >
-                    <input
-                      ref={newSubtaskInputRef}
-                      type="text"
-                      value={newSubtaskText}
-                      onChange={(e) => setNewSubtaskText(e.target.value)}
-                      placeholder="Escribe un ejercicio... (Enter para agregar)"
-                      style={{
-                        flex: 1,
-                        background: 'transparent',
-                        border: 'none',
-                        outline: 'none',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem',
-                        fontFamily: 'var(--font-body)',
-                        padding: '10px 0',
-                      }}
-                    />
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      type="submit"
-                      disabled={!newSubtaskText.trim()}
-                      style={{
-                        background: newSubtaskText.trim()
-                          ? 'linear-gradient(135deg, #00f3ff 0%, #00a8ff 100%)'
-                          : 'rgba(255, 255, 255, 0.05)',
-                        color: newSubtaskText.trim() ? '#000' : 'var(--text-muted)',
-                        border: 'none',
-                        borderRadius: '10px',
-                        padding: '8px 14px',
-                        fontWeight: 700,
-                        fontSize: '0.82rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        cursor: newSubtaskText.trim() ? 'pointer' : 'default',
-                        transition: 'all 0.2s',
-                        boxShadow: newSubtaskText.trim() ? '0 0 15px rgba(0, 243, 255, 0.4)' : 'none',
-                      }}
-                    >
-                      <Plus size={16} />
-                      <span>Agregar</span>
-                    </motion.button>
-                  </form>
-
-                  {/* Barra de Filtros y Acciones Rápidas */}
-                  {totalSubtasks > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', paddingBottom: '4px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {[
-                          { id: 'all', label: 'Todos' },
-                          { id: 'pending', label: 'Pendientes' },
-                          { id: 'completed', label: 'Resueltos' }
-                        ].map(f => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => setFilter(f.id)}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: '20px',
-                              border: filter === f.id ? '1px solid rgba(0, 243, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)',
-                              background: filter === f.id ? 'rgba(0, 243, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                              color: filter === f.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            {f.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          type="button"
-                          onClick={handleToggleAll}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--text-secondary)',
-                            fontSize: '0.72rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            textDecoration: 'underline',
-                          }}
-                        >
-                          {completedCount === totalSubtasks ? 'Desmarcar todos' : 'Marcar todos'}
-                        </button>
-                        {completedCount > 0 && (
-                          <button
-                            type="button"
-                            onClick={handleClearCompleted}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--accent-danger)',
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Limpiar resueltos
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Lista de Ejercicios */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {filteredSubtasks.length === 0 ? (
-                      <div 
+              {/* ─── SECCIÓN 1: CHECKLIST DE EJERCICIOS NUMERADOS ─── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Cabecera de la sección de ejercicios y filtros */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ListTodo size={17} style={{ color: 'var(--accent-primary)' }} />
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
+                      Desglose de Ejercicios
+                    </span>
+                    {totalSubtasks > 0 && (
+                      <span 
                         style={{
-                          padding: '36px 20px',
-                          textAlign: 'center',
-                          borderRadius: '16px',
-                          border: '1px dashed rgba(255, 255, 255, 0.1)',
-                          background: 'rgba(255, 255, 255, 0.01)',
-                          color: 'var(--text-muted)',
-                          fontSize: '0.85rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '10px',
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          padding: '1px 7px',
+                          borderRadius: '10px',
+                          background: 'rgba(0, 243, 255, 0.12)',
+                          color: 'var(--accent-primary)',
+                          border: '1px solid rgba(0, 243, 255, 0.25)',
                         }}
                       >
-                        <ListTodo size={32} style={{ opacity: 0.4, color: 'var(--accent-primary)' }} />
-                        <span>
-                          {totalSubtasks === 0 
-                            ? 'No hay ejercicios o subtareas aún. Escribe el primero arriba para desglosar tu entrega paso a paso.'
-                            : 'No hay elementos para el filtro seleccionado.'}
-                        </span>
-                      </div>
-                    ) : (
-                      filteredSubtasks.map((item, index) => (
-                        <motion.div
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          style={{
-                            padding: '12px 14px',
-                            borderRadius: '12px',
-                            background: item.completed 
-                              ? 'rgba(16, 185, 129, 0.04)' 
-                              : 'rgba(255, 255, 255, 0.03)',
-                            border: item.completed 
-                              ? '1px solid rgba(16, 185, 129, 0.2)' 
-                              : '1px solid rgba(255, 255, 255, 0.06)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '12px',
-                            transition: 'all 0.2s',
-                          }}
-                        >
-                          {/* Checkbox y Texto */}
-                          <div 
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              flex: 1,
-                              minWidth: 0,
-                              cursor: 'pointer',
-                            }}
-                            onClick={() => handleToggleSubtask(item.id)}
-                          >
-                            {/* Checkbox Cyber Luxe */}
-                            <motion.div
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              style={{
-                                width: '22px',
-                                height: '22px',
-                                minWidth: '22px',
-                                borderRadius: '7px',
-                                border: item.completed 
-                                  ? '2px solid #10b981' 
-                                  : '2px solid rgba(0, 243, 255, 0.4)',
-                                background: item.completed 
-                                  ? '#10b981' 
-                                  : 'rgba(0, 243, 255, 0.05)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#000',
-                                boxShadow: item.completed 
-                                  ? '0 0 10px rgba(16, 185, 129, 0.5)' 
-                                  : 'none',
-                                transition: 'all 0.2s',
-                              }}
-                            >
-                              {item.completed && <Check size={14} strokeWidth={3.5} />}
-                            </motion.div>
-
-                            {/* Texto del Ejercicio */}
-                            <span 
-                              style={{
-                                fontSize: '0.9rem',
-                                color: item.completed ? 'var(--text-muted)' : 'var(--text-primary)',
-                                textDecoration: item.completed ? 'line-through' : 'none',
-                                wordBreak: 'break-word',
-                                lineHeight: 1.4,
-                                transition: 'all 0.2s',
-                              }}
-                            >
-                              {item.text}
-                            </span>
-                          </div>
-
-                          {/* Botones de Acción (Reordenar y Eliminar) */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', shrink: 0 }}>
-                            {/* Subir */}
-                            <button
-                              type="button"
-                              onClick={() => handleMoveSubtask(index, -1)}
-                              disabled={index === 0}
-                              title="Mover arriba"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: index === 0 ? 'rgba(255,255,255,0.1)' : 'var(--text-secondary)',
-                                cursor: index === 0 ? 'default' : 'pointer',
-                                padding: '4px',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <ArrowUp size={14} />
-                            </button>
-
-                            {/* Bajar */}
-                            <button
-                              type="button"
-                              onClick={() => handleMoveSubtask(index, 1)}
-                              disabled={index === subtasks.length - 1}
-                              title="Mover abajo"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: index === subtasks.length - 1 ? 'rgba(255,255,255,0.1)' : 'var(--text-secondary)',
-                                cursor: index === subtasks.length - 1 ? 'default' : 'pointer',
-                                padding: '4px',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <ArrowDown size={14} />
-                            </button>
-
-                            {/* Eliminar */}
-                            <motion.button
-                              whileHover={{ scale: 1.15, color: '#ff4d4d' }}
-                              whileTap={{ scale: 0.9 }}
-                              type="button"
-                              onClick={() => handleDeleteSubtask(item.id)}
-                              title="Eliminar subtarea"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'rgba(255, 255, 255, 0.4)',
-                                cursor: 'pointer',
-                                padding: '4px',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'color 0.2s',
-                              }}
-                            >
-                              <Trash2 size={14} />
-                            </motion.button>
-                          </div>
-                        </motion.div>
-                      ))
+                        {completedCount}/{totalSubtasks}
+                      </span>
                     )}
                   </div>
-                </div>
-              ) : (
-                /* ─── SECCIÓN 2: BLOC DE NOTAS DE ESTUDIO ─── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
-                  {/* Barra de herramientas de Markdown / Apuntes */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+
+                  {totalSubtasks > 0 && (
+                    <div style={{ display: 'flex', gap: '6px' }}>
                       {[
-                        { label: '• Viñeta', prefix: '• ' },
-                        { label: '[ ] Tarea', prefix: '- [ ] ' },
-                        { label: '★ Clave', prefix: '📌 ' },
-                        { label: '**Negrita**', prefix: '**', suffix: '**' },
-                        { label: '`Fórmula`', prefix: '`', suffix: '`' },
-                      ].map(snip => (
+                        { id: 'all', label: 'Todos' },
+                        { id: 'pending', label: 'Pendientes' },
+                        { id: 'completed', label: 'Completados' }
+                      ].map(f => (
                         <button
-                          key={snip.label}
+                          key={f.id}
                           type="button"
-                          onClick={() => insertSnippetAtCursor(snip.prefix, snip.suffix || '')}
+                          onClick={() => setFilter(f.id)}
                           style={{
-                            padding: '4px 8px',
-                            borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            color: 'var(--text-secondary)',
+                            padding: '3px 9px',
+                            borderRadius: '16px',
+                            border: filter === f.id ? '1px solid rgba(0, 243, 255, 0.45)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            background: filter === f.id ? 'rgba(0, 243, 255, 0.14)' : 'rgba(255, 255, 255, 0.02)',
+                            color: filter === f.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
                             fontSize: '0.72rem',
                             fontWeight: 600,
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                           }}
                         >
-                          {snip.label}
+                          {f.label}
                         </button>
                       ))}
                     </div>
+                  )}
+                </div>
 
-                    {/* Estado de sincronización */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Acciones globales de checklist */}
+                {totalSubtasks > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                    <button
+                      type="button"
+                      onClick={handleToggleAll}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      {completedCount === totalSubtasks ? 'Desmarcar todos' : 'Marcar todos'}
+                    </button>
+                    {completedCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearCompleted}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--accent-danger)',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Limpiar resueltos
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Lista de Ejercicios Numerados */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {filteredSubtasks.length === 0 ? (
+                    <div 
+                      style={{
+                        padding: '32px 20px',
+                        textAlign: 'center',
+                        borderRadius: '14px',
+                        border: '1px dashed rgba(255, 255, 255, 0.1)',
+                        background: 'rgba(255, 255, 255, 0.01)',
+                        color: 'var(--text-muted)',
+                        fontSize: '0.84rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}
+                    >
+                      <ListTodo size={28} style={{ opacity: 0.35, color: 'var(--accent-primary)' }} />
+                      <span>
+                        {totalSubtasks === 0 
+                          ? 'No hay ejercicios registrados aún. Agrega los puntos de tu taller en el campo inferior para desglosarlos.'
+                          : 'No hay ejercicios para el filtro seleccionado.'}
+                      </span>
+                    </div>
+                  ) : (
+                    filteredSubtasks.map((item, index) => (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        style={{
+                          padding: '11px 13px',
+                          borderRadius: '12px',
+                          background: item.completed 
+                            ? 'rgba(16, 185, 129, 0.04)' 
+                            : 'rgba(255, 255, 255, 0.025)',
+                          border: item.completed 
+                            ? '1px solid rgba(16, 185, 129, 0.22)' 
+                            : '1px solid rgba(255, 255, 255, 0.06)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {/* Checkbox + Número #N + Texto del Ejercicio */}
+                        <div 
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '11px',
+                            flex: 1,
+                            minWidth: 0,
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => handleToggleSubtask(item.id)}
+                        >
+                          {/* Checkbox Cyber Luxe con micro-animación */}
+                          <motion.div
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            style={{
+                              width: '21px',
+                              height: '21px',
+                              minWidth: '21px',
+                              borderRadius: '7px',
+                              border: item.completed 
+                                ? '2px solid #10b981' 
+                                : '2px solid rgba(0, 243, 255, 0.45)',
+                              background: item.completed 
+                                ? '#10b981' 
+                                : 'rgba(0, 243, 255, 0.06)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#000',
+                              boxShadow: item.completed 
+                                ? '0 0 10px rgba(16, 185, 129, 0.5)' 
+                                : 'none',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            {item.completed && <Check size={14} strokeWidth={3.5} />}
+                          </motion.div>
+
+                          {/* Número de ejercicio académico #N */}
+                          <span 
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              fontFamily: 'var(--font-mono, monospace)',
+                              color: item.completed ? 'var(--text-muted)' : accentColor,
+                              background: item.completed ? 'rgba(255, 255, 255, 0.04)' : `${accentColor}18`,
+                              border: `1px solid ${item.completed ? 'rgba(255, 255, 255, 0.08)' : `${accentColor}35`}`,
+                              padding: '2px 7px',
+                              borderRadius: '6px',
+                              flexShrink: 0,
+                              letterSpacing: '0.04em'
+                            }}
+                          >
+                            #{index + 1}
+                          </span>
+
+                          {/* Texto del Ejercicio */}
+                          <span 
+                            style={{
+                              fontSize: '0.88rem',
+                              color: item.completed ? 'var(--text-muted)' : 'var(--text-primary)',
+                              textDecoration: item.completed ? 'line-through' : 'none',
+                              wordBreak: 'break-word',
+                              lineHeight: 1.4,
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            {item.text}
+                          </span>
+                        </div>
+
+                        {/* Botones de Acción (Subir, Bajar, Eliminar) */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSubtask(index, -1)}
+                            disabled={index === 0}
+                            title="Mover arriba"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: index === 0 ? 'rgba(255,255,255,0.1)' : 'var(--text-secondary)',
+                              cursor: index === 0 ? 'default' : 'pointer',
+                              padding: '4px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <ArrowUp size={13} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSubtask(index, 1)}
+                            disabled={index === subtasks.length - 1}
+                            title="Mover abajo"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: index === subtasks.length - 1 ? 'rgba(255,255,255,0.1)' : 'var(--text-secondary)',
+                              cursor: index === subtasks.length - 1 ? 'default' : 'pointer',
+                              padding: '4px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <ArrowDown size={13} />
+                          </button>
+
+                          <motion.button
+                            whileHover={{ scale: 1.15, color: '#ff4d4d' }}
+                            whileTap={{ scale: 0.9 }}
+                            type="button"
+                            onClick={() => handleDeleteSubtask(item.id)}
+                            title="Eliminar ejercicio"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'rgba(255, 255, 255, 0.4)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'color 0.2s',
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+
+                {/* Input inferior con tecla Enter para añadir nuevos puntos al instante */}
+                <form 
+                  onSubmit={handleAddSubtask}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: 'rgba(255, 255, 255, 0.025)',
+                    border: '1px solid rgba(0, 243, 255, 0.22)',
+                    borderRadius: '13px',
+                    padding: '3px 6px 3px 14px',
+                    boxShadow: '0 4px 18px rgba(0, 0, 0, 0.22)',
+                    transition: 'border-color 0.2s',
+                  }}
+                >
+                  <input
+                    ref={newSubtaskInputRef}
+                    type="text"
+                    value={newSubtaskText}
+                    onChange={(e) => setNewSubtaskText(e.target.value)}
+                    placeholder="Escribe un ejercicio... (Enter para agregar)"
+                    style={{
+                      flex: 1,
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.88rem',
+                      fontFamily: 'var(--font-body)',
+                      padding: '9px 0',
+                    }}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    type="submit"
+                    disabled={!newSubtaskText.trim()}
+                    style={{
+                      background: newSubtaskText.trim()
+                        ? 'linear-gradient(135deg, #00f3ff 0%, #00a8ff 100%)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                      color: newSubtaskText.trim() ? '#000' : 'var(--text-muted)',
+                      border: 'none',
+                      borderRadius: '9px',
+                      padding: '7px 13px',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      cursor: newSubtaskText.trim() ? 'pointer' : 'default',
+                      transition: 'all 0.2s',
+                      boxShadow: newSubtaskText.trim() ? '0 0 14px rgba(0, 243, 255, 0.35)' : 'none',
+                    }}
+                  >
+                    <Plus size={15} />
+                    <span>Agregar</span>
+                  </motion.button>
+                </form>
+              </div>
+
+              {/* ─── SECCIÓN 2: ENLACE DEL TRABAJO / ENTREGA ─── */}
+              <div 
+                style={{
+                  padding: '16px 18px',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.015) 100%)',
+                  border: '1px solid rgba(0, 243, 255, 0.18)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                }}
+              >
+                {/* Cabecera de Enlace de Entrega */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div 
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        background: 'rgba(0, 243, 255, 0.1)',
+                        border: '1px solid rgba(0, 243, 255, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--accent-primary)',
+                      }}
+                    >
+                      <Link2 size={15} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Enlace del trabajo / entrega
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        URL de Google Drive, GitHub, Figma, Notion o repositorio
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Estado de sincronización */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {urlError ? (
                       <span 
                         style={{
-                          fontSize: '0.75rem',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: '#ff4d4f',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <AlertTriangle size={12} />
+                        Enlace no seguro
+                      </span>
+                    ) : (
+                      <span 
+                        style={{
+                          fontSize: '0.72rem',
                           fontWeight: 600,
                           color: saveStatus === 'saving' 
                             ? 'var(--accent-primary)' 
                             : saveStatus === 'saved' 
-                            ? 'var(--accent-lime)' 
+                            ? '#10b981' 
                             : 'var(--text-muted)',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
+                          gap: '5px',
                         }}
                       >
                         {saveStatus === 'saving' && (
-                          <RefreshCw size={12} className="animate-spin" />
+                          <RefreshCw size={11} className="animate-spin" />
                         )}
                         {saveStatus === 'saving' && 'Guardando...'}
                         {saveStatus === 'saved' && 'Guardado ✓'}
-                        {saveStatus === 'idle' && (notes.trim() ? 'Sincronizado' : 'Sin notas')}
+                        {saveStatus === 'idle' && (deliveryUrl.trim() ? 'Sincronizado' : 'Sin enlace')}
                       </span>
+                    )}
 
-                      <button
-                        type="button"
-                        onClick={handleManualSaveNotes}
-                        title="Forzar guardado inmediato"
-                        style={{
-                          background: 'rgba(188, 19, 254, 0.1)',
-                          border: '1px solid rgba(188, 19, 254, 0.3)',
-                          color: 'var(--accent-secondary)',
-                          borderRadius: '8px',
-                          padding: '3px 8px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Guardar
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Textarea Expandible Cyber Luxe */}
-                  <div style={{ position: 'relative', flex: 1, minHeight: '260px' }}>
-                    <textarea
-                      ref={notesTextareaRef}
-                      value={notes}
-                      onChange={handleNotesChange}
-                      placeholder="Escribe aquí tus fórmulas, dudas del profesor, pasos metodológicos, enlaces o apuntes clave para resolver este trabajo..."
+                    <button
+                      type="button"
+                      onClick={handleManualSaveDelivery}
+                      disabled={Boolean(urlError)}
+                      title={urlError ? 'Corrige el enlace para guardar' : 'Guardar enlace de entrega'}
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        minHeight: '260px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(188, 19, 254, 0.25)',
-                        borderRadius: '16px',
-                        padding: '16px 18px',
-                        color: 'var(--text-primary)',
-                        fontFamily: 'var(--font-body)',
-                        fontSize: '0.92rem',
-                        lineHeight: 1.6,
-                        outline: 'none',
-                        resize: 'none',
-                        boxShadow: 'inset 0 2px 10px rgba(0, 0, 0, 0.3)',
-                        transition: 'border-color 0.2s',
+                        background: urlError ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 243, 255, 0.08)',
+                        border: urlError ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 243, 255, 0.25)',
+                        color: urlError ? 'var(--text-muted)' : 'var(--accent-primary)',
+                        borderRadius: '7px',
+                        padding: '3px 9px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: urlError ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s',
+                        opacity: urlError ? 0.6 : 1,
                       }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = 'var(--accent-secondary)';
-                        e.target.style.boxShadow = 'inset 0 2px 10px rgba(0,0,0,0.3), 0 0 16px rgba(188, 19, 254, 0.2)';
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = 'rgba(188, 19, 254, 0.25)';
-                        e.target.style.boxShadow = 'inset 0 2px 10px rgba(0, 0, 0, 0.3)';
-                      }}
-                    />
-                  </div>
-
-                  {/* Contador de caracteres / palabras */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    <span>💡 Tip: Las notas se guardan automáticamente mientras escribes.</span>
-                    <span>{notes.length} caracteres · {notes.trim() ? notes.trim().split(/\s+/).length : 0} palabras</span>
+                    >
+                      Guardar
+                    </button>
                   </div>
                 </div>
-              )}
+
+                {/* Input compacto para la URL de entrega */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div 
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'rgba(10, 12, 20, 0.6)',
+                        border: urlError 
+                          ? '1px solid rgba(255, 77, 79, 0.6)' 
+                          : (isValidUrl ? '1px solid rgba(0, 243, 255, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)'),
+                        borderRadius: '11px',
+                        padding: '8px 12px',
+                        transition: 'all 0.2s',
+                        boxShadow: urlError ? '0 0 12px rgba(255, 77, 79, 0.2)' : 'none',
+                      }}
+                    >
+                      <input
+                        type="url"
+                        value={deliveryUrl}
+                        onChange={handleDeliveryUrlChange}
+                        onBlur={handleManualSaveDelivery}
+                        placeholder="URL de Google Drive o enlace del trabajo con protocolo seguro (https://...)"
+                        style={{
+                          flex: 1,
+                          background: 'transparent',
+                          border: 'none',
+                          outline: 'none',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.84rem',
+                          fontFamily: 'var(--font-mono, monospace)',
+                        }}
+                      />
+                    </div>
+
+                    {isValidUrl && (
+                      <motion.a
+                        whileHover={{ scale: 1.05, backgroundColor: 'rgba(0, 243, 255, 0.2)' }}
+                        whileTap={{ scale: 0.95 }}
+                        href={deliveryUrl.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Abrir enlace de entrega en una pestaña nueva"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px',
+                          padding: '9px 12px',
+                          borderRadius: '11px',
+                          background: 'rgba(0, 243, 255, 0.12)',
+                          border: '1px solid rgba(0, 243, 255, 0.35)',
+                          color: 'var(--accent-primary)',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span>Abrir</span>
+                        <ExternalLink size={13} />
+                      </motion.a>
+                    )}
+                  </div>
+
+                  {/* Advertencia en vivo si la URL no es segura o es inválida */}
+                  {urlError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{
+                        fontSize: '0.72rem',
+                        color: '#ff4d4f',
+                        fontWeight: 650,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        background: 'rgba(255, 77, 79, 0.1)',
+                        border: '1px solid rgba(255, 77, 79, 0.25)',
+                      }}
+                    >
+                      <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                      <span>{urlError}</span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Helper informativo */}
+                <div style={{ fontSize: '0.71rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💡 El enlace se guarda automáticamente y queda registrado para tu entrega académica.</span>
+                </div>
+              </div>
             </div>
 
             {/* ─── FOOTER CON BOTÓN DE CIERRE RÁPIDO ─── */}
             <div 
               style={{
-                padding: '16px 28px',
+                padding: '15px 26px',
                 borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                background: 'rgba(10, 12, 20, 0.8)',
+                background: 'rgba(10, 12, 20, 0.85)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}
             >
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
                 CampusFlow Focus Engine · Auto-Sync
               </span>
               <motion.button
@@ -1019,8 +1104,8 @@ export default function TaskDetailDrawer({
                   border: '1px solid rgba(255, 255, 255, 0.12)',
                   color: 'var(--text-primary)',
                   borderRadius: '10px',
-                  padding: '8px 20px',
-                  fontSize: '0.85rem',
+                  padding: '7px 18px',
+                  fontSize: '0.82rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
