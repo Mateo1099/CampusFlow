@@ -15,7 +15,13 @@ import {
   Bell, 
   Lock, 
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  CheckSquare,
+  Timer,
+  Headphones,
+  Trophy,
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { playClick, playPhaseCompleteChime } from '../../lib/audioService';
@@ -65,15 +71,15 @@ export function resetOnboarding(user) {
   }
 }
 
-const ONBOARDING_STEPS = [
+export const ONBOARDING_STEPS = [
   {
-    id: 'courses-deadlines',
+    id: 'materias',
     stepNumber: 1,
     tag: 'GESTIÓN ACADÉMICA',
-    title: 'Gestión de Materias y Entregas',
+    title: 'Materias y Semáforo de Entregas',
     icon: BookOpen,
     accentColor: 'var(--accent-primary, #00f3ff)',
-    description: 'Visualiza tus asignaturas con un semáforo de alertas inteligente. Las entregas críticas se priorizan en tiempo real para que mantengas tu calendario académico bajo control.',
+    description: 'Configura tus asignaturas universitarias con códigos de color personalizados y un semáforo de alertas en tiempo real. Monitorea créditos, docentes y entregas críticas para tener siempre el control absoluto de tu semestre.',
     renderPreview: () => (
       <div 
         style={{
@@ -199,13 +205,161 @@ const ONBOARDING_STEPS = [
     )
   },
   {
-    id: 'planner-pomodoro',
+    id: 'apuntes',
     stepNumber: 2,
-    tag: 'PRODUCTIVIDAD & RITMO',
-    title: 'Planificador Semanal y Bloques de Estudio',
-    icon: Calendar,
+    tag: 'CUADERNO DIGITAL DE CLASE',
+    title: 'Apuntes y Notas Centralizadas',
+    icon: FileText,
     accentColor: 'var(--accent-secondary, #bc13fe)',
-    description: 'Estructura tu semana en bloques horarios interactivos y sincronízalos con el temporizador Pomodoro para maximizar tu concentración académica y acumular XP.',
+    description: 'Cuaderno digital de clase independiente accesible directamente desde el Sidebar (/apuntes). Redacta notas enriquecidas por materia con Markdown, buscador de conceptos instantáneo y filtros. Tus notas tienen su propio espacio de estudio.',
+    renderPreview: () => (
+      <div 
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: '100%',
+          marginTop: '16px'
+        }}
+      >
+        <div 
+          style={{
+            padding: '10px 14px',
+            borderRadius: '14px',
+            background: 'rgba(188, 19, 254, 0.10)',
+            border: '1px solid rgba(188, 19, 254, 0.30)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.1rem' }}>🧭</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary, #fff)' }}>
+                Nuevo Acceso en Sidebar: /apuntes
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--accent-secondary, #bc13fe)', fontWeight: 600 }}>
+                Módulo independiente con sincronización a Supabase
+              </div>
+            </div>
+          </div>
+          <span 
+            style={{
+              padding: '3px 8px',
+              borderRadius: '8px',
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              background: 'rgba(188, 19, 254, 0.25)',
+              color: '#f0abfc'
+            }}
+          >
+            NUEVO
+          </span>
+        </div>
+
+        <div 
+          style={{
+            padding: '12px 14px',
+            borderRadius: '14px',
+            background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
+            border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary, #fff)' }}>
+              Arquitectura Hexagonal & Clean Code
+            </span>
+            <span 
+              style={{
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '6px',
+                background: 'rgba(0, 243, 255, 0.12)',
+                color: 'var(--accent-primary, #00f3ff)'
+              }}
+            >
+              Ingeniería de Software
+            </span>
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)', lineHeight: 1.4 }}>
+            • Dominio aislado de infraestructura • Inversión de dependencias • Soporte Markdown completo...
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    id: 'trabajos',
+    stepNumber: 3,
+    tag: 'METODOLOGÍA DE RESOLUCIÓN',
+    title: 'Trabajos, Kanban & Desglose de Ejercicios',
+    icon: CheckSquare,
+    accentColor: 'var(--accent-lime, #34c759)',
+    description: 'Gestiona tus entregas en el tablero Kanban y divide talleres complejos en ejercicios numerados (#1, #2...). Registra enlaces seguros de entrega (Google Drive, GitHub con HTTPS) y mide tu progreso cuantitativo.',
+    renderPreview: () => (
+      <div 
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: '100%',
+          marginTop: '16px'
+        }}
+      >
+        <div 
+          style={{
+            padding: '12px 14px',
+            borderRadius: '14px',
+            background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
+            border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary, #fff)' }}>
+              Taller Práctico #3 • Física Mecánica
+            </div>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--accent-lime, #34c759)' }}>
+              75% Resuelto (3/4)
+            </span>
+          </div>
+
+          <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '999px', overflow: 'hidden', marginBottom: '10px' }}>
+            <div style={{ width: '75%', height: '100%', background: 'linear-gradient(90deg, #34c759, #00f3ff)', borderRadius: '999px' }} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+              <span style={{ color: '#34c759' }}>✔</span>
+              <span style={{ textDecoration: 'line-through' }}>#1: Leyes de Newton y fricción (+15 XP)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+              <span style={{ color: '#34c759' }}>✔</span>
+              <span style={{ textDecoration: 'line-through' }}>#2: Diagrama de cuerpo libre (+15 XP)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', color: 'var(--text-primary, #fff)', fontWeight: 600 }}>
+              <span style={{ color: 'var(--accent-primary, #00f3ff)' }}>○</span>
+              <span>#3: Momento angular y torque (En proceso)</span>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.70rem', color: 'var(--accent-primary, #00f3ff)' }}>
+            <span>🔒 Entrega:</span>
+            <span style={{ fontFamily: 'monospace', opacity: 0.9 }}>https://github.com/campusflow/taller-fisica</span>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    id: 'planificador',
+    stepNumber: 4,
+    tag: 'DISTRIBUCIÓN ACADÉMICA',
+    title: 'Planificador Semanal Interactivo',
+    icon: Calendar,
+    accentColor: '#38bdf8',
+    description: 'Estructura tu semana en bloques horarios inteligentes: mañana, tarde y noche. Asigna tiempo de dedicación por materia, planifica repasos estratégicos y mantén un balance óptimo entre estudio y descanso.',
     renderPreview: () => (
       <div 
         style={{
@@ -233,18 +387,18 @@ const ONBOARDING_STEPS = [
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'rgba(188, 19, 254, 0.18)',
-                border: '1px solid rgba(188, 19, 254, 0.35)',
+                background: 'rgba(56, 189, 248, 0.18)',
+                border: '1px solid rgba(56, 189, 248, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <Clock size={18} color="var(--accent-secondary, #bc13fe)" />
+              <Clock size={18} color="#38bdf8" />
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary, #fff)' }}>
-                09:00 - 11:00 • Bloque de Estudio
+                09:00 - 11:00 • Bloque Mañana
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)' }}>
                 Estructuras de Datos • Sesión Focus
@@ -269,8 +423,8 @@ const ONBOARDING_STEPS = [
           style={{
             padding: '12px 14px',
             borderRadius: '14px',
-            background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.12) 0%, rgba(0, 243, 255, 0.08) 100%)',
-            border: '1px solid rgba(188, 19, 254, 0.25)',
+            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(188, 19, 254, 0.08) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -282,7 +436,76 @@ const ONBOARDING_STEPS = [
                 width: '36px',
                 height: '36px',
                 borderRadius: '10px',
-                background: 'rgba(255, 149, 0, 0.15)',
+                background: 'rgba(188, 19, 254, 0.15)',
+                border: '1px solid rgba(188, 19, 254, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <BookOpen size={18} color="var(--accent-secondary, #bc13fe)" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary, #fff)' }}>
+                14:00 - 16:00 • Bloque Tarde
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+                Física Mecánica • Resolución de Taller
+              </div>
+            </div>
+          </div>
+          <span 
+            style={{
+              padding: '3px 8px',
+              borderRadius: '8px',
+              fontSize: '0.70rem',
+              fontWeight: 700,
+              background: 'rgba(56, 189, 248, 0.15)',
+              color: '#38bdf8'
+            }}
+          >
+            Planificado
+          </span>
+        </div>
+      </div>
+    )
+  },
+  {
+    id: 'sala-estudio',
+    stepNumber: 5,
+    tag: 'ENFOQUE & AMBIENTE',
+    title: 'Sala de Estudio: Pomodoro & Playlist',
+    icon: Timer,
+    accentColor: '#ff9500',
+    description: 'Tu estación inmersiva de concentración: temporizador Pomodoro con intervalos de 25 min enfoque / 5 min descanso, y reproductor de playlist local por carpetas completas sin anuncios ni fugas de memoria.',
+    renderPreview: () => (
+      <div 
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          width: '100%',
+          marginTop: '16px'
+        }}
+      >
+        <div 
+          style={{
+            padding: '12px 14px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, rgba(255, 149, 0, 0.12) 0%, rgba(0, 243, 255, 0.08) 100%)',
+            border: '1px solid rgba(255, 149, 0, 0.30)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div 
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(255, 149, 0, 0.18)',
                 border: '1px solid rgba(255, 149, 0, 0.35)',
                 display: 'flex',
                 alignItems: 'center',
@@ -293,10 +516,58 @@ const ONBOARDING_STEPS = [
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary, #fff)' }}>
-                Modo Focus Pomodoro
+                25:00 • Modo Focus Pomodoro
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)' }}>
                 25 min Enfoque / 5 min Pausa activa
+              </div>
+            </div>
+          </div>
+          <span 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: 'var(--accent-lime, #34c759)'
+            }}
+          >
+            <Sparkles size={13} /> +35 XP
+          </span>
+        </div>
+
+        <div 
+          style={{
+            padding: '12px 14px',
+            borderRadius: '14px',
+            background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
+            border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div 
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(0, 243, 255, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Headphones size={18} color="var(--accent-primary, #00f3ff)" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary, #fff)' }}>
+                Playlist Local Lo-Fi & Sonidos Focus
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+                Gestión eficiente de memoria y reproducción continua
               </div>
             </div>
           </div>
@@ -317,13 +588,13 @@ const ONBOARDING_STEPS = [
     )
   },
   {
-    id: 'security-settings',
-    stepNumber: 3,
-    tag: 'BLINDAJE Y CONFIGURACIÓN',
-    title: 'Ajustes de Seguridad y Notificaciones',
-    icon: ShieldCheck,
-    accentColor: 'var(--accent-lime, #34c759)',
-    description: 'Protege tu cuenta con autenticación orbital en dos pasos (2FA / TOTP AAL2) y adapta la interfaz a tu preferencia con los modos Cyber Luxe y Minimalist Tech.',
+    id: 'gamificacion-analitica',
+    stepNumber: 6,
+    tag: 'PROGRESO & RENDIMIENTO',
+    title: 'Gamificación, Niveles & Analítica',
+    icon: Trophy,
+    accentColor: '#eab308',
+    description: 'Sube de nivel y acumula XP por cada ejercicio completado y bloque de estudio concluido. Consulta tus estadísticas de horas invertidas, racha semanal y tasa de finalización académica para batir tus récords.',
     renderPreview: () => (
       <div 
         style={{
@@ -338,78 +609,81 @@ const ONBOARDING_STEPS = [
           style={{
             padding: '12px 14px',
             borderRadius: '14px',
-            background: 'rgba(52, 199, 89, 0.08)',
-            border: '1px solid rgba(52, 199, 89, 0.28)',
+            background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(255, 149, 0, 0.08) 100%)',
+            border: '1px solid rgba(234, 179, 8, 0.35)',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            justifyContent: 'space-between'
           }}
         >
-          <div 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div 
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'rgba(234, 179, 8, 0.22)',
+                border: '1px solid rgba(234, 179, 8, 0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 16px rgba(234, 179, 8, 0.25)'
+              }}
+            >
+              <Trophy size={20} color="#eab308" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#fef08a' }}>
+                Nivel 5 • Estudiante Pro
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary, #a1a1aa)' }}>
+                1,450 / 2,000 XP acumulados
+              </div>
+            </div>
+          </div>
+          <span 
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'rgba(52, 199, 89, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              padding: '4px 10px',
+              borderRadius: '999px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              background: 'rgba(234, 179, 8, 0.25)',
+              color: '#fef08a',
+              letterSpacing: '0.04em'
             }}
           >
-            <Lock size={18} color="#34c759" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary, #fff)' }}>
-              Autenticación 2FA Orbital (AAL2)
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #a1a1aa)' }}>
-              Códigos TOTP temporales sin dependencias de SMS
-            </div>
-          </div>
-          <CheckCircle2 size={18} color="#34c759" />
+            TOP 10%
+          </span>
+        </div>
+
+        {/* Barra de progreso de XP */}
+        <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '999px', overflow: 'hidden' }}>
+          <div style={{ width: '72%', height: '100%', background: 'linear-gradient(90deg, #eab308, #ff9500)', borderRadius: '999px', boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)' }} />
         </div>
 
         <div 
           style={{
-            padding: '12px 14px',
+            padding: '10px 14px',
             borderRadius: '14px',
             background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
             border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            justifyContent: 'space-between'
           }}
         >
-          <div 
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'rgba(0, 243, 255, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Bell size={18} color="var(--accent-primary, #00f3ff)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Flame size={16} color="#ff9500" />
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary, #fff)' }}>
+              Racha activa de 5 días
+            </span>
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary, #fff)' }}>
-              Alertas Sonoras y Temas Dinámicos
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary, #a1a1aa)' }}>
-              Modo Cyber Luxe (Oscuro) & Minimalist Tech (Claro)
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <TrendingUp size={15} color="var(--accent-lime, #34c759)" />
+            <span style={{ fontSize: '0.76rem', fontWeight: 800, color: 'var(--accent-lime, #34c759)' }}>
+              32.5h estudiadas
+            </span>
           </div>
-          <span 
-            style={{
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              color: 'var(--accent-primary, #00f3ff)'
-            }}
-          >
-            Configurable
-          </span>
         </div>
       </div>
     )
@@ -593,6 +867,28 @@ export default function OnboardingModal({
               overflow: 'hidden'
             }}
           >
+            {/* Barra de progreso continuo Cyber Luxe */}
+            <div 
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                background: 'rgba(255, 255, 255, 0.08)'
+              }}
+            >
+              <div 
+                style={{
+                  height: '100%',
+                  width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%`,
+                  background: 'linear-gradient(90deg, var(--accent-primary, #00f3ff), var(--accent-neon, #bc13fe))',
+                  boxShadow: '0 0 12px var(--accent-primary, #00f3ff)',
+                  transition: 'width 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+              />
+            </div>
+
             {/* Botón de cierre rápido / omitir */}
             <button
               type="button"
@@ -772,7 +1068,7 @@ export default function OnboardingModal({
                     transition: 'color var(--transition-fast, 0.2s ease)'
                   }}
                 >
-                  Omitir tour
+                  Saltar tour
                 </button>
               </div>
 
@@ -845,7 +1141,7 @@ export default function OnboardingModal({
                     }}
                   >
                     <CheckCircle2 size={16} />
-                    Comenzar
+                    Comenzar a Estudiar
                   </button>
                 )}
               </div>

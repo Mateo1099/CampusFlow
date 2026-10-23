@@ -6,7 +6,8 @@ import {
   getOnboardingStorageKey,
   hasCompletedOnboarding,
   markOnboardingCompleted,
-  resetOnboarding
+  resetOnboarding,
+  ONBOARDING_STEPS
 } from '../components/ui/OnboardingModal';
 import * as authSecurityModule from '../lib/authSecurity';
 
@@ -216,25 +217,30 @@ describe('CampusFlow Resilience & UX Pillars', () => {
       expect(hasCompletedOnboarding(student)).toBe(false);
     });
 
-    it('valida la secuencia lógica de los 3 pasos clave del tour de estudiantes', () => {
-      // Paso 1: Gestión de Materias y Entregas (Semáforo)
-      // Paso 2: Planificador Semanal y Bloques de Estudio (Pomodoro / XP)
-      // Paso 3: Ajustes de Seguridad y Notificaciones (2FA Orbital)
-      const steps = [
-        { id: 'courses-deadlines', title: 'Gestión de Materias y Entregas' },
-        { id: 'planner-pomodoro', title: 'Planificador Semanal y Bloques de Estudio' },
-        { id: 'security-settings', title: 'Ajustes de Seguridad y Notificaciones' }
-      ];
+    it('valida la secuencia lógica de los 6 pilares esenciales del tour reflejando la arquitectura completa', () => {
+      // Paso 1: MATERIAS (Gestión de Materias y Semáforo de Entregas)
+      // Paso 2: APUNTES (Cuaderno Digital de Clase y Búsqueda de Conceptos)
+      // Paso 3: TRABAJOS (Tablero Kanban, Checklist #1, #2... y Enlaces HTTPS)
+      // Paso 4: PLANIFICADOR SEMANAL (Bloques de Estudio y Distribución Académica)
+      // Paso 5: SALA DE ESTUDIO (Pomodoro Focus & Playlist Local)
+      // Paso 6: GAMIFICACIÓN & ANALÍTICA (Niveles, XP por Ejercicios y Horas de Estudio)
+      expect(ONBOARDING_STEPS).toHaveLength(6);
+      expect(ONBOARDING_STEPS[0].id).toBe('materias');
+      expect(ONBOARDING_STEPS[1].id).toBe('apuntes');
+      expect(ONBOARDING_STEPS[2].id).toBe('trabajos');
+      expect(ONBOARDING_STEPS[3].id).toBe('planificador');
+      expect(ONBOARDING_STEPS[4].id).toBe('sala-estudio');
+      expect(ONBOARDING_STEPS[5].id).toBe('gamificacion-analitica');
 
-      expect(steps).toHaveLength(3);
-      expect(steps[0].id).toBe('courses-deadlines');
-      expect(steps[1].id).toBe('planner-pomodoro');
-      expect(steps[2].id).toBe('security-settings');
+      // Verifica que no haya referencias obsoletas que indiquen tomar notas en tareas
+      ONBOARDING_STEPS.forEach(step => {
+        expect(step.description.toLowerCase()).not.toContain('notas se toman dentro de las tareas');
+      });
 
-      // Máquina de estados de navegación
+      // Máquina de estados de navegación de 6 pasos
       let currentStep = 0;
       const nextStep = () => {
-        if (currentStep < steps.length - 1) currentStep += 1;
+        if (currentStep < ONBOARDING_STEPS.length - 1) currentStep += 1;
       };
       const prevStep = () => {
         if (currentStep > 0) currentStep -= 1;
@@ -245,11 +251,23 @@ describe('CampusFlow Resilience & UX Pillars', () => {
       expect(currentStep).toBe(1);
       nextStep();
       expect(currentStep).toBe(2);
-      // No debe avanzar más allá del paso final
       nextStep();
-      expect(currentStep).toBe(2);
+      expect(currentStep).toBe(3);
+      nextStep();
+      expect(currentStep).toBe(4);
+      nextStep();
+      expect(currentStep).toBe(5);
+      // No debe avanzar más allá del paso final (índice 5 = paso 6)
+      nextStep();
+      expect(currentStep).toBe(5);
 
-      // Regresar
+      // Regresar paso a paso
+      prevStep();
+      expect(currentStep).toBe(4);
+      prevStep();
+      expect(currentStep).toBe(3);
+      prevStep();
+      expect(currentStep).toBe(2);
       prevStep();
       expect(currentStep).toBe(1);
       prevStep();
@@ -273,14 +291,15 @@ describe('CampusFlow Resilience & UX Pillars', () => {
       expect(hasCompletedOnboarding(student)).toBe(true);
     });
 
-    it('el atajo Enter avanza en pasos intermedios y finaliza en el paso 3', () => {
+    it('el atajo Enter avanza en pasos intermedios y finaliza en el paso 6', () => {
       const student = { id: 'student-enter-test' };
       let step = 0;
       let completed = false;
+      const totalSteps = ONBOARDING_STEPS.length;
 
       const handleKey = (key) => {
         if (key === 'Enter') {
-          if (step < 2) {
+          if (step < totalSteps - 1) {
             step += 1;
           } else {
             markOnboardingCompleted(student);
@@ -289,15 +308,27 @@ describe('CampusFlow Resilience & UX Pillars', () => {
         }
       };
 
-      handleKey('Enter'); // Paso 0 -> 1
+      handleKey('Enter'); // Paso 0 -> 1 (Apuntes)
       expect(step).toBe(1);
       expect(completed).toBe(false);
 
-      handleKey('Enter'); // Paso 1 -> 2
+      handleKey('Enter'); // Paso 1 -> 2 (Trabajos)
       expect(step).toBe(2);
       expect(completed).toBe(false);
 
-      handleKey('Enter'); // Paso 2 -> Completar
+      handleKey('Enter'); // Paso 2 -> 3 (Planificador)
+      expect(step).toBe(3);
+      expect(completed).toBe(false);
+
+      handleKey('Enter'); // Paso 3 -> 4 (Sala de Estudio)
+      expect(step).toBe(4);
+      expect(completed).toBe(false);
+
+      handleKey('Enter'); // Paso 4 -> 5 (Gamificación)
+      expect(step).toBe(5);
+      expect(completed).toBe(false);
+
+      handleKey('Enter'); // Paso 5 -> Completar y comenzar a estudiar
       expect(completed).toBe(true);
       expect(hasCompletedOnboarding(student)).toBe(true);
     });

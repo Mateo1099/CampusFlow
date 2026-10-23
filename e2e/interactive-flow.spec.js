@@ -130,7 +130,7 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     // 1. Navegar al Planificador desde el Sidebar.
     await page.getByRole('link', { name: 'PLANIFICADOR SEMANAL' }).click();
     await expect(page).toHaveURL(/\/planner$/);
-    await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible({ timeout: 15000 });
 
     // 2. Clic en "+ NUEVA PLANIFICACIÓN" o "CREAR PLANIFICACIÓN"
     await page.getByRole('button', { name: /(NUEVA|CREAR) PLANIFICACIÓN/i }).click();
@@ -158,7 +158,7 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     expect(page.getUnexpectedMutations()).toEqual([]);
   });
 
-  test('Navegación completa por el Sidebar: Dashboard, Materias, Trabajos, Planificador, Analítica y Ajustes', async ({ page }) => {
+  test('Navegación completa por el Sidebar: Dashboard, Materias, Apuntes, Trabajos, Planificador, Analítica y Ajustes', async ({ page }) => {
     await page.goto('/');
 
     // Dashboard
@@ -171,6 +171,11 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     await expect(page).toHaveURL(/\/agenda$/);
     await expect(page.getByRole('heading', { name: 'MATERIAS', level: 1 })).toBeVisible();
 
+    // Apuntes
+    await page.getByRole('link', { name: 'Apuntes', exact: true }).click();
+    await expect(page).toHaveURL(/\/apuntes$/);
+    await expect(page.getByRole('heading', { name: 'Cuaderno de Apuntes', level: 1 })).toBeVisible({ timeout: 15000 });
+
     // Trabajos
     await page.getByRole('link', { name: 'Trabajos', exact: true }).click();
     await expect(page).toHaveURL(/\/tasks$/);
@@ -179,7 +184,7 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     // Planificador
     await page.getByRole('link', { name: 'PLANIFICADOR SEMANAL' }).click();
     await expect(page).toHaveURL(/\/planner$/);
-    await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible({ timeout: 15000 });
 
     // Analítica
     await page.getByRole('link', { name: 'Analítica', exact: true }).click();

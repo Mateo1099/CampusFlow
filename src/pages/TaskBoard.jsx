@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useTasksContext } from '../context/TaskContext';
 import { useGamification } from '../context/GamificationContext';
-import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock, AlertCircle, Flame, Eye, CheckCircle2, ListTodo, FileText } from 'lucide-react';
+import { Plus, X, GripVertical, Calendar as CalendarIcon, Trash2, Edit2, Filter, ArrowUpDown, ChevronDown, Clock, AlertCircle, Flame, Eye, CheckCircle2, ListTodo, FileText, Link2 } from 'lucide-react';
 import CustomCalendar from '../components/ui/CustomCalendar';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -78,11 +78,12 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
 
   const priority = calculatePriority(task.deadline || task.due_date);
 
-  // Desglose de ejercicios y notas
+  // Desglose de ejercicios y enlace de entrega
   const subtasksList = Array.isArray(task.subtasks) ? task.subtasks : [];
   const completedSubtasks = subtasksList.filter(s => s.completed).length;
   const totalSubtasks = subtasksList.length;
-  const hasNotes = typeof task.task_notes === 'string' && task.task_notes.trim().length > 0;
+  const hasDelivery = (typeof task.delivery_url === 'string' && task.delivery_url.trim().length > 0) ||
+                      (typeof task.task_notes === 'string' && task.task_notes.trim().length > 0);
 
   return (
     <motion.div
@@ -105,9 +106,10 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
         flexDirection: 'column',
         gap: '14px',
         position: 'relative',
-        cursor: 'grab',
+        cursor: 'pointer',
         touchAction: 'none'
       }}
+      onClick={() => onOpenDetail?.(task)}
     >
       {priority && task.status !== 'entregado' && (
         <div style={{
@@ -141,23 +143,23 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Botón Bloc de Notas y Desglose de Ejercicios */}
+          {/* Botón Desglose de Ejercicios y Entrega */}
           <motion.button 
-            whileHover={{ scale: 1.1, backgroundColor: 'rgba(188, 19, 254, 0.18)', borderColor: 'rgba(188, 19, 254, 0.45)', boxShadow: '0 0 12px rgba(188, 19, 254, 0.4), inset 0 0 6px rgba(188, 19, 254, 0.2)' }}
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(0, 243, 255, 0.18)', borderColor: 'rgba(0, 243, 255, 0.45)', boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)' }}
             whileTap={{ scale: 0.95 }}
             className="btn-icon-alfa"
-            title="Desglose de ejercicios y bloc de notas"
+            title="Desglose de ejercicios y enlace de entrega"
             style={{ 
-              opacity: 1, cursor: 'pointer', color: 'rgba(188, 19, 254, 0.95)',
-              background: (totalSubtasks > 0 || hasNotes) ? 'rgba(188, 19, 254, 0.12)' : 'rgba(188, 19, 254, 0.04)',
-              border: (totalSubtasks > 0 || hasNotes) ? '1px solid rgba(188, 19, 254, 0.35)' : '1px solid rgba(188, 19, 254, 0.15)',
+              opacity: 1, cursor: 'pointer', color: 'var(--accent-primary)',
+              background: (totalSubtasks > 0 || hasDelivery) ? 'rgba(0, 243, 255, 0.12)' : 'rgba(0, 243, 255, 0.04)',
+              border: (totalSubtasks > 0 || hasDelivery) ? '1px solid rgba(0, 243, 255, 0.35)' : '1px solid rgba(0, 243, 255, 0.15)',
               backdropFilter: 'blur(10px)', padding: '4px 6px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: '8px', transition: 'all 0.3s ease'
             }}
             onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
           >
-            <ListTodo size={13} style={{ filter: 'drop-shadow(0 0 2px rgba(188,19,254,0.5))' }} />
+            <ListTodo size={13} style={{ filter: 'drop-shadow(0 0 2px rgba(0, 243, 255, 0.5))' }} />
           </motion.button>
           <motion.button 
             whileHover={{ scale: 1.1, backgroundColor: 'rgba(0, 243, 255, 0.15)', borderColor: 'rgba(0, 243, 255, 0.4)', boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)' }}
@@ -189,7 +191,13 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
           </motion.button>
         </div>
       </div>
-      <h4 className="break-words" style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{task.title}</h4>
+      <h4 
+        className="break-words" 
+        style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4, cursor: 'pointer' }}
+        onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
+      >
+        {task.title}
+      </h4>
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: 'auto', width: '100%' }}>
         {compactDateTime ? (
           <span className="text-[11px]" style={{ color: 'var(--accent-primary)', fontWeight: 700, whiteSpace: 'pre' }}>
@@ -206,49 +214,49 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
-              title={`${completedSubtasks} de ${totalSubtasks} ejercicios completados`}
+              title={`${completedSubtasks} de ${totalSubtasks} ejercicios resueltos`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '2px 8px',
+                gap: '5px',
+                padding: '3px 9px',
                 borderRadius: '12px',
-                background: completedSubtasks === totalSubtasks ? 'rgba(16, 185, 129, 0.14)' : 'rgba(0, 243, 255, 0.08)',
-                border: completedSubtasks === totalSubtasks ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(0, 243, 255, 0.22)',
-                fontSize: '0.68rem',
-                fontWeight: 700,
+                background: completedSubtasks === totalSubtasks ? 'rgba(16, 185, 129, 0.16)' : 'rgba(0, 243, 255, 0.1)',
+                border: completedSubtasks === totalSubtasks ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(0, 243, 255, 0.28)',
+                fontSize: '0.72rem',
+                fontWeight: 800,
                 color: completedSubtasks === totalSubtasks ? '#10b981' : 'var(--accent-primary)',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: completedSubtasks === totalSubtasks ? '0 0 8px rgba(16, 185, 129, 0.2)' : 'none',
+                boxShadow: completedSubtasks === totalSubtasks ? '0 0 10px rgba(16, 185, 129, 0.25)' : '0 0 8px rgba(0, 243, 255, 0.12)',
               }}
             >
-              <CheckCircle2 size={11} />
-              <span>{completedSubtasks}/{totalSubtasks}</span>
+              <CheckCircle2 size={12} strokeWidth={2.5} />
+              <span>✓ {completedSubtasks}/{totalSubtasks}</span>
             </motion.div>
           )}
 
-          {hasNotes && (
+          {hasDelivery && (
             <motion.div
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.95 }}
               onClick={(e) => { e.stopPropagation(); onOpenDetail?.(task); }}
-              title="Tiene notas de estudio vinculadas"
+              title="Tiene enlace de entrega registrado"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '3px',
                 padding: '2px 6px',
                 borderRadius: '12px',
-                background: 'rgba(188, 19, 254, 0.12)',
-                border: '1px solid rgba(188, 19, 254, 0.3)',
+                background: 'rgba(0, 243, 255, 0.1)',
+                border: '1px solid rgba(0, 243, 255, 0.3)',
                 fontSize: '0.68rem',
-                color: 'var(--accent-secondary)',
+                color: 'var(--accent-primary)',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
             >
-              <FileText size={10} />
+              <Link2 size={10} />
             </motion.div>
           )}
         </div>

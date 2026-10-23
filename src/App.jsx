@@ -16,6 +16,7 @@ const WeeklyPlanner = React.lazy(() => import('./pages/WeeklyPlanner'));
 const Pomodoro = React.lazy(() => import('./pages/Pomodoro'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Stats = React.lazy(() => import('./pages/Stats'));
+const Notes = React.lazy(() => import('./pages/Notes'));
 
 const Login = React.lazy(() => import('./pages/Login'));
 const MFAChallenge = React.lazy(() => import('./pages/MFAChallenge'));
@@ -245,7 +246,10 @@ function AppRoutes() {
           }>
             <Route index element={<Suspense fallback={<LoadingGlass />}><Dashboard /></Suspense>} />
             <Route path="agenda" element={<Suspense fallback={<LoadingGlass />}><Agenda /></Suspense>} />
+            <Route path="apuntes" element={<Suspense fallback={<LoadingGlass />}><Notes /></Suspense>} />
+            <Route path="notes" element={<Navigate to="/apuntes" replace />} />
             <Route path="tasks" element={<Suspense fallback={<LoadingGlass />}><TaskBoard /></Suspense>} />
+            <Route path="trabajos" element={<Navigate to="/tasks" replace />} />
             <Route path="planner" element={<Suspense fallback={<LoadingGlass />}><WeeklyPlanner /></Suspense>} />
             <Route path="pomodoro" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
             <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />

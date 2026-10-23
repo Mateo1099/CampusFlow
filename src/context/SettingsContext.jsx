@@ -43,7 +43,7 @@ export const FONT_OPTIONS = [
 
 export const translations = {
   es: {
-    dashboard: 'Dashboard', subjects: 'Materias', tasks: 'Trabajos',
+    dashboard: 'Dashboard', subjects: 'Materias', notes: 'Apuntes', tasks: 'Trabajos',
     planner: 'PLANIFICADOR SEMANAL', pomodoro: 'Estudio', profile: 'Ajustes', analytics: 'Analítica',
     stats: 'Estadísticas', addSubject: 'Añadir Materia', subjectName: 'Nombre del Curso', code: 'Código',
     teacher: 'Profesor', institution: 'Institución', tetherColor: 'Color Identificador', save: 'Registrar',
@@ -70,7 +70,7 @@ export const translations = {
     getStarted: 'Empezar ahora', demoUser: 'Usuario Demo'
   },
   en: {
-    dashboard: 'Dashboard', subjects: 'Subjects', tasks: 'Tasks',
+    dashboard: 'Dashboard', subjects: 'Subjects', notes: 'Notes', tasks: 'Tasks',
     planner: 'Daily Planner', pomodoro: 'Study', profile: 'Settings', analytics: 'Analytics',
     stats: 'Statistics', addSubject: 'Add Subject', subjectName: 'Course Name', code: 'Code (Optional)',
     teacher: 'Teacher (Optional)', institution: 'Institution', tetherColor: 'Tether Color',
@@ -97,7 +97,7 @@ export const translations = {
     getStarted: 'Get Started', demoUser: 'Demo User'
   },
   pt: {
-    dashboard: 'Painel', subjects: 'Disciplinas', tasks: 'Tarefas',
+    dashboard: 'Painel', subjects: 'Disciplinas', notes: 'Anotações', tasks: 'Tarefas',
     planner: 'PLANEJADOR SEMANAL', pomodoro: 'Estudo', profile: 'Configurações', analytics: 'Analítica',
     stats: 'Estatísticas', addSubject: 'Adicionar Disciplina', subjectName: 'Nome do Curso', code: 'Código',
     teacher: 'Professor', institution: 'Instituição', tetherColor: 'Cor Identificadora', save: 'Salvar',
@@ -124,7 +124,7 @@ export const translations = {
     getStarted: 'Começar agora', demoUser: 'Usuário Demo'
   },
   fr: {
-    dashboard: 'Tableau de bord', subjects: 'Matières', tasks: 'Devoirs',
+    dashboard: 'Tableau de bord', subjects: 'Matières', notes: 'Notes', tasks: 'Devoirs',
     planner: 'PLANIFICATEUR HEBDOMADAIRE', pomodoro: 'Étude', profile: 'Paramètres', analytics: 'Analytique',
     stats: 'Statistiques', addSubject: 'Ajouter une matière', subjectName: 'Nom du cours', code: 'Code',
     teacher: 'Enseignant', institution: 'Établissement', tetherColor: 'Couleur repère', save: 'Enregistrer',

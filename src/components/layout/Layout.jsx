@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import BottomNavigation from './BottomNavigation';
 import OnboardingModal from '../ui/OnboardingModal';
+import FaqModal from '../ui/FaqModal';
 import { useSettings, WALLPAPERS } from '../../context/SettingsContext';
 import { useBreakpoint } from '../../hooks/useMediaQuery';
 import { resumeAudio } from '../../lib/audioService';
@@ -104,6 +105,9 @@ const Layout = () => {
 
       {/* Guided Student Onboarding Tour */}
       <OnboardingModal />
+
+      {/* Help Center & FAQ Modal */}
+      <FaqModal />
     </>
   );
 };

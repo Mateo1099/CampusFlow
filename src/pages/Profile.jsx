@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { emailService } from '../services/emailService';
 import {
   User, Palette, Check, ImageIcon, Camera, Languages, Type, Shield,
-  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X, Send, Mail, MailCheck, Sparkles
+  Layout as LayoutIcon, ChevronDown, RefreshCcw, Loader2, Pencil, Bell, Copy, Smartphone, Lock, ScanLine, X, Send, Mail, MailCheck, Sparkles, HelpCircle
 } from 'lucide-react';
 import CustomTimePicker from '../components/ui/CustomTimePicker';
 import OrbitalOtpVerification from '../components/ui/OrbitalOtpVerification';
@@ -2186,8 +2186,8 @@ const Profile = () => {
             </BottomRowMenu>
           </div>
 
-          {/* Botón para revivir el Tour de Bienvenida */}
-          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+          {/* Botones de Inducción, Centro de Ayuda & FAQ */}
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-onboarding'))}
@@ -2196,7 +2196,7 @@ const Profile = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '12px 24px',
+                padding: '12px 20px',
                 borderRadius: '14px',
                 background: 'var(--bg-glass, rgba(255, 255, 255, 0.05))',
                 border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.12))',
@@ -2210,7 +2210,33 @@ const Profile = () => {
               }}
             >
               <Sparkles size={16} />
-              Ver Tour de Bienvenida
+              Ver Tour Guiado (6 Pasos)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('campusflow:open-faq'))}
+              className="btn-open-faq-modal"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                borderRadius: '14px',
+                background: 'rgba(0, 243, 255, 0.08)',
+                border: '1px solid rgba(0, 243, 255, 0.3)',
+                color: 'var(--accent-primary, #00f3ff)',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 0 16px rgba(0, 243, 255, 0.12)'
+              }}
+            >
+              <HelpCircle size={16} />
+              Centro de Ayuda & FAQ
             </button>
           </div>
 

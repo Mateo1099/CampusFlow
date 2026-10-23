@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut } from 'lucide-react';
+import { LayoutDashboard, Cpu, CheckSquare, CalendarDays, Timer, UserCircle, PieChart, LogOut, BookOpen, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -31,11 +31,11 @@ const Sidebar = () => {
   const navItems = React.useMemo(() => [
     { name: t.dashboard, path: '/', icon: <LayoutDashboard size={isHorizontal ? 20 : 18} /> },
     { name: t.subjects, path: '/agenda', icon: <Cpu size={isHorizontal ? 20 : 18} /> },
+    { name: t.notes || 'Apuntes', path: '/apuntes', icon: <BookOpen size={isHorizontal ? 20 : 18} /> },
     { name: t.tasks, path: '/tasks', icon: <CheckSquare size={isHorizontal ? 20 : 18} /> },
     { name: t.planner, path: '/planner', icon: <CalendarDays size={isHorizontal ? 20 : 18} /> },
     { name: t.analytics, path: '/stats', icon: <PieChart size={isHorizontal ? 20 : 18} /> },
     { name: t.pomodoro, path: '/pomodoro', icon: <Timer size={isHorizontal ? 20 : 18} /> },
-
   ], [t, isHorizontal]);
 
   // Trigger animations on route change
@@ -443,6 +443,40 @@ const Sidebar = () => {
         paddingTop: isHorizontal ? '0' : '10px',
         borderTop: isHorizontal ? 'none' : '1px solid var(--border-glass-top)'
       }}>
+        {/* Acceso directo a Centro de Ayuda / FAQ */}
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('campusflow:open-faq'));
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isHorizontal ? 'center' : 'flex-start',
+            gap: '12px',
+            padding: isHorizontal ? '8px 14px' : '9px 14px',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(0, 243, 255, 0.05)',
+            border: '1px solid rgba(0, 243, 255, 0.22)',
+            color: isLightMode ? '#0284c7' : 'var(--accent-primary, #00f3ff)',
+            cursor: 'pointer',
+            transition: 'all 0.25s var(--ease-out-quint)',
+            width: isHorizontal ? 'auto' : '100%',
+            transform: 'translateZ(0)',
+            textDecoration: 'none'
+          }}
+          className="glass-card-hover click-press"
+          title="Centro de Ayuda / FAQ"
+          aria-label="Abrir Centro de Ayuda y FAQ"
+        >
+          <HelpCircle size={isHorizontal ? 20 : 18} />
+          {!isHorizontal && (
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+              AYUDA / FAQ
+            </span>
+          )}
+        </button>
+
         <NavLink
           to="/profile"
           style={({ isActive }) => ({
