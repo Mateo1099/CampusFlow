@@ -11,17 +11,16 @@ import {
   GraduationCap,
   AlertCircle,
   CheckCircle,
+  CheckCircle2,
   Loader2,
   LogIn,
   UserPlus,
   Sparkles,
-  Check,
   Eye,
   EyeOff
 } from 'lucide-react';
 import {
   validateAndSanitizeEmail,
-  validatePassword,
   validateAndSanitizeDisplayName,
   getSafeAuthErrorMessage,
   performGoogleOAuthSignIn,
@@ -35,7 +34,8 @@ const Login = () => {
   const { t } = useSettings();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  // Estado que alterna entre Iniciar Sesión (false) y Crear Cuenta Académica (true)
+  const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,64 +45,52 @@ const Login = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const isSignup = mode === 'signup';
+  // 4 Reglas de validación de contraseña en tiempo real para "Crear Cuenta Académica"
+  const hasMinLength = password.length >= 8;
+  const hasUpperLower = /[a-z]/.test(password) && /[A-Z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecial = /[@$!%*?&#]/.test(password);
+  const isPasswordStrong = hasMinLength && hasUpperLower && hasNumber && hasSpecial;
 
-  // Validación reactiva de contraseña en tiempo real con 4 criterios
-  const passwordConditions = {
-    hasMinLength: password.length >= 8,
-    hasUpperAndLower: /[a-z]/.test(password) && /[A-Z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-    hasSpecial: /[^a-zA-Z0-9]/.test(password)
-  };
+  const passwordRules = [
+    { id: 'min_length', label: 'Al menos 8 caracteres', isMet: hasMinLength },
+    { id: 'upper_lower', label: 'Letras mayúsculas y minúsculas', isMet: hasUpperLower },
+    { id: 'number', label: 'Al menos 1 número', isMet: hasNumber },
+    { id: 'special', label: 'Al menos 1 símbolo especial (@$!%*?&#)', isMet: hasSpecial }
+  ];
 
-  const conditionsCount = (
-    (passwordConditions.hasMinLength ? 1 : 0) +
-    (passwordConditions.hasUpperAndLower ? 1 : 0) +
-    (passwordConditions.hasNumber ? 1 : 0) +
-    (passwordConditions.hasSpecial ? 1 : 0)
-  );
-
-  const isAllPasswordConditionsMet = conditionsCount === 4;
-
-  // Cálculo de fuerza para la barra dinámica
-  let strengthLabel = 'Sin contraseña';
+  // Cálculo de fortaleza dinámica (Débil, Media, Fuerte)
+  const metCount = passwordRules.filter((r) => r.isMet).length;
+  let strengthLabel = 'Débil';
   let strengthPercent = 0;
-  let strengthColor = 'rgba(255, 255, 255, 0.2)';
-  let strengthGlow = 'none';
+  let strengthColor = '#ff4d4d';
+  let strengthGlow = '0 0 10px rgba(255, 77, 77, 0.4)';
 
   if (password.length > 0) {
-    if (conditionsCount <= 2) {
+    if (metCount <= 2) {
       strengthLabel = 'Débil';
-      strengthPercent = Math.max(25, conditionsCount * 25);
-      strengthColor = '#ff4d4d'; // Cyber red
-      strengthGlow = '0 0 10px rgba(255, 77, 77, 0.4)';
-    } else if (conditionsCount === 3) {
+      strengthPercent = metCount === 1 ? 25 : (metCount === 2 ? 50 : 15);
+      strengthColor = '#ff4d4d';
+      strengthGlow = '0 0 12px rgba(255, 77, 77, 0.55)';
+    } else if (metCount === 3) {
       strengthLabel = 'Media';
-      strengthPercent = 65;
-      strengthColor = '#f59e0b'; // Cyber amber
-      strengthGlow = '0 0 10px rgba(245, 158, 11, 0.4)';
-    } else if (conditionsCount === 4) {
-      strengthLabel = 'Muy Fuerte';
+      strengthPercent = 75;
+      strengthColor = '#fbbf24';
+      strengthGlow = '0 0 12px rgba(251, 191, 36, 0.6)';
+    } else if (metCount === 4) {
+      strengthLabel = 'Fuerte';
       strengthPercent = 100;
-      strengthColor = 'var(--accent-primary, #00f3ff)'; // Cian Neón
-      strengthGlow = '0 0 14px rgba(0, 243, 255, 0.7)';
+      strengthColor = 'var(--accent-primary, #00f3ff)';
+      strengthGlow = '0 0 16px rgba(0, 243, 255, 0.7)';
     }
   }
 
-  // Lista de requerimientos reactivos para el checklist
-  const requirementsList = [
-    { id: 'min8', label: 'Mínimo 8 caracteres', met: passwordConditions.hasMinLength },
-    { id: 'case', label: 'Mayúsculas y minúsculas', met: passwordConditions.hasUpperAndLower },
-    { id: 'num', label: 'Al menos 1 número', met: passwordConditions.hasNumber },
-    { id: 'spec', label: 'Al menos 1 símbolo especial', met: passwordConditions.hasSpecial }
-  ];
-
-  // Determinar si el botón principal de submit debe estar deshabilitado
-  const isSubmitDisabled = isSignup
-    ? (isLoading || isGoogleLoading || !fullName.trim() || !email.trim() || !isAllPasswordConditionsMet)
+  // Habilitación de botón según el modo activo (deshabilitado en registro si falta alguna de las 4 condiciones)
+  const isSubmitDisabled = isSignUp
+    ? (isLoading || isGoogleLoading || !fullName.trim() || !email.trim() || !isPasswordStrong)
     : (isLoading || isGoogleLoading || !email.trim() || !password);
 
-  // Capturar y mostrar explícitamente cualquier error de OAuth (URL hash, query o context)
+  // Capturar y mostrar cualquier error de OAuth (URL hash, query o context)
   useEffect(() => {
     const urlError = extractOAuthErrorFromUrl();
     const storedError = typeof window !== 'undefined' ? sessionStorage.getItem('campusflow_auth_error') : null;
@@ -120,9 +108,10 @@ const Login = () => {
     }
   }, [authError]);
 
-  const switchMode = (newMode) => {
-    if (newMode === mode) return;
-    setMode(newMode);
+  // Alterna suavemente el estado isSignUp sin recargar
+  const handleTabSwitch = (signUpActive) => {
+    if (signUpActive === isSignUp) return;
+    setIsSignUp(signUpActive);
     setErrorMsg('');
     setSuccessMsg('');
   };
@@ -148,7 +137,7 @@ const Login = () => {
     setErrorMsg('');
     setSuccessMsg('');
 
-    // Validación estricta de formato y sanitización de correo electrónico
+    // Validación básica y sanitización de correo electrónico
     const emailValidation = validateAndSanitizeEmail(email);
     if (!emailValidation.isValid) {
       setErrorMsg(emailValidation.error);
@@ -156,26 +145,18 @@ const Login = () => {
     }
     const cleanEmail = emailValidation.value;
 
-    // Validación según modo
-    if (isSignup) {
+    if (isSignUp) {
       const displayNameValidation = validateAndSanitizeDisplayName(fullName);
       if (!displayNameValidation.isValid) {
         setErrorMsg(displayNameValidation.error);
         return;
       }
-
-      if (!isAllPasswordConditionsMet) {
-        setErrorMsg('Por favor cumple todos los requisitos de seguridad en la contraseña.');
-        return;
-      }
-
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.isValid) {
-        setErrorMsg(passwordValidation.error);
+      if (!isPasswordStrong) {
+        setErrorMsg('La contraseña debe cumplir con todos los requisitos de seguridad.');
         return;
       }
     } else {
-      if (!password || password.length === 0) {
+      if (!password) {
         setErrorMsg('Por favor ingresa tu contraseña.');
         return;
       }
@@ -184,7 +165,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      if (isSignup) {
+      if (isSignUp) {
         const displayNameValidation = validateAndSanitizeDisplayName(fullName);
         const safeDisplayName = displayNameValidation.isValid ? displayNameValidation.value : 'Estudiante';
 
@@ -203,7 +184,7 @@ const Login = () => {
 
         if (data?.user) {
           setSuccessMsg('¡Cuenta creada exitosamente! Revisa tu correo para confirmar o inicia sesión.');
-          setMode('login');
+          setIsSignUp(false);
           setPassword('');
         }
       } else {
@@ -315,22 +296,22 @@ const Login = () => {
       {/* Background Orbs con transiciones suaves Cyber Luxe */}
       <div style={{
         position: 'absolute', top: '10%', left: '8%', width: '340px', height: '340px',
-        background: isSignup ? '#bc13fe' : 'var(--accent-primary, #00f3ff)',
-        filter: 'blur(160px)', opacity: isSignup ? 0.22 : 0.16,
+        background: isSignUp ? '#bc13fe' : 'var(--accent-primary, #00f3ff)',
+        filter: 'blur(160px)', opacity: isSignUp ? 0.22 : 0.16,
         borderRadius: '50%', zIndex: 0,
         pointerEvents: 'none',
         transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
       }} />
       <div style={{
         position: 'absolute', bottom: '10%', right: '8%', width: '400px', height: '400px',
-        background: isSignup ? '#ff007f' : 'var(--accent-secondary, #bc13fe)',
-        filter: 'blur(160px)', opacity: isSignup ? 0.20 : 0.12,
+        background: isSignUp ? '#ff007f' : 'var(--accent-secondary, #bc13fe)',
+        filter: 'blur(160px)', opacity: isSignUp ? 0.20 : 0.12,
         borderRadius: '50%', zIndex: 0,
         pointerEvents: 'none',
         transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
       }} />
 
-      {/* Overlay spinner glassmórfico de seguridad durante redirección OAuth */}
+      {/* Overlay spinner glassmórfico durante redirección OAuth */}
       {isGoogleLoading && (
         <div style={{
           position: 'fixed',
@@ -391,16 +372,16 @@ const Login = () => {
           width: '100%',
           maxWidth: '440px',
           padding: '32px 28px',
-          background: isSignup 
+          background: isSignUp 
             ? 'linear-gradient(150deg, rgba(20, 16, 34, 0.96) 0%, rgba(12, 14, 24, 0.97) 100%)' 
             : 'var(--bg-glass, rgba(13, 17, 28, 0.95))',
           backdropFilter: 'blur(28px)',
           WebkitBackdropFilter: 'blur(28px)',
-          border: isSignup 
+          border: isSignUp 
             ? '1px solid rgba(188, 19, 254, 0.45)' 
             : '1px solid var(--border-glass-top, rgba(0, 243, 255, 0.22))',
           borderRadius: '26px',
-          boxShadow: isSignup 
+          boxShadow: isSignUp 
             ? '0 0 50px rgba(188, 19, 254, 0.22), var(--shadow-glass, 0 32px 64px rgba(0,0,0,0.6)), inset 0 1px 0 rgba(255, 255, 255, 0.12)' 
             : '0 0 40px rgba(0, 243, 255, 0.14), var(--shadow-glass, 0 32px 64px rgba(0,0,0,0.6)), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
           zIndex: 1,
@@ -417,14 +398,14 @@ const Login = () => {
           left: 0,
           right: 0,
           height: '3px',
-          background: isSignup 
+          background: isSignUp 
             ? 'linear-gradient(90deg, #bc13fe 0%, #ff007f 50%, #bc13fe 100%)' 
             : 'linear-gradient(90deg, var(--accent-primary, #00f3ff) 0%, var(--accent-secondary, #bc13fe) 100%)',
-          boxShadow: isSignup ? '0 0 16px #bc13fe' : '0 0 14px var(--accent-primary, #00f3ff)',
+          boxShadow: isSignUp ? '0 0 16px #bc13fe' : '0 0 14px var(--accent-primary, #00f3ff)',
           transition: 'all 0.4s ease'
         }} />
 
-        {/* 1. SELECTOR DE PESTAÑAS SUPERIOR TIPO CYBER LUXE */}
+        {/* 1. PESTAÑAS SUPERIORES (TABS) TIPO BOTÓN / CÁPSULA */}
         <div 
           role="tablist"
           aria-label="Modo de autenticación"
@@ -432,119 +413,124 @@ const Login = () => {
             position: 'relative',
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            padding: '4px',
-            background: 'rgba(7, 10, 19, 0.70)',
+            padding: '5px',
+            background: 'rgba(7, 10, 19, 0.75)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '16px',
+            borderRadius: '9999px',
             marginBottom: '22px',
             boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(12px)'
+            backdropFilter: 'blur(12px)',
+            zIndex: 2
           }}
         >
-          {/* Pill deslizante interactivo con animación suave */}
+          {/* Cápsula deslizante interactiva con animación suave */}
           <div style={{
             position: 'absolute',
-            top: '4px',
-            bottom: '4px',
-            width: 'calc(50% - 4px)',
-            left: isSignup ? 'calc(50%)' : '4px',
-            background: isSignup
-              ? 'linear-gradient(135deg, rgba(188, 19, 254, 0.30) 0%, rgba(255, 0, 128, 0.22) 100%)'
-              : 'linear-gradient(135deg, rgba(0, 243, 255, 0.22) 0%, rgba(0, 160, 255, 0.16) 100%)',
-            border: isSignup
-              ? '1px solid rgba(188, 19, 254, 0.65)'
-              : '1px solid rgba(0, 243, 255, 0.65)',
-            boxShadow: isSignup
-              ? '0 0 18px rgba(188, 19, 254, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-              : '0 0 18px rgba(0, 243, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-            borderRadius: '12px',
-            transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+            top: '5px',
+            bottom: '5px',
+            width: 'calc(50% - 5px)',
+            left: isSignUp ? 'calc(50%)' : '5px',
+            background: isSignUp
+              ? 'linear-gradient(135deg, rgba(188, 19, 254, 0.35) 0%, rgba(255, 0, 128, 0.25) 100%)'
+              : 'linear-gradient(135deg, rgba(0, 243, 255, 0.25) 0%, rgba(0, 160, 255, 0.18) 100%)',
+            border: isSignUp
+              ? '1px solid rgba(188, 19, 254, 0.7)'
+              : '1px solid rgba(0, 243, 255, 0.7)',
+            boxShadow: isSignUp
+              ? '0 0 18px rgba(188, 19, 254, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              : '0 0 18px rgba(0, 243, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+            borderRadius: '9999px',
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             pointerEvents: 'none',
             zIndex: 0
           }} />
 
-          {/* Tab: Iniciar Sesión */}
+          {/* Pestaña: Iniciar Sesión */}
           <button
             type="button"
             role="tab"
-            aria-selected={!isSignup}
-            onClick={() => switchMode('login')}
+            aria-selected={!isSignUp}
+            onClick={() => handleTabSwitch(false)}
             disabled={isLoading || isGoogleLoading}
             style={{
               position: 'relative',
               zIndex: 1,
-              padding: '10px 12px',
+              padding: '9px 10px',
               border: 'none',
               background: 'transparent',
-              color: !isSignup ? '#ffffff' : 'rgba(255, 255, 255, 0.55)',
+              color: !isSignUp ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
               fontSize: '0.84rem',
               fontWeight: 800,
-              letterSpacing: '0.02em',
-              borderRadius: '12px',
+              letterSpacing: '0.01em',
+              borderRadius: '9999px',
               cursor: (isLoading || isGoogleLoading) ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '7px',
+              gap: '6px',
               transition: 'color 0.25s ease',
-              textShadow: !isSignup ? '0 0 12px rgba(0, 243, 255, 0.6)' : 'none'
+              textShadow: !isSignUp ? '0 0 12px rgba(0, 243, 255, 0.6)' : 'none',
+              outline: 'none',
+              whiteSpace: 'nowrap'
             }}
           >
-            <LogIn size={15} color={!isSignup ? 'var(--accent-primary, #00f3ff)' : 'currentColor'} />
+            <LogIn size={15} style={{ flexShrink: 0 }} color={!isSignUp ? 'var(--accent-primary, #00f3ff)' : 'currentColor'} />
             <span>Iniciar Sesión</span>
           </button>
 
-          {/* Tab: Crear Cuenta Académica */}
+          {/* Pestaña: Crear Cuenta Académica */}
           <button
             type="button"
             role="tab"
-            aria-selected={isSignup}
-            onClick={() => switchMode('signup')}
+            aria-selected={isSignUp}
+            onClick={() => handleTabSwitch(true)}
             disabled={isLoading || isGoogleLoading}
             style={{
               position: 'relative',
               zIndex: 1,
-              padding: '10px 12px',
+              padding: '9px 10px',
               border: 'none',
               background: 'transparent',
-              color: isSignup ? '#ffffff' : 'rgba(255, 255, 255, 0.55)',
+              color: isSignUp ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
               fontSize: '0.84rem',
               fontWeight: 800,
-              letterSpacing: '0.02em',
-              borderRadius: '12px',
+              letterSpacing: '0.01em',
+              borderRadius: '9999px',
               cursor: (isLoading || isGoogleLoading) ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '7px',
+              gap: '6px',
               transition: 'color 0.25s ease',
-              textShadow: isSignup ? '0 0 12px rgba(188, 19, 254, 0.6)' : 'none'
+              textShadow: isSignUp ? '0 0 12px rgba(188, 19, 254, 0.6)' : 'none',
+              outline: 'none',
+              whiteSpace: 'nowrap'
             }}
           >
-            <Sparkles size={15} color={isSignup ? '#e879f9' : 'currentColor'} />
-            <span>Crear Cuenta</span>
+            <Sparkles size={15} style={{ flexShrink: 0 }} color={isSignUp ? '#e879f9' : 'currentColor'} />
+            <span>Crear Cuenta Académica</span>
           </button>
         </div>
 
         {/* Encabezado de Identidad Visual */}
         <div style={{
           width: '54px', height: '54px',
-          background: isSignup 
+          background: isSignUp 
             ? 'linear-gradient(135deg, #bc13fe 0%, #ff007f 100%)' 
             : 'linear-gradient(135deg, var(--accent-primary, #00f3ff) 0%, var(--accent-secondary, #bc13fe) 100%)',
           borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 12px',
-          boxShadow: isSignup ? '0 8px 24px rgba(188, 19, 254, 0.45)' : '0 8px 20px rgba(0, 243, 255, 0.35)',
+          boxShadow: isSignUp ? '0 8px 24px rgba(188, 19, 254, 0.45)' : '0 8px 20px rgba(0, 243, 255, 0.35)',
           transition: 'all 0.4s ease'
         }}>
-          {isSignup ? <UserPlus size={26} color="white" /> : <GraduationCap size={28} color="white" />}
+          {isSignUp ? <UserPlus size={26} color="white" /> : <GraduationCap size={28} color="white" />}
         </div>
 
         <h1 className="font-display" style={{ fontSize: '2rem', fontWeight: 950, color: 'var(--text-primary)', margin: '0 0 4px', letterSpacing: '-0.03em' }}>
           CampusFlow
         </h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.88rem', lineHeight: 1.4 }}>
-          {isSignup ? 'Crea tu cuenta académica para potenciar tu semestre' : t.enterDetails}
+          {isSignUp ? 'Crea tu cuenta académica para potenciar tu semestre' : (t?.enterDetails || 'Ingresa tus credenciales para continuar')}
         </p>
 
         {/* Banner de Errores Legible y Amigable */}
@@ -615,11 +601,11 @@ const Login = () => {
           </div>
         )}
 
-        {/* 2. FORMULARIO DE ACCESO Y CREACIÓN DE CUENTA ACADÉMICA */}
+        {/* 2. CAMPOS CONDICIONALES Y FORMULARIO */}
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
-          {/* Campo Nombre Completo (Solo en modo Crear Cuenta) */}
-          {isSignup && (
+          {/* MODO CREAR CUENTA ACADÉMICA (isSignUp true) -> Input 1: Nombre completo (ícono User) */}
+          {isSignUp && (
             <div style={{ position: 'relative', textAlign: 'left' }}>
               <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
                 <User size={18} />
@@ -629,7 +615,7 @@ const Login = () => {
                 placeholder="Nombre completo"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                required={isSignup}
+                required={isSignUp}
                 autoComplete="name"
                 maxLength={60}
                 disabled={isLoading || isGoogleLoading}
@@ -650,14 +636,14 @@ const Login = () => {
             </div>
           )}
 
-          {/* Campo Correo Electrónico */}
+          {/* MODO CREAR CUENTA (Input 2) / MODO INICIAR SESIÓN (Input 1): Correo electrónico (ícono Mail) */}
           <div style={{ position: 'relative', textAlign: 'left' }}>
             <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
               <Mail size={18} />
             </div>
             <input
               type="email"
-              placeholder={isSignup ? "Correo académico o personal" : "Tu correo electrónico"}
+              placeholder="Correo electrónico"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -671,7 +657,7 @@ const Login = () => {
                 width: '100%',
                 padding: '13px 16px 13px 48px',
                 background: 'rgba(0,0,0,0.25)',
-                border: isSignup ? '1px solid rgba(188, 19, 254, 0.35)' : '1px solid var(--border-glass-top)',
+                border: isSignUp ? '1px solid rgba(188, 19, 254, 0.35)' : '1px solid var(--border-glass-top)',
                 borderRadius: '12px',
                 color: 'var(--text-primary)',
                 fontSize: '0.94rem',
@@ -683,25 +669,25 @@ const Login = () => {
             />
           </div>
 
-          {/* Campo Contraseña con Toggle Mostrar/Ocultar */}
+          {/* MODO CREAR CUENTA (Input 3) / MODO INICIAR SESIÓN (Input 2): Contraseña (ícono Lock con toggle ver/ocultar) */}
           <div style={{ position: 'relative', textAlign: 'left' }}>
             <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
               <Lock size={18} />
             </div>
             <input
               type={showPassword ? 'text' : 'password'}
-              placeholder={isSignup ? "Crea una contraseña segura" : t.password}
+              placeholder="Contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
               maxLength={72}
               disabled={isLoading || isGoogleLoading}
               style={{
                 width: '100%',
                 padding: '13px 46px 13px 48px',
                 background: 'rgba(0,0,0,0.25)',
-                border: isSignup ? '1px solid rgba(188, 19, 254, 0.35)' : '1px solid var(--border-glass-top)',
+                border: isSignUp ? '1px solid rgba(188, 19, 254, 0.35)' : '1px solid var(--border-glass-top)',
                 borderRadius: '12px',
                 color: 'var(--text-primary)',
                 fontSize: '0.94rem',
@@ -734,100 +720,110 @@ const Login = () => {
             </button>
           </div>
 
-          {/* VALIDADOR INTERACTIVO EN TIEMPO REAL (Solo en Crear Cuenta) */}
-          {isSignup && (
-            <div style={{
-              background: 'rgba(0, 0, 0, 0.30)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '14px',
-              padding: '14px',
-              textAlign: 'left'
-            }}>
-              {/* Barra de fortaleza dinámica */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  Fortaleza:
+          {/* 1. VALIDADOR DE CONTRASEÑA EN TIEMPO REAL (debajo del campo de contraseña en "Crear Cuenta Académica") */}
+          {isSignUp && (
+            <div
+              style={{
+                background: 'rgba(0, 0, 0, 0.28)',
+                border: '1px solid rgba(188, 19, 254, 0.22)',
+                borderRadius: '14px',
+                padding: '12px 14px',
+                textAlign: 'left',
+                boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+            >
+              {/* Encabezado de la barra con label dinámico (Débil, Media, Fuerte) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #94a3b8)', fontWeight: 600 }}>
+                  Seguridad de la contraseña:
                 </span>
-                <span style={{
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  color: strengthColor,
-                  textShadow: strengthGlow
-                }}>
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    color: strengthColor,
+                    textShadow: strengthGlow,
+                    letterSpacing: '0.02em',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
                   {strengthLabel}
                 </span>
               </div>
 
-              {/* Riel y barra de progreso animada */}
-              <div style={{
-                width: '100%',
-                height: '5px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                borderRadius: '999px',
-                overflow: 'hidden',
-                marginBottom: '12px'
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${strengthPercent}%`,
-                  background: strengthColor,
-                  boxShadow: strengthGlow,
+              {/* Riel y barra visual de fortaleza dinámica Cyber Luxe */}
+              <div
+                style={{
+                  width: '100%',
+                  height: '5px',
+                  background: 'rgba(255, 255, 255, 0.08)',
                   borderRadius: '999px',
-                  transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
-                }} />
+                  overflow: 'hidden'
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${strengthPercent}%`,
+                    background: strengthColor,
+                    boxShadow: strengthGlow,
+                    borderRadius: '999px',
+                    transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                />
               </div>
 
-              {/* Checklist reactivo de 4 condiciones con acento cian neón */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {requirementsList.map((req) => (
+              {/* Checklist reactivo con 4 reglas */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '4px' }}>
+                {passwordRules.map((rule) => (
                   <div
-                    key={req.id}
+                    key={rule.id}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '7px',
-                      fontSize: '0.75rem',
+                      fontSize: '0.74rem',
                       fontWeight: 600,
-                      color: req.met ? 'var(--accent-primary, #00f3ff)' : 'rgba(255, 255, 255, 0.42)',
+                      color: rule.isMet ? 'var(--accent-primary, #00f3ff)' : 'rgba(255, 255, 255, 0.42)',
                       transition: 'color 0.25s ease'
                     }}
                   >
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: req.met ? 'rgba(0, 243, 255, 0.16)' : 'rgba(255, 255, 255, 0.05)',
-                      border: req.met ? '1px solid #00f3ff' : '1px solid rgba(255, 255, 255, 0.18)',
-                      boxShadow: req.met ? '0 0 8px rgba(0, 243, 255, 0.4)' : 'none',
-                      transition: 'all 0.25s ease',
-                      flexShrink: 0
-                    }}>
-                      {req.met ? (
-                        <Check size={10} color="#00f3ff" strokeWidth={3.5} />
-                      ) : (
-                        <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.35)' }} />
-                      )}
-                    </div>
-                    <span>{req.label}</span>
+                    {rule.isMet ? (
+                      <CheckCircle2
+                        size={15}
+                        color="var(--accent-primary, #00f3ff)"
+                        style={{ flexShrink: 0, filter: 'drop-shadow(0 0 6px rgba(0, 243, 255, 0.6))' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          border: '1.5px solid rgba(255, 255, 255, 0.25)',
+                          flexShrink: 0,
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    )}
+                    <span style={{ lineHeight: 1.25 }}>{rule.label}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Botón de Envío Principal */}
+          {/* BOTÓN DE ENVÍO: "Crear Cuenta Académica" o "Iniciar Sesión" */}
           <button
             type="submit"
             disabled={isSubmitDisabled}
             style={{
               marginTop: '4px',
               padding: '13px',
-              background: isSignup 
+              background: isSignUp 
                 ? (isSubmitDisabled 
                     ? 'rgba(188, 19, 254, 0.25)' 
                     : 'linear-gradient(135deg, #bc13fe 0%, #ff007f 100%)')
@@ -836,9 +832,9 @@ const Login = () => {
                     : 'linear-gradient(135deg, var(--accent-primary, #00f3ff) 0%, rgba(0, 243, 255, 0.85) 100%)'),
               border: isSubmitDisabled 
                 ? '1px solid rgba(255, 255, 255, 0.1)' 
-                : (isSignup ? '1px solid rgba(188, 19, 254, 0.5)' : '1px solid rgba(0, 243, 255, 0.5)'),
+                : (isSignUp ? '1px solid rgba(188, 19, 254, 0.5)' : '1px solid rgba(0, 243, 255, 0.5)'),
               borderRadius: '12px',
-              color: isSignup ? '#ffffff' : (isSubmitDisabled ? 'rgba(255, 255, 255, 0.5)' : '#080b11'),
+              color: isSignUp ? '#ffffff' : (isSubmitDisabled ? 'rgba(255, 255, 255, 0.5)' : '#080b11'),
               fontSize: '0.96rem',
               fontWeight: 800,
               cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
@@ -850,7 +846,7 @@ const Login = () => {
               transition: 'all 0.3s ease',
               boxShadow: isSubmitDisabled 
                 ? 'none' 
-                : (isSignup ? '0 4px 20px rgba(188, 19, 254, 0.4)' : '0 4px 18px rgba(0, 243, 255, 0.35)')
+                : (isSignUp ? '0 4px 20px rgba(188, 19, 254, 0.4)' : '0 4px 18px rgba(0, 243, 255, 0.35)')
             }}
           >
             {isLoading && !isGoogleLoading ? (
@@ -860,8 +856,8 @@ const Login = () => {
               </>
             ) : (
               <>
-                <span>{isSignup ? 'Crear Cuenta Académica' : t.login}</span>
-                {isSignup ? <Sparkles size={17} /> : <ArrowRight size={17} />}
+                <span>{isSignUp ? 'Crear Cuenta Académica' : 'Iniciar Sesión'}</span>
+                {isSignUp ? <Sparkles size={17} /> : <ArrowRight size={17} />}
               </>
             )}
           </button>
@@ -874,7 +870,7 @@ const Login = () => {
           <div style={{ flex: 1, height: '1px', background: 'var(--border-glass-top)' }} />
         </div>
 
-        {/* 3. BOTONES DE GOOGLE Y GITHUB (Limpios y funcionales en ambos modos) */}
+        {/* 3. BOTONES DE GOOGLE Y GITHUB (Funcionales en ambos modos) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
             type="button"
