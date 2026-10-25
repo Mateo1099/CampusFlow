@@ -65,7 +65,7 @@ const Layout = () => {
           style={{ 
             position: 'relative', 
             zIndex: 1,
-            paddingBottom: isMobile ? '64px' : '0', // Espacio para bottom nav en móvil
+            paddingBottom: isMobile ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '0', // Espacio para bottom nav en móvil
             width: '100%',
             maxWidth: '100%'
           }}

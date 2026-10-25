@@ -410,8 +410,16 @@ const Dashboard = () => {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           style={{ marginBottom: '20px' }}
         >
-          {/* Metric Cards Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+          {/* Metric Cards Grid - 2 columnas en móvil (sm), 4 en desktop (md/lg) */}
+          <div
+            className="dashboard-metrics-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+              gap: isMobile ? '12px' : '16px',
+              marginBottom: '16px'
+            }}
+          >
             {/* Card: Total Tasks */}
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(2,132,199,0.14)' : '0 10px 25px rgba(0, 243, 255, 0.25)', borderColor: isLightMode ? 'rgba(2,132,199,0.35)' : 'rgba(0, 243, 255, 0.4)' }}
@@ -419,14 +427,14 @@ const Dashboard = () => {
               onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={isLightMode ? {
                 ...lightGlassCardStyle,
-                padding: '24px',
+                padding: isMobile ? '14px 12px' : '24px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden'
               } : {
-                padding: '24px',
-                borderRadius: '16px',
+                padding: isMobile ? '14px 12px' : '24px',
+                borderRadius: isMobile ? '14px' : '16px',
                 background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
                 border: '1px solid rgba(0, 243, 255, 0.2)',
                 backdropFilter: 'blur(10px)',
@@ -436,40 +444,41 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(0, 243, 255, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: isMobile ? '-25px' : '-40px', right: isMobile ? '-25px' : '-40px', width: isMobile ? '70px' : '120px', height: isMobile ? '70px' : '120px', background: isLightMode ? 'radial-gradient(circle, rgba(2,132,199,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(0, 243, 255, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 243, 255, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Total de trabajos</p>
+                  <p style={{ margin: isMobile ? '0 0 4px' : '0 0 8px', fontSize: isMobile ? '0.68rem' : '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 243, 255, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>Total de trabajos</p>
                   <motion.h3
                     key={totalTasks}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#0284c7' : '#00f3ff', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 243, 255, 0.5)' }}
+                    style={{ fontSize: isMobile ? '2.1rem' : '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#0284c7' : '#00f3ff', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 243, 255, 0.5)' }}
                   >
                     {totalTasks}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(2,132,199,0.1)' : 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Target size={24} color={isLightMode ? '#0284c7' : '#00f3ff'} />
+                <div style={{ width: isMobile ? '36px' : '48px', height: isMobile ? '36px' : '48px', borderRadius: isMobile ? '10px' : '12px', background: isLightMode ? 'rgba(2,132,199,0.1)' : 'rgba(0, 243, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Target size={isMobile ? 18 : 24} color={isLightMode ? '#0284c7' : '#00f3ff'} />
                 </div>
               </div>
             </motion.button>
 
+            {/* Card: Completed */}
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(22,163,74,0.14)' : '0 10px 25px rgba(0, 255, 136, 0.25)', borderColor: isLightMode ? 'rgba(22,163,74,0.35)' : 'rgba(0, 255, 136, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={isLightMode ? {
                 ...lightGlassCardStyle,
-                padding: '24px',
+                padding: isMobile ? '14px 12px' : '24px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden'
               } : {
-                padding: '24px',
-                borderRadius: '16px',
+                padding: isMobile ? '14px 12px' : '24px',
+                borderRadius: isMobile ? '14px' : '16px',
                 background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
                 border: '1px solid rgba(0, 255, 136, 0.2)',
                 backdropFilter: 'blur(10px)',
@@ -479,40 +488,41 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(22,163,74,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: isMobile ? '-25px' : '-40px', right: isMobile ? '-25px' : '-40px', width: isMobile ? '70px' : '120px', height: isMobile ? '70px' : '120px', background: isLightMode ? 'radial-gradient(circle, rgba(22,163,74,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(0, 255, 136, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 255, 136, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Completados</p>
+                  <p style={{ margin: isMobile ? '0 0 4px' : '0 0 8px', fontSize: isMobile ? '0.68rem' : '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(0, 255, 136, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>Completados</p>
                   <motion.h3
                     key={Number(completedTasks) || 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#16a34a' : '#00ff88', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 255, 136, 0.5)' }}
+                    style={{ fontSize: isMobile ? '2.1rem' : '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#16a34a' : '#00ff88', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(0, 255, 136, 0.5)' }}
                   >
                     {Number(completedTasks) || 0}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(22,163,74,0.1)' : 'rgba(0, 255, 136, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Zap size={24} color={isLightMode ? '#16a34a' : '#00ff88'} />
+                <div style={{ width: isMobile ? '36px' : '48px', height: isMobile ? '36px' : '48px', borderRadius: isMobile ? '10px' : '12px', background: isLightMode ? 'rgba(22,163,74,0.1)' : 'rgba(0, 255, 136, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Zap size={isMobile ? 18 : 24} color={isLightMode ? '#16a34a' : '#00ff88'} />
                 </div>
               </div>
             </motion.button>
 
+            {/* Card: Pending */}
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(217,119,6,0.14)' : '0 10px 25px rgba(255, 200, 0, 0.25)', borderColor: isLightMode ? 'rgba(217,119,6,0.35)' : 'rgba(255, 200, 0, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/tasks'); }}
               style={isLightMode ? {
                 ...lightGlassCardStyle,
-                padding: '24px',
+                padding: isMobile ? '14px 12px' : '24px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden'
               } : {
-                padding: '24px',
-                borderRadius: '16px',
+                padding: isMobile ? '14px 12px' : '24px',
+                borderRadius: isMobile ? '14px' : '16px',
                 background: 'linear-gradient(135deg, rgba(255, 200, 0, 0.08) 0%, rgba(188, 19, 254, 0.04) 100%)',
                 border: '1px solid rgba(255, 200, 0, 0.2)',
                 backdropFilter: 'blur(10px)',
@@ -522,40 +532,41 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(217,119,6,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(255, 200, 0, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: isMobile ? '-25px' : '-40px', right: isMobile ? '-25px' : '-40px', width: isMobile ? '70px' : '120px', height: isMobile ? '70px' : '120px', background: isLightMode ? 'radial-gradient(circle, rgba(217,119,6,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(255, 200, 0, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(255, 200, 0, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Pendientes</p>
+                  <p style={{ margin: isMobile ? '0 0 4px' : '0 0 8px', fontSize: isMobile ? '0.68rem' : '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : 'rgba(255, 200, 0, 0.7)', fontWeight: 700, fontFamily: 'var(--font-display)', whiteSpace: 'nowrap' }}>Pendientes</p>
                   <motion.h3
                     key={Number(pendingTasks) || 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#d97706' : '#ffc800', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(255, 200, 0, 0.5)' }}
+                    style={{ fontSize: isMobile ? '2.1rem' : '3.5rem', fontWeight: 900, margin: '0', color: isLightMode ? '#d97706' : '#ffc800', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(255, 200, 0, 0.5)' }}
                   >
                     {Number(pendingTasks) || 0}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(217,119,6,0.1)' : 'rgba(255, 200, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <AlertCircle size={24} color={isLightMode ? '#d97706' : '#ffc800'} />
+                <div style={{ width: isMobile ? '36px' : '48px', height: isMobile ? '36px' : '48px', borderRadius: isMobile ? '10px' : '12px', background: isLightMode ? 'rgba(217,119,6,0.1)' : 'rgba(255, 200, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <AlertCircle size={isMobile ? 18 : 24} color={isLightMode ? '#d97706' : '#ffc800'} />
                 </div>
               </div>
             </motion.button>
 
+            {/* Card: Total Minutes */}
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: isLightMode ? '0 8px 20px rgba(147,51,234,0.14)' : '0 10px 25px rgba(188, 19, 254, 0.25)', borderColor: isLightMode ? 'rgba(147,51,234,0.35)' : 'rgba(188, 19, 254, 0.4)' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => { playClick(1000); navigate('/stats'); }}
               style={isLightMode ? {
                 ...lightGlassCardStyle,
-                padding: '24px',
+                padding: isMobile ? '14px 12px' : '24px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden'
               } : {
-                padding: '24px',
-                borderRadius: '16px',
+                padding: isMobile ? '14px 12px' : '24px',
+                borderRadius: isMobile ? '14px' : '16px',
                 background: 'linear-gradient(135deg, rgba(188, 19, 254, 0.08) 0%, rgba(0, 243, 255, 0.04) 100%)',
                 border: '1px solid rgba(188, 19, 254, 0.2)',
                 backdropFilter: 'blur(10px)',
@@ -565,22 +576,22 @@ const Dashboard = () => {
                 overflow: 'hidden'
               }}
             >
-              <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '120px', height: '120px', background: isLightMode ? 'radial-gradient(circle, rgba(147,51,234,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(188, 19, 254, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', top: isMobile ? '-25px' : '-40px', right: isMobile ? '-25px' : '-40px', width: isMobile ? '70px' : '120px', height: isMobile ? '70px' : '120px', background: isLightMode ? 'radial-gradient(circle, rgba(147,51,234,0.08) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(188, 19, 254, 0.15) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
                 <div>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : metricLabelColor, fontWeight: 800, fontFamily: 'var(--font-display)', textShadow: 'none' }}>Minutos totales</p>
+                  <p style={{ margin: isMobile ? '0 0 4px' : '0 0 8px', fontSize: isMobile ? '0.68rem' : '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : metricLabelColor, fontWeight: 800, fontFamily: 'var(--font-display)', textShadow: 'none', whiteSpace: 'nowrap' }}>Minutos totales</p>
                   <motion.h3
                     key={Number(totalMinutes) || 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    style={{ fontSize: '2.8rem', fontWeight: 900, margin: '0', color: isLightMode ? '#7c3aed' : '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(188, 19, 254, 0.5)' }}
+                    style={{ fontSize: isMobile ? '1.9rem' : '2.8rem', fontWeight: 900, margin: '0', color: isLightMode ? '#7c3aed' : '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(188, 19, 254, 0.5)' }}
                   >
                     {Math.floor(Number(totalMinutes) || 0)}
                   </motion.h3>
                 </div>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: isLightMode ? 'rgba(147,51,234,0.1)' : 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Clock3 size={24} color={isLightMode ? '#7c3aed' : '#bc13fe'} />
+                <div style={{ width: isMobile ? '36px' : '48px', height: isMobile ? '36px' : '48px', borderRadius: isMobile ? '10px' : '12px', background: isLightMode ? 'rgba(147,51,234,0.1)' : 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Clock3 size={isMobile ? 18 : 24} color={isLightMode ? '#7c3aed' : '#bc13fe'} />
                 </div>
               </div>
             </motion.button>
