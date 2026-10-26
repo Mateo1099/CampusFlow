@@ -2301,3 +2301,17 @@ h5,
   }
 }
 
+/* ========== RESPONSIVE UTILITIES: VISIBILIDAD MÓVIL / ESCRITORIO ========== */
+.dashboard-mobile-logout,
+.md\:hidden {
+  display: inline-flex;
+}
+
+@media (min-width: 641px) {
+  .dashboard-mobile-logout,
+  .md\:hidden {
+    display: none !important;
+  }
+}
+
+

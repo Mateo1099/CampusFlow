@@ -404,35 +404,37 @@ const Dashboard = () => {
           Bienvenido a CampusFlow
         </h1>
 
-        <motion.button
-          onClick={handleLogout}
-          whileHover={{ scale: 1.04, boxShadow: '0 0 16px rgba(255, 77, 77, 0.4)' }}
-          whileTap={{ scale: 0.96 }}
-          className="click-press"
-          aria-label="Cerrar Sesión"
-          title="Cerrar Sesión"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: isMobile ? '8px 12px' : '10px 16px',
-            borderRadius: '12px',
-            background: 'rgba(255, 77, 77, 0.1)',
-            border: '1px solid rgba(255, 77, 77, 0.3)',
-            color: '#ff4d4d',
-            cursor: 'pointer',
-            fontSize: isMobile ? '0.78rem' : '0.85rem',
-            fontWeight: 700,
-            fontFamily: 'var(--font-display)',
-            letterSpacing: '0.03em',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-            boxShadow: '0 2px 10px rgba(255, 77, 77, 0.15)'
-          }}
-        >
-          <LogOut size={isMobile ? 16 : 18} />
-          <span>Cerrar Sesión</span>
-        </motion.button>
+        {isMobile && (
+          <motion.button
+            onClick={handleLogout}
+            whileHover={{ scale: 1.04, boxShadow: '0 0 16px rgba(255, 77, 77, 0.4)' }}
+            whileTap={{ scale: 0.96 }}
+            className="click-press flex md:hidden dashboard-mobile-logout"
+            aria-label="Cerrar Sesión"
+            title="Cerrar Sesión"
+            style={{
+              display: isMobile ? 'inline-flex' : 'none',
+              alignItems: 'center',
+              gap: '8px',
+              padding: isMobile ? '8px 12px' : '10px 16px',
+              borderRadius: '12px',
+              background: 'rgba(255, 77, 77, 0.1)',
+              border: '1px solid rgba(255, 77, 77, 0.3)',
+              color: '#ff4d4d',
+              cursor: 'pointer',
+              fontSize: isMobile ? '0.78rem' : '0.85rem',
+              fontWeight: 700,
+              fontFamily: 'var(--font-display)',
+              letterSpacing: '0.03em',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              boxShadow: '0 2px 10px rgba(255, 77, 77, 0.15)'
+            }}
+          >
+            <LogOut size={isMobile ? 16 : 18} />
+            <span>Cerrar Sesión</span>
+          </motion.button>
+        )}
       </header>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px' }}>
