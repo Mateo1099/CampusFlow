@@ -6,10 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight, BrainCircuit, Clock3, Sparkles } from 'lucide-react';
+import { Plus, Timer, Zap, Target, Activity, Flame, AlertCircle, ChevronRight, BrainCircuit, Clock3, Sparkles, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBreakpoint } from '../hooks/useMediaQuery';
 import InstitutionFilterPills from '../components/ui/InstitutionFilterPills';
+import { supabase } from '../lib/supabaseClient';
 
 const parseLocalDeadline = (dateStr) => {
   if (!dateStr) return new Date();
@@ -19,7 +20,7 @@ const parseLocalDeadline = (dateStr) => {
   return new Date(`${datePart}T00:00:00`);
 };
 
-// C├ílculo ex├ícto por d├¡as calendario, contando todos los d├¡as intermedios (+ Math.ceil por margen de error)
+// Cálculo exacto por días calendario, contando todos los días intermedios (+ Math.ceil por margen de error)
 const calculateRemainingDays = (deadlineDate) => {
   const startTarget = startOfDay(deadlineDate);
   const startToday = startOfDay(new Date());
@@ -30,6 +31,7 @@ const calculateRemainingDays = (deadlineDate) => {
 const Dashboard = () => {
   
   const { tasks, courses, tasksLoading, coursesLoading } = useTasksContext();
+  const { logout } = useAuth();
   const { t, settings } = useSettings();
   const isLightMode = settings?.theme === 'light';
   const isDaltonicMode = settings?.theme === 'daltonic';
@@ -39,7 +41,7 @@ const Dashboard = () => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [hoveredDay, setHoveredDay] = useState(null);
 
-  // Anal├¡tica PRO -> Dashboard Integration
+  // Analítica PRO -> Dashboard Integration
   const {
     totalHabits,
     completedHabits,
@@ -113,7 +115,7 @@ const Dashboard = () => {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Filtro por instituci├│n
+      // Filtro por institución
       if (currentFilter !== 'TODAS') {
         const course = courses.find(c => c.id === task.course_id);
         if ((course?.institution || '').toUpperCase() !== currentFilter.toUpperCase()) return false;
@@ -145,19 +147,19 @@ const Dashboard = () => {
 
   const getSmartInsight = () => {
     const hasBlocks = (completedBlocks + pendingBlocks) > 0;
-    if (!hasBlocks && totalMinutes === 0) return 'A├║n no hay planificaci├│n suficiente.';
+    if (!hasBlocks && totalMinutes === 0) return 'Aún no hay planificación suficiente.';
     if (pendingBlocks > completedBlocks) return 'Tienes bloques pendientes esta semana.';
-    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga est├í en la ma├▒ana.';
-    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga est├í en la noche.';
-    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga est├í en la tarde.';
-    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecuci├│n esta semana.';
-    return 'Tu semana tiene una planificaci├│n estable.';
+    if (minutesByTime?.morning > minutesByTime?.afternoon && minutesByTime?.morning > minutesByTime?.night) return 'Tu mayor carga está en la mañana.';
+    if (minutesByTime?.night > minutesByTime?.morning && minutesByTime?.night > minutesByTime?.afternoon) return 'Tu mayor carga está en la noche.';
+    if (minutesByTime?.afternoon > minutesByTime?.morning && minutesByTime?.afternoon > minutesByTime?.night) return 'Tu mayor carga está en la tarde.';
+    if (completedBlocks > pendingBlocks && completedBlocks > 0) return 'Llevas un buen ritmo de ejecución esta semana.';
+    return 'Tu semana tiene una planificación estable.';
   };
 
   const totalActionsForCompliance = totalTasks + completedBlocks + pendingBlocks + totalHabits;
       const isAnalyticsEmpty = !analyticsLoading && totalActionsForCompliance === 0 && totalMinutes === 0;
 
-  // RADAR DE ENTREGAS: Pr├│ximos 14 d├¡as
+  // RADAR DE ENTREGAS: Próximos 14 días
   const upcomingTasks = useMemo(() => {
     return filteredTasks.filter(task => {
       const status = (task.status || '').toLowerCase();
@@ -166,7 +168,7 @@ const Dashboard = () => {
       try {
         const deadlineDate = parseLocalDeadline(task.deadline || task.due_date);
         const daysLeft = calculateRemainingDays(deadlineDate);
-        // Si no hay d├¡a seleccionado, mostramos el rango de 14 d├¡as habitual
+        // Si no hay día seleccionado, mostramos el rango de 14 días habitual
         if (selectedDay === null) return daysLeft >= -1 && daysLeft <= 14;
 
         let day = deadlineDate.getDay(); // 0 is Sunday
@@ -268,7 +270,7 @@ const Dashboard = () => {
     outline: 'none'
   });
 
-  // PRIORIDAD M├üXIMA: Tarea con deadline m├ís pr├│ximo
+  // PRIORIDAD MÁXIMA: Tarea con deadline más próximo
   const { bigBossTask, bigBossColor } = useMemo(() => {
     // 1. Filtrar tareas no completadas y con fecha
     const pendingWithDeadline = filteredTasks.filter(task => {
@@ -298,7 +300,7 @@ const Dashboard = () => {
     return { bigBossTask: task, bigBossColor: color };
   }, [filteredTasks, courses]);
 
-  // MATRIZ DE ESFUERZO (Detalles de tareas por d├¡a para C├®lulas de Energ├¡a)
+  // MATRIZ DE ESFUERZO (Detalles de tareas por día para Células de Energía)
   const effortMatrixDetails = useMemo(() => {
     const matrix = [[], [], [], [], [], [], []]; // L-D
     filteredTasks.forEach(task => {
@@ -335,7 +337,7 @@ const Dashboard = () => {
   }
 
   const daysLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-  const fullDaysLabels = ['Lunes', 'Martes', 'Mi├®rcoles', 'Jueves', 'Viernes', 'S├íbado', 'Domingo'];
+  const fullDaysLabels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   const formatDateLegible = (dateStr) => {
     if (!dateStr) return '';
@@ -345,28 +347,92 @@ const Dashboard = () => {
     } catch { return dateStr; }
   };
 
+  const handleLogout = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    try {
+      if (supabase?.auth?.signOut) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.warn('Error al cerrar sesión con Supabase:', err);
+    } finally {
+      if (logout) {
+        await logout();
+      }
+      navigate('/login', { replace: true });
+    }
+  };
+
   return (
-    <div className="animate-fade-in dashboard-page" style={{ padding: '32px 48px', position: 'relative', overflow: 'visible', minHeight: '100%' }}>
+    <div 
+      className={`animate-fade-in dashboard-page ${isMobile ? 'pb-28' : ''}`} 
+      style={{ 
+        padding: isMobile ? '20px 16px calc(110px + env(safe-area-inset-bottom, 0px))' : '32px 48px', 
+        position: 'relative', 
+        overflow: 'visible', 
+        minHeight: '100%' 
+      }}
+    >
       {/* Watermark gigante */}
       <div style={{ position: 'absolute', top: '-60px', left: '-20px', fontSize: '14rem', fontWeight: 900, color: 'rgba(255,255,255,0.02)', zIndex: -1, fontFamily: 'var(--font-display)', userSelect: 'none', pointerEvents: 'none' }}>
         HUB
       </div>
 
-
-
-      <header className="page-header" style={{ marginBottom: '16px' }}>
+      <header 
+        className="page-header dashboard-header" 
+        style={{ 
+          display: 'flex', 
+          flexDirection: 'row',
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '16px',
+          gap: '12px',
+          width: '100%'
+        }}
+      >
         <h1 className="page-title" style={{
-          fontSize: '3rem',
+          fontSize: isMobile ? 'clamp(1.35rem, 5.5vw, 2.2rem)' : '3rem',
           margin: 0,
           fontWeight: 900,
           fontFamily: 'var(--font-body)',
           background: 'linear-gradient(to right, #00f3ff, #bc13fe)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-          letterSpacing: '-0.02em'
+          letterSpacing: '-0.02em',
+          lineHeight: 1.15
         }}>
           Bienvenido a CampusFlow
         </h1>
+
+        <motion.button
+          onClick={handleLogout}
+          whileHover={{ scale: 1.04, boxShadow: '0 0 16px rgba(255, 77, 77, 0.4)' }}
+          whileTap={{ scale: 0.96 }}
+          className="click-press"
+          aria-label="Cerrar Sesión"
+          title="Cerrar Sesión"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: isMobile ? '8px 12px' : '10px 16px',
+            borderRadius: '12px',
+            background: 'rgba(255, 77, 77, 0.1)',
+            border: '1px solid rgba(255, 77, 77, 0.3)',
+            color: '#ff4d4d',
+            cursor: 'pointer',
+            fontSize: isMobile ? '0.78rem' : '0.85rem',
+            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
+            letterSpacing: '0.03em',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            boxShadow: '0 2px 10px rgba(255, 77, 77, 0.15)'
+          }}
+        >
+          <LogOut size={isMobile ? 16 : 18} />
+          <span>Cerrar Sesión</span>
+        </motion.button>
       </header>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px' }}>
@@ -718,18 +784,18 @@ const Dashboard = () => {
                     hoursLeft = (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60);
                   } catch { days = 99; hoursLeft = 999; }
 
-                  // L├ôGICA DE COLORES Y ANIMACI├ôN (RADAR 2.0)
-                  let glowColor = '#00ff66'; // VERDE (Default / > 5 d├¡as)
+                  // LÓGICA DE COLORES Y ANIMACIÓN (RADAR 2.0)
+                  let glowColor = '#00ff66'; // VERDE (Default / > 5 días)
                   let glowSpeed = '4s';      // Brillo lento
 
                   if (hoursLeft < 6) {
                     glowColor = '#ff0033';   // ROJO (< 6 horas)
-                    glowSpeed = '0.8s';      // Parpadeo r├ípido
+                    glowSpeed = '0.8s';      // Parpadeo rápido
                   } else if (days < 2) {
-                    glowColor = '#ff8800';   // NARANJA (< 2 d├¡as)
+                    glowColor = '#ff8800';   // NARANJA (< 2 días)
                     glowSpeed = '2s';        // Brillo medio
                   } else if (days <= 5) {
-                    glowColor = '#00ff66';   // VERDE (Gap 2-5 d├¡as)
+                    glowColor = '#00ff66';   // VERDE (Gap 2-5 días)
                     glowSpeed = '4s';
                   }
 
@@ -792,7 +858,7 @@ const Dashboard = () => {
           {/* COLUMNA DERECHA */}
           <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-            {/* MATRIZ DE ESFUERZO - C├®lulas de Energ├¡a */}
+          {/* MATRIZ DE ESFUERZO - Células de Energía */}
             <div className="glass-panel" style={isLightMode ? {
               ...lightGlassCardStyle, padding: '20px 24px', height: 'max-content'
             } : {
@@ -930,7 +996,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* M├ëTRICAS COMPACTAS (FILA DE 3 COLUMNAS DENTRO DE DERECHA) */}
+            {/* MÉTRICAS COMPACTAS (FILA DE 3 COLUMNAS DENTRO DE DERECHA) */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
 
               <motion.div
@@ -989,7 +1055,7 @@ const Dashboard = () => {
                 </div>
               </motion.div>
 
-              {/* PRIORIDAD M├üXIMA - Tarea m├ís pr├│xima */}
+              {/* PRIORIDAD MÁXIMA - Tarea más próxima */}
               <div className="glass-panel" style={isLightMode ? {
                 ...lightGlassCardStyle, padding: '20px', position: 'relative', overflow: 'hidden', borderRadius: '16px'
               } : {
@@ -1003,7 +1069,7 @@ const Dashboard = () => {
               }}>
                 <Flame color={bigBossColor} size={40} style={{ opacity: 0.1, position: 'absolute', bottom: '-8px', right: '-8px' }} />
                 <h2 style={{ fontSize: '0.65rem', fontWeight: 900, color: bigBossColor, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-display)' }}>
-                  <AlertCircle size={14} /> PRIORIDAD M├üXIMA
+                  <AlertCircle size={14} /> PRIORIDAD MÁXIMA
                 </h2>
                 {bigBossTask ? (
                   <div>
@@ -1013,12 +1079,12 @@ const Dashboard = () => {
                     </p>
                     <div style={{ display: 'inline-flex', padding: '4px 10px', background: `${bigBossColor}22`, borderRadius: '4px', border: `1px solid ${bigBossColor}33` }}>
                       <span style={{ color: bigBossColor, fontWeight: 900, fontSize: '0.6rem', letterSpacing: '1px' }}>
-                  //_OBJETIVO_CR├ìTICO
+                  //_OBJETIVO_CRÍTICO
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>SIN AMENAZAS PR├ôXIMAS</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>SIN AMENAZAS PRÓXIMAS</p>
                 )}
               </div>
 

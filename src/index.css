@@ -1838,8 +1838,13 @@ h5,
   gap: 0 !important;
 }
 
+/* pb-28 utility for generous mobile bottom clearance */
+.pb-28 {
+  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
 .app-container.mobile-layout .main-content {
-  padding: 0 0 calc(80px + env(safe-area-inset-bottom)) !important;
+  padding: 0 0 calc(110px + env(safe-area-inset-bottom, 0px)) !important;
   overflow-x: hidden !important;
 }
 
@@ -1847,18 +1852,27 @@ h5,
 .app-container.mobile-layout .task-board-page,
 .app-container.mobile-layout .agenda-page,
 .app-container.mobile-layout .profile-page {
-  padding: 20px 16px 80px !important;
+  padding: 20px 16px calc(110px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 .app-container.mobile-layout .pomodoro-page {
   height: auto !important;
   min-height: 100% !important;
   justify-content: flex-start !important;
-  padding: 20px 16px 80px !important;
+  padding: 20px 16px calc(110px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
-/* Shared mobile page headers */
-.app-container.mobile-layout .dashboard-page .page-header,
+/* Mobile page headers */
+.app-container.mobile-layout .dashboard-page .page-header {
+  margin-bottom: 20px !important;
+  padding-bottom: 12px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
 .app-container.mobile-layout .task-board-page .page-header,
 .app-container.mobile-layout .agenda-page .page-header {
   margin-bottom: 24px !important;

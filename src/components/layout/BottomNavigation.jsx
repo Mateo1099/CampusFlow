@@ -11,9 +11,11 @@ import {
   MoreHorizontal,
   X,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../../lib/supabaseClient';
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
@@ -76,6 +78,19 @@ const BottomNavigation = () => {
   const handleNavigate = (path) => {
     navigate(path);
     setShowMoreMenu(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (supabase?.auth?.signOut) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.warn('Error al cerrar sesión:', err);
+    } finally {
+      setShowMoreMenu(false);
+      navigate('/login', { replace: true });
+    }
   };
 
   return (
@@ -295,6 +310,79 @@ const BottomNavigation = () => {
                     </button>
                   );
                 })}
+
+                {/* Cerrar Sesión en menú Más */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  aria-label="Cerrar sesión"
+                  style={{
+                    minHeight: '48px',
+                    width: '100%',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    background: 'rgba(255, 77, 77, 0.08)',
+                    border: '1px solid rgba(255, 77, 77, 0.25)',
+                    borderRadius: '14px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    marginTop: '4px',
+                    transition: 'all 0.2s ease',
+                    outline: 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    <div
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: 'rgba(255, 77, 77, 0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <LogOut size={20} color="#ff4d4d" />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: '0.86rem',
+                          fontWeight: 700,
+                          color: '#ff4d4d',
+                          lineHeight: 1.2
+                        }}
+                      >
+                        Cerrar Sesión
+                      </span>
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: '0.72rem',
+                          color: 'rgba(255, 255, 255, 0.6)',
+                          lineHeight: 1.3,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        Finalizar sesión activa
+                      </span>
+                    </div>
+                  </div>
+
+                  <ChevronRight
+                    size={18}
+                    color="rgba(255, 77, 77, 0.6)"
+                    style={{ flexShrink: 0 }}
+                  />
+                </button>
               </div>
             </motion.div>
           </>
