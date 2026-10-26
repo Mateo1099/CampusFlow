@@ -4,8 +4,10 @@ import Layout from './components/layout/Layout';
 import LoadingGlass from './components/ui/LoadingGlass';
 import AppTransitionWrapper from './components/ui/AppTransitionWrapper';
 import ReloadPrompt from './components/ui/ReloadPrompt';
-import ErrorBoundary from './components/ui/ErrorBoundary';
+import * as Sentry from '@sentry/react';
+import SentryErrorFallback from './components/ui/SentryErrorFallback';
 import { usePrefetchRoutes } from './hooks/usePrefetchRoutes';
+
 import { Toaster } from 'sonner';
 
 // Lazy-loaded pages for code splitting
@@ -260,7 +262,9 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ErrorBoundary>
+    <Sentry.ErrorBoundary fallback={({ error, resetError, eventId }) => (
+      <SentryErrorFallback error={error} resetError={resetError} eventId={eventId} />
+    )}>
       <AuthProvider>
         <SettingsProvider>
           <TaskProvider>
@@ -292,9 +296,10 @@ function App() {
           </TaskProvider>
         </SettingsProvider>
       </AuthProvider>
-    </ErrorBoundary>
+    </Sentry.ErrorBoundary>
   );
 }
+
 
 export default App;
 

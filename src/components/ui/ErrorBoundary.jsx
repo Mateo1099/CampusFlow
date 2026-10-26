@@ -1,7 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { AlertTriangle, RefreshCw, Home, ShieldAlert } from 'lucide-react';
+import * as Sentry from '@sentry/react';
 import { safeDevLog } from '../../lib/authSecurity';
+
 
 /**
  * Global and resilient ErrorBoundary for CampusFlow.
@@ -39,6 +41,19 @@ class ErrorBoundary extends React.Component {
       message: error?.message || 'Error desconocido',
       stackSummary: errorInfo?.componentStack ? errorInfo.componentStack.slice(0, 300) : undefined
     });
+
+    try {
+      if (typeof Sentry !== 'undefined' && typeof Sentry.captureException === 'function') {
+        Sentry.captureException(error, {
+          extra: {
+            componentStack: errorInfo?.componentStack ? errorInfo.componentStack.slice(0, 300) : undefined
+          }
+        });
+      }
+    } catch {
+      // Ignorar si Sentry no está inicializado o en entorno mock de test
+    }
+
 
     if (typeof this.props.onError === 'function') {
       try {
