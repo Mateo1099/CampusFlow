@@ -7,6 +7,8 @@ import ReloadPrompt from './components/ui/ReloadPrompt';
 import * as Sentry from '@sentry/react';
 import SentryErrorFallback from './components/ui/SentryErrorFallback';
 import { usePrefetchRoutes } from './hooks/usePrefetchRoutes';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 import { Toaster } from 'sonner';
 
@@ -291,6 +293,8 @@ function App() {
                 />
                 <AppRoutes />
                 <ReloadPrompt />
+                <Analytics />
+                <SpeedInsights />
               </BrowserRouter>
             </GamificationProvider>
           </TaskProvider>
