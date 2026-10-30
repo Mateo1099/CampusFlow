@@ -33,9 +33,10 @@ const COLUMNS = [
   { id: 'entregado',    label: 'ENTREGADO',    accent: '#10b981', icon: CheckCircle2 },
 ];
 
-const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) => {
+const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail, onToggleStatus }) => {
   const courseObj = courses?.find(c => c.id === task.course_id);
   const accentColor = courseObj?.color || 'var(--accent-primary)';
+  const institutionName = task.institution || courseObj?.institution || null;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
@@ -59,7 +60,13 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
     }
   }
 
-  const calculatePriority = (dateStr) => {
+  const calculatePriority = (dateStr, assignedPriority) => {
+    if (assignedPriority) {
+      const norm = String(assignedPriority).toLowerCase();
+      if (norm === 'alta') return { label: 'ALTA', color: '#ff4d4d' };
+      if (norm === 'media') return { label: 'MEDIA', color: '#ffcc00' };
+      if (norm === 'baja') return { label: 'BAJA', color: '#00f3ff' };
+    }
     if (!dateStr) return null;
     const now = new Date();
     now.setHours(0,0,0,0);
@@ -76,7 +83,7 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
     return { label: 'EN TIEMPO', color: '#00f3ff' };
   };
 
-  const priority = calculatePriority(task.deadline || task.due_date);
+  const priority = calculatePriority(task.deadline || task.due_date, task.priority);
 
   // Desglose de ejercicios y enlace de entrega
   const subtasksList = Array.isArray(task.subtasks) ? task.subtasks : [];
@@ -139,10 +146,30 @@ const TaskCard = ({ task, onDelete, onEdit, courses, onDragEnd, onOpenDetail }) 
             className="text-xs font-semibold tracking-wider uppercase truncate" 
             style={{ color: accentColor }}
           >
-            {courseObj?.name || 'General'}
+            {courseObj?.name || 'General'}{institutionName ? ` • ${institutionName}` : ''}
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Botón Alternar Estado (Pendiente <-> Entregado) */}
+          <motion.button 
+            whileHover={{ scale: 1.15, backgroundColor: task.status === 'entregado' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(0, 243, 255, 0.2)' }}
+            whileTap={{ scale: 0.95 }}
+            className="btn-icon-alfa"
+            title={task.status === 'entregado' ? "Marcar como pendiente" : "Marcar como entregado"}
+            style={{ 
+              opacity: 1, cursor: 'pointer', 
+              color: task.status === 'entregado' ? '#10b981' : 'var(--text-muted)',
+              background: task.status === 'entregado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+              border: task.status === 'entregado' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(10px)', padding: '4px 6px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: '8px', transition: 'all 0.3s ease',
+              boxShadow: task.status === 'entregado' ? '0 0 10px rgba(16, 185, 129, 0.3)' : 'none'
+            }}
+            onClick={(e) => { e.stopPropagation(); onToggleStatus?.(task); }}
+          >
+            <CheckCircle2 size={13} strokeWidth={task.status === 'entregado' ? 2.5 : 2} style={{ filter: task.status === 'entregado' ? 'drop-shadow(0 0 4px #10b981)' : 'none' }} />
+          </motion.button>
           {/* Botón Desglose de Ejercicios y Entrega */}
           <motion.button 
             whileHover={{ scale: 1.1, backgroundColor: 'rgba(0, 243, 255, 0.18)', borderColor: 'rgba(0, 243, 255, 0.45)', boxShadow: '0 0 12px rgba(0, 243, 255, 0.4), inset 0 0 6px rgba(0, 243, 255, 0.2)' }}
@@ -276,6 +303,26 @@ const TaskBoard = () => {
   const [detailTaskId, setDetailTaskId] = useState(null);
   const detailTask = useMemo(() => tasks.find(t => t.id === detailTaskId) || null, [tasks, detailTaskId]);
 
+  const [currentFilter, setCurrentFilter] = useState('TODAS');
+  const [currentSort, setCurrentSort] = useState('RECIENTES');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const { pendingItems, requestDelete, undoDelete, isPending } = useUndoDelete({ defaultDuration: 5000 });
+
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    courseId: '', 
+    startDate: '', 
+    dueDate: '', 
+    deadlineTime: '23:59',
+    institution: 'UNAD',
+    priority: 'media',
+    status: 'sin entregar'
+  });
+  const [activePicker, setActivePicker] = useState(null);
+
   // Bloquea el scroll de fondo mientras el modal Nuevo/Editar Trabajo está abierto.
   React.useEffect(() => {
     if (showModal) {
@@ -287,15 +334,23 @@ const TaskBoard = () => {
 
   React.useEffect(() => {
     if (location.state?.openModal) {
+      setIsEditing(false);
+      setEditingTaskId(null);
+      setFormData({
+        title: '',
+        courseId: '',
+        startDate: '',
+        dueDate: '',
+        deadlineTime: '23:59',
+        institution: currentFilter !== 'TODAS' ? currentFilter : 'UNAD',
+        priority: 'media',
+        status: 'sin entregar'
+      });
       setShowModal(true);
       // Limpiar el estado para que no se abra de nuevo al recargar
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location, navigate]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [taskToDelete, setTaskToDelete] = useState(null);
-  const { pendingItems, requestDelete, undoDelete, isPending } = useUndoDelete({ defaultDuration: 5000 });
+  }, [location, navigate, currentFilter]);
 
   const handleTaskDeleteWithUndo = (taskId) => {
     const task = tasks.find(t => t.id === taskId);
@@ -307,11 +362,6 @@ const TaskBoard = () => {
       onFinalDelete: () => deleteTask(taskId)
     });
   };
-  const [formData, setFormData] = useState({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' });
-  const [activePicker, setActivePicker] = useState(null);
-  const [currentFilter, setCurrentFilter] = useState('TODAS');
-  const [currentSort, setCurrentSort] = useState('RECIENTES');
-  const [showSortMenu, setShowSortMenu] = useState(false);
 
   const columnRefs = useRef({});
   const btnNewRef = useRef(null);
@@ -324,11 +374,11 @@ const TaskBoard = () => {
     let result = tasks.filter(task => {
       if (currentFilter === 'TODAS') return true;
       const course = courses.find(c => c.id === task.course_id);
-      const inst = (course?.institution || '').toUpperCase();
+      const inst = (task.institution || course?.institution || '').toUpperCase();
       if (currentFilter === 'UNAD') return inst === 'UNAD';
       if (currentFilter === 'SENA') return inst === 'SENA';
-      if (currentFilter === 'PERSONALIZADO') return inst !== 'UNAD' && inst !== 'SENA';
-      return true;
+      if (currentFilter === 'PERSONALIZADO') return inst === 'PERSONALIZADO' || (!inst.includes('UNAD') && !inst.includes('SENA'));
+      return inst === currentFilter.toUpperCase();
     });
 
     return result.sort((a, b) => {
@@ -344,6 +394,18 @@ const TaskBoard = () => {
       return dateB - dateA;
     });
   }, [tasks, courses, currentFilter, currentSort]);
+
+  const modalCourses = useMemo(() => {
+    if (!formData.institution) return courses;
+    const filtered = courses.filter(c => {
+      const cInst = (c.institution || '').toUpperCase();
+      if (formData.institution === 'UNAD') return cInst === 'UNAD';
+      if (formData.institution === 'SENA') return cInst === 'SENA';
+      if (formData.institution === 'PERSONALIZADO') return cInst !== 'UNAD' && cInst !== 'SENA';
+      return true;
+    });
+    return filtered.length > 0 ? filtered : courses;
+  }, [courses, formData.institution]);
 
   // GSAP: Botón Nuevo Trabajo - Microinteracción Liquid Fill (Radial)
   useGSAP(() => {
@@ -373,6 +435,19 @@ const TaskBoard = () => {
   }, [showModal]);
 
   const handleClose = () => {
+    setIsEditing(false);
+    setEditingTaskId(null);
+    setFormData({ 
+      title: '', 
+      courseId: '', 
+      startDate: '', 
+      dueDate: '', 
+      deadlineTime: '23:59', 
+      institution: currentFilter !== 'TODAS' ? currentFilter : 'UNAD', 
+      priority: 'media',
+      status: 'sin entregar'
+    });
+
     if (!modalPanelRef.current || !closeIconRef.current) {
       setShowModal(false);
       return;
@@ -413,6 +488,26 @@ const TaskBoard = () => {
     } catch { /* ignore */ }
   };
 
+  const handleToggleStatus = async (task) => {
+    const isCurrentlyDelivered = task.status === 'entregado' || task.status === 'submitted' || task.status === 'completado';
+    const targetStatus = isCurrentlyDelivered ? 'sin entregar' : 'entregado';
+
+    if (!isCurrentlyDelivered && !task.xpClaimed) {
+      addXP(50);
+    } else if (isCurrentlyDelivered && task.xpClaimed) {
+      addXP(-50, true);
+    }
+
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: targetStatus, xpClaimed: !isCurrentlyDelivered } : t));
+
+    try {
+      await updateTaskStatus(task.id, targetStatus);
+      playDropSound();
+    } catch (err) {
+      console.error("ALFA_SAVE_ERROR (handleToggleStatus):", err);
+    }
+  };
+
   const handleDragEnd = async (task, info) => {
     const x = info.point.x;
     let targetColumn = task.status;
@@ -441,12 +536,17 @@ const TaskBoard = () => {
   };
 
   const handleEdit = (task) => {
+    const course = courses.find(c => c.id === task.course_id);
+    const inst = task.institution || course?.institution || (currentFilter !== 'TODAS' ? currentFilter : 'UNAD');
     setFormData({ 
       title: task.title, 
       courseId: task.course_id || '', 
       startDate: task.start_date ? task.start_date.split('T')[0] : '', 
       dueDate: (task.deadline || task.due_date) ? (task.deadline || task.due_date).split('T')[0] : '',
-      deadlineTime: (task.deadline_time || task.deadline || task.due_date)?.includes('T') ? (task.deadline_time || task.deadline || task.due_date).split('T')[1].substring(0, 5) : '23:59'
+      deadlineTime: (task.deadline_time || task.deadline || task.due_date)?.includes('T') ? (task.deadline_time || task.deadline || task.due_date).split('T')[1].substring(0, 5) : '23:59',
+      institution: inst,
+      priority: task.priority || 'media',
+      status: task.status || 'sin entregar'
     });
     setEditingTaskId(task.id);
     setIsEditing(true);
@@ -467,25 +567,39 @@ const TaskBoard = () => {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${timeStr}:00`;
     };
 
+    const selectedCourse = courses.find(c => c.id === formData.courseId);
+    const chosenInstitution = formData.institution || selectedCourse?.institution || (currentFilter !== 'TODAS' ? currentFilter : 'UNAD');
+    const chosenPriority = formData.priority || 'media';
+    const chosenStatus = isEditing ? (formData.status || 'sin entregar') : 'sin entregar';
+
     const taskData = { 
       title: formData.title, 
       course_id: formData.courseId, // ASEGURAR UUID DE MATERIA
       start_date: formatDateToISO(formData.startDate), 
       deadline: formatDateToISO(formData.dueDate, formData.deadlineTime || '23:59'),
-      deadline_time: formatDateToISO(formData.dueDate, formData.deadlineTime || '23:59')
+      deadline_time: formatDateToISO(formData.dueDate, formData.deadlineTime || '23:59'),
+      institution: chosenInstitution,
+      priority: chosenPriority,
+      status: chosenStatus
     };
-
-    // ALFA_DEBUG: Verificación de integridad de datos antes del envío
-
 
     try {
       if (isEditing) {
         await updateTask(editingTaskId, taskData);
       } else {
-        await addTask({ ...taskData, status: 'sin entregar' });
+        await addTask(taskData);
       }
       handleClose();
-      setFormData({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' });
+      setFormData({ 
+        title: '', 
+        courseId: '', 
+        startDate: '', 
+        dueDate: '', 
+        deadlineTime: '23:59', 
+        institution: currentFilter !== 'TODAS' ? currentFilter : 'UNAD', 
+        priority: 'media',
+        status: 'sin entregar'
+      });
     } catch (err) { 
       console.error("ALFA_SAVE_ERROR:", err); 
     }
@@ -527,7 +641,21 @@ const TaskBoard = () => {
         </div>
         <motion.button 
           className="click-press" 
-          onClick={() => { setIsEditing(false); setFormData({ title: '', courseId: '', startDate: '', dueDate: '', deadlineTime: '23:59' }); setShowModal(true); }} 
+          onClick={() => { 
+            setIsEditing(false); 
+            setEditingTaskId(null);
+            setFormData({ 
+              title: '', 
+              courseId: '', 
+              startDate: '', 
+              dueDate: '', 
+              deadlineTime: '23:59',
+              institution: currentFilter !== 'TODAS' ? currentFilter : 'UNAD',
+              priority: 'media',
+              status: 'sin entregar'
+            }); 
+            setShowModal(true); 
+          }} 
           whileHover={{ scale: 1.05, backgroundColor: 'rgba(6, 182, 212, 0.2)', boxShadow: '0 0 20px rgba(6, 182, 212, 0.4)', borderColor: 'rgba(6, 182, 212, 0.6)' }}
           whileTap={{ scale: 0.95 }}
           style={{ 
@@ -739,6 +867,7 @@ const TaskBoard = () => {
                             courses={courses}
                             onDragEnd={handleDragEnd}
                             onOpenDetail={() => setDetailTaskId(task.id)}
+                            onToggleStatus={handleToggleStatus}
                           />
                         </CrumpleTossItem>
                       ))
@@ -807,18 +936,183 @@ const TaskBoard = () => {
                 </div>
               </button>
             </div>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <input className="input" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="TÍTULO DEL TRABAJO *" style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '10px' }} />
-              <CustomSelect
-                value={formData.courseId}
-                onChange={(val) => setFormData({ ...formData, courseId: val })}
-                options={[
-                  { value: '', label: 'Selecciona materia...' },
-                  ...courses.map(c => ({ value: c.id, label: c.name }))
-                ]}
-                placeholder="Selecciona materia..."
-                required
-              />
+
+              {/* SELECTOR DE INSTITUCIÓN ASOCIADA */}
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '0.68rem', 
+                  fontWeight: 800, 
+                  color: '#00f3ff', 
+                  marginBottom: '8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em'
+                }}>
+                  INSTITUCIÓN ASOCIADA
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'UNAD', label: 'UNAD', color: '#00f3ff' },
+                    { id: 'SENA', label: 'SENA', color: '#00ff88' },
+                    { id: 'PERSONALIZADO', label: 'PERSONALIZADO', color: '#bc13fe' }
+                  ].map(inst => {
+                    const isSelected = (formData.institution || 'UNAD').toUpperCase() === inst.id;
+                    return (
+                      <button
+                        key={inst.id}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, institution: inst.id }));
+                        }}
+                        style={{
+                          padding: '10px 6px',
+                          borderRadius: '10px',
+                          border: isSelected ? `1.5px solid ${inst.color}` : '1px solid rgba(255,255,255,0.08)',
+                          background: isSelected ? `color-mix(in srgb, ${inst.color} 15%, transparent)` : 'rgba(255,255,255,0.02)',
+                          color: isSelected ? inst.color : 'var(--text-muted)',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          transition: 'all 0.25s ease',
+                          boxShadow: isSelected ? `0 0 14px ${inst.color}33` : 'none',
+                          letterSpacing: '0.05em'
+                        }}
+                      >
+                        {inst.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SELECTOR DE MATERIA */}
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '0.68rem', 
+                  fontWeight: 800, 
+                  color: 'var(--text-secondary)', 
+                  marginBottom: '8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em'
+                }}>
+                  MATERIA / CURSO *
+                </label>
+                <CustomSelect
+                  value={formData.courseId}
+                  onChange={(val) => {
+                    const selected = courses.find(c => c.id === val);
+                    setFormData(prev => ({
+                      ...prev,
+                      courseId: val,
+                      institution: selected?.institution ? selected.institution.toUpperCase() : prev.institution
+                    }));
+                  }}
+                  options={[
+                    { value: '', label: 'Selecciona materia...' },
+                    ...modalCourses.map(c => ({ 
+                      value: c.id, 
+                      label: `${c.name}${c.institution ? ` (${c.institution})` : ''}` 
+                    }))
+                  ]}
+                  placeholder="Selecciona materia..."
+                  required
+                />
+              </div>
+
+              {/* SELECTOR DE PRIORIDAD */}
+              <div>
+                <label style={{ 
+                  display: 'block', 
+                  fontSize: '0.68rem', 
+                  fontWeight: 800, 
+                  color: 'var(--text-secondary)', 
+                  marginBottom: '8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em'
+                }}>
+                  PRIORIDAD
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'alta', label: 'ALTA', color: '#ff4d4d' },
+                    { id: 'media', label: 'MEDIA', color: '#ffcc00' },
+                    { id: 'baja', label: 'BAJA', color: '#00f3ff' }
+                  ].map(p => {
+                    const isSelected = (formData.priority || 'media').toLowerCase() === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, priority: p.id }))}
+                        style={{
+                          padding: '8px 6px',
+                          borderRadius: '8px',
+                          border: isSelected ? `1.5px solid ${p.color}` : '1px solid rgba(255,255,255,0.08)',
+                          background: isSelected ? `color-mix(in srgb, ${p.color} 15%, transparent)` : 'rgba(255,255,255,0.02)',
+                          color: isSelected ? p.color : 'var(--text-muted)',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isSelected ? `0 0 12px ${p.color}33` : 'none'
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SELECTOR DE ESTADO (SOLO EN MODO EDICIÓN) */}
+              {isEditing && (
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.68rem', 
+                    fontWeight: 800, 
+                    color: 'var(--text-secondary)', 
+                    marginBottom: '8px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em'
+                  }}>
+                    ESTADO
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                    {COLUMNS.map(col => {
+                      const isSelected = (formData.status || 'sin entregar').toLowerCase() === col.id;
+                      return (
+                        <button
+                          key={col.id}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, status: col.id }))}
+                          style={{
+                            padding: '8px 4px',
+                            borderRadius: '8px',
+                            border: isSelected ? `1.5px solid ${col.accent}` : '1px solid rgba(255,255,255,0.08)',
+                            background: isSelected ? `color-mix(in srgb, ${col.accent} 15%, transparent)` : 'rgba(255,255,255,0.02)',
+                            color: isSelected ? col.accent : 'var(--text-muted)',
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            transition: 'all 0.2s ease',
+                            boxShadow: isSelected ? `0 0 10px ${col.accent}33` : 'none'
+                          }}
+                        >
+                          {col.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '12px' }}>
                 {/* FECHA INICIO */}
                 <div>

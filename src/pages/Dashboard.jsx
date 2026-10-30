@@ -110,17 +110,24 @@ const Dashboard = () => {
 
   const filteredCourses = useMemo(() => {
     if (currentFilter === 'TODAS') return courses;
-    return courses.filter(c => (c.institution || '').toUpperCase() === currentFilter.toUpperCase());
+    return courses.filter(c => {
+      const inst = (c.institution || '').toUpperCase();
+      if (currentFilter === 'UNAD') return inst === 'UNAD';
+      if (currentFilter === 'SENA') return inst === 'SENA';
+      if (currentFilter === 'PERSONALIZADO') return inst === 'PERSONALIZADO' || (!inst.includes('UNAD') && !inst.includes('SENA'));
+      return inst === currentFilter.toUpperCase();
+    });
   }, [courses, currentFilter]);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Filtro por institución
-      if (currentFilter !== 'TODAS') {
-        const course = courses.find(c => c.id === task.course_id);
-        if ((course?.institution || '').toUpperCase() !== currentFilter.toUpperCase()) return false;
-      }
-      return true;
+      if (currentFilter === 'TODAS') return true;
+      const course = courses.find(c => c.id === task.course_id);
+      const inst = (task.institution || course?.institution || '').toUpperCase();
+      if (currentFilter === 'UNAD') return inst === 'UNAD';
+      if (currentFilter === 'SENA') return inst === 'SENA';
+      if (currentFilter === 'PERSONALIZADO') return inst === 'PERSONALIZADO' || (!inst.includes('UNAD') && !inst.includes('SENA'));
+      return inst === currentFilter.toUpperCase();
     });
   }, [tasks, currentFilter, courses]);
 
@@ -128,7 +135,7 @@ const Dashboard = () => {
   const safeTotalTasks = filteredTasks.length;
   const safeCompletedTasks = filteredTasks.filter(t => {
     const status = (t.status || '').toLowerCase();
-    return status === 'entregado' || status === 'completed' || status === 'submitted';
+    return status === 'entregado' || status === 'completed' || status === 'submitted' || status === 'completado' || status === 'done';
   }).length;
   const pendingTasks = Math.max(safeTotalTasks - safeCompletedTasks, 0);
 
@@ -142,18 +149,18 @@ const Dashboard = () => {
   // 2. Filtro por institución asociada (por sesión o por materia)
   const filteredStudySessions = useMemo(() => {
     return activeUserSessions.filter(session => {
-      if (currentFilter !== 'TODAS') {
-        const sessionInst = String(session.institution || '').toUpperCase();
-        let courseInst = '';
-        if (session.course_id && courses.length > 0) {
-          const course = courses.find(c => String(c.id) === String(session.course_id));
-          courseInst = String(course?.institution || '').toUpperCase();
-        }
-        if (sessionInst !== currentFilter.toUpperCase() && courseInst !== currentFilter.toUpperCase()) {
-          return false;
-        }
+      if (currentFilter === 'TODAS') return true;
+      const sessionInst = String(session.institution || '').toUpperCase();
+      let courseInst = '';
+      if (session.course_id && courses.length > 0) {
+        const course = courses.find(c => String(c.id) === String(session.course_id));
+        courseInst = String(course?.institution || '').toUpperCase();
       }
-      return true;
+      const inst = sessionInst || courseInst;
+      if (currentFilter === 'UNAD') return inst === 'UNAD';
+      if (currentFilter === 'SENA') return inst === 'SENA';
+      if (currentFilter === 'PERSONALIZADO') return inst === 'PERSONALIZADO' || (!inst.includes('UNAD') && !inst.includes('SENA'));
+      return inst === currentFilter.toUpperCase();
     });
   }, [activeUserSessions, currentFilter, courses]);
 
@@ -187,11 +194,11 @@ const Dashboard = () => {
   const totalTasks = safeTotalTasks;
   const completedTasks = safeCompletedTasks;
 
-  // Calculate completion rate
+  // Calculate completion rate con fórmula blindada contra división por cero: (completadas / total) * 100
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  // Determine if analytics is empty for new dashboard section
-  const isAnalyticsDashboardEmpty = analyticsLoading || (totalTasks === 0 && totalMinutes === 0 && totalHabits === 0);
+  // Garantiza que el panel de métricas y la barra de cumplimiento se muestren siempre listos, incluso con 0 tareas
+  const isAnalyticsDashboardEmpty = analyticsLoading;
 
   const getSmartInsight = () => {
     const hasBlocks = (completedBlocks + pendingBlocks) > 0;

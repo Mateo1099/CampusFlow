@@ -261,3 +261,4 @@ export function calculateStudyMinutes(sessions, options = {}) {
 
   return Math.floor(Number.isFinite(total) && total > 0 ? total : 0);
 }
+

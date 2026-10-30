@@ -133,6 +133,7 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
 
     // Cambiar a la pestaña de Bloques y Rutinas si la vista inicial es Calendario
     const plannerTabBtn = page.getByRole('button', { name: /Bloques y Rutinas/i });
+    await plannerTabBtn.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
     if (await plannerTabBtn.isVisible()) {
       await plannerTabBtn.click();
     }
