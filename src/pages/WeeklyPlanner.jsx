@@ -16,6 +16,8 @@ import CrumpleTossItem from '../components/ui/CrumpleTossItem';
 import { UndoToastContainer } from '../components/ui/UndoToast';
 import { useUndoDelete } from '../hooks/useUndoDelete';
 import BinEatButton from '../components/ui/BinEatButton';
+import CalendarView from '../components/calendar/CalendarView';
+import { playClick } from '../lib/audioService';
 
 const DAY_OPTIONS = [
   { value: 'monday', label: 'Lunes' },
@@ -275,6 +277,7 @@ function WeeklyPlanner() {
   const isLightMode = settings?.theme === 'light';
 
   const [activePlannerId, setActivePlannerId] = useState(null);
+  const [mainTab, setMainTab] = useState('calendar');
   const [filter, setFilter] = useState('Todas');
   
   // Modals state
@@ -355,7 +358,61 @@ function WeeklyPlanner() {
 
   return (
     <div className="animate-fade-in w-full" style={{ padding: '32px 12px', height: '100%', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
-      {!activePlannerId ? (
+      {!activePlannerId && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => { playClick(800); setMainTab('calendar'); }}
+            style={{
+              padding: '10px 22px',
+              borderRadius: '50px',
+              border: mainTab === 'calendar' ? '1.5px solid #00f3ff' : '1px solid rgba(255,255,255,0.08)',
+              background: mainTab === 'calendar' ? 'rgba(0, 243, 255, 0.14)' : 'rgba(255,255,255,0.03)',
+              color: mainTab === 'calendar' ? '#00f3ff' : 'var(--text-muted)',
+              fontSize: '0.84rem',
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: mainTab === 'calendar' ? '0 0 16px rgba(0, 243, 255, 0.25)' : 'none',
+              transition: 'all 0.2s',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase'
+            }}
+          >
+            <Calendar size={16} />
+            Calendario Académico
+          </button>
+          <button
+            type="button"
+            onClick={() => { playClick(800); setMainTab('planner'); }}
+            style={{
+              padding: '10px 22px',
+              borderRadius: '50px',
+              border: mainTab === 'planner' ? '1.5px solid #00f3ff' : '1px solid rgba(255,255,255,0.08)',
+              background: mainTab === 'planner' ? 'rgba(0, 243, 255, 0.14)' : 'rgba(255,255,255,0.03)',
+              color: mainTab === 'planner' ? '#00f3ff' : 'var(--text-muted)',
+              fontSize: '0.84rem',
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: mainTab === 'planner' ? '0 0 16px rgba(0, 243, 255, 0.25)' : 'none',
+              transition: 'all 0.2s',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase'
+            }}
+          >
+            <Clock size={16} />
+            Bloques y Rutinas
+          </button>
+        </div>
+      )}
+      {!activePlannerId && mainTab === 'calendar' ? (
+        <CalendarView />
+      ) : !activePlannerId ? (
         <PlannersList 
           planners={planners} 
           filter={filter} 

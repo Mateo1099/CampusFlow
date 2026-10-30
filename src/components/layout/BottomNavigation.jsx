@@ -27,7 +27,7 @@ const BottomNavigation = () => {
     { path: '/', label: 'Inicio', icon: BarChart3 },
     { path: '/agenda', label: 'Materias', icon: Calendar },
     { path: '/tasks', label: 'Tareas', icon: ClipboardList },
-    { path: '/planner', label: 'Plan', icon: CalendarDays },
+    { path: '/planner', label: 'Calendario', icon: CalendarDays },
   ];
 
   // 3 accesos secundarios en el menú emergente "Más"

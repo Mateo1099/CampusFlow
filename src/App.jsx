@@ -249,6 +249,8 @@ function AppRoutes() {
             <Route path="tasks" element={<Suspense fallback={<LoadingGlass />}><TaskBoard /></Suspense>} />
             <Route path="trabajos" element={<Navigate to="/tasks" replace />} />
             <Route path="planner" element={<Suspense fallback={<LoadingGlass />}><WeeklyPlanner /></Suspense>} />
+            <Route path="calendar" element={<Navigate to="/planner" replace />} />
+            <Route path="calendario" element={<Navigate to="/planner" replace />} />
             <Route path="pomodoro" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
             <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />
             <Route path="stats" element={<Suspense fallback={<LoadingGlass />}><Stats /></Suspense>} />

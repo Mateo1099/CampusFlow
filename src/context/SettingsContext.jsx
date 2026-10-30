@@ -44,7 +44,7 @@ export const FONT_OPTIONS = [
 export const translations = {
   es: {
     dashboard: 'Dashboard', subjects: 'Materias', notes: 'Apuntes', tasks: 'Trabajos',
-    planner: 'PLANIFICADOR SEMANAL', pomodoro: 'Estudio', profile: 'Ajustes', analytics: 'Analítica',
+    planner: 'Calendario', pomodoro: 'Estudio', profile: 'Ajustes', analytics: 'Analítica',
     stats: 'Estadísticas', addSubject: 'Añadir Materia', subjectName: 'Nombre del Curso', code: 'Código',
     teacher: 'Profesor', institution: 'Institución', tetherColor: 'Color Identificador', save: 'Registrar',
     delete: 'Eliminar', editColor: 'Editar Color', emptyDatabase: 'Base de Datos Vacía',
@@ -71,7 +71,7 @@ export const translations = {
   },
   en: {
     dashboard: 'Dashboard', subjects: 'Subjects', notes: 'Notes', tasks: 'Tasks',
-    planner: 'Daily Planner', pomodoro: 'Study', profile: 'Settings', analytics: 'Analytics',
+    planner: 'Calendar', pomodoro: 'Study', profile: 'Settings', analytics: 'Analytics',
     stats: 'Statistics', addSubject: 'Add Subject', subjectName: 'Course Name', code: 'Code (Optional)',
     teacher: 'Teacher (Optional)', institution: 'Institution', tetherColor: 'Tether Color',
     save: 'Register', delete: 'Delete', editColor: 'Edit Color', emptyDatabase: 'Empty Database',
@@ -98,7 +98,7 @@ export const translations = {
   },
   pt: {
     dashboard: 'Painel', subjects: 'Disciplinas', notes: 'Anotações', tasks: 'Tarefas',
-    planner: 'PLANEJADOR SEMANAL', pomodoro: 'Estudo', profile: 'Configurações', analytics: 'Analítica',
+    planner: 'Calendário', pomodoro: 'Estudo', profile: 'Configurações', analytics: 'Analítica',
     stats: 'Estatísticas', addSubject: 'Adicionar Disciplina', subjectName: 'Nome do Curso', code: 'Código',
     teacher: 'Professor', institution: 'Instituição', tetherColor: 'Cor Identificadora', save: 'Salvar',
     delete: 'Excluir', editColor: 'Editar Cor', emptyDatabase: 'Banco de Dados Vazio',
