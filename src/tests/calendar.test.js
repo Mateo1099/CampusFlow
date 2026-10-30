@@ -11,7 +11,10 @@ import {
   groupTasksByDate,
   formatWeekRange,
   formatLongDate,
-  INSTITUTION_THEMES
+  INSTITUTION_THEMES,
+  generateICalFile,
+  getGoogleCalendarUrl,
+  getRelativeDueDate
 } from '../components/calendar/calendarUtils.js';
 
 describe('calendarUtils — Utilidades del Calendario', () => {
@@ -149,6 +152,131 @@ describe('calendarUtils — Utilidades del Calendario', () => {
 
       const formatted = formatLongDate('2026-10-30');
       expect(formatted).toContain('30 de Octubre');
+    });
+  });
+
+  describe('generateICalFile — Exportación estándar RFC 5545 (.ics)', () => {
+    it('construye la estructura base VCALENDAR y VEVENT', () => {
+      const task = {
+        id: 'task-101',
+        title: 'Taller de Algoritmos',
+        deadline: '2026-11-15T23:59:00',
+        deadline_time: '23:59',
+        institution: 'UNAD',
+        task_notes: 'Entrega en PDF'
+      };
+
+      const ical = generateICalFile([task]);
+
+      expect(ical).toContain('BEGIN:VCALENDAR');
+      expect(ical).toContain('VERSION:2.0');
+      expect(ical).toContain('PRODID:-//CampusFlow//CampusFlow Calendar//ES');
+      expect(ical).toContain('BEGIN:VEVENT');
+      expect(ical).toContain('UID:task-101@campusflow.app');
+      expect(ical).toContain('SUMMARY:Taller de Algoritmos');
+      expect(ical).toContain('DTSTART:20261115T235900');
+      expect(ical).toContain('CATEGORIES:UNAD');
+      expect(ical).toContain('END:VEVENT');
+      expect(ical).toContain('END:VCALENDAR');
+    });
+
+    it('escapa caracteres especiales según el estándar', () => {
+      const task = {
+        id: 'task-102',
+        title: 'Proyecto, Parte 1; Fase final',
+        deadline: '2026-11-20T18:00:00',
+        task_notes: 'Línea 1\nLínea 2'
+      };
+
+      const ical = generateICalFile([task]);
+      expect(ical).toContain('Proyecto\\, Parte 1\\; Fase final');
+      expect(ical).toContain('Línea 1\\nLínea 2');
+    });
+
+    it('acepta una sola tarea u objeto sin fallar', () => {
+      const task = {
+        title: 'Entrega única',
+        deadline: '2026-11-25T12:00:00'
+      };
+
+      const ical = generateICalFile(task);
+      expect(ical).toContain('SUMMARY:Entrega única');
+      expect(ical).toContain('BEGIN:VEVENT');
+    });
+  });
+
+  describe('getGoogleCalendarUrl — Enlace a Google Calendar', () => {
+    it('construye la URL de creación con parámetros codificados', () => {
+      const task = {
+        title: 'Entrega Fase 4',
+        deadline: '2026-11-10T20:00:00',
+        deadline_time: '20:00',
+        institution: 'SENA',
+        task_notes: 'Subir a plataforma'
+      };
+
+      const url = getGoogleCalendarUrl(task);
+      expect(url).toContain('https://calendar.google.com/calendar/render?');
+      expect(url).toContain('action=TEMPLATE');
+      expect(url).toContain('text=Entrega+Fase+4');
+      expect(url).toContain('dates=20261110T200000%2F20261110T210000');
+      expect(url).toContain('location=CampusFlow+-+SENA');
+    });
+
+    it('retorna string vacío si la tarea carece de fecha', () => {
+      expect(getGoogleCalendarUrl({})).toBe('');
+      expect(getGoogleCalendarUrl(null)).toBe('');
+    });
+  });
+
+  describe('getRelativeDueDate — Cálculo de tiempo en lenguaje natural estudiantil', () => {
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+    it('retorna "Vence hoy a las HH:mm" si la fecha es hoy con hora', () => {
+      const result = getRelativeDueDate(`${todayStr}T23:59:00`);
+      expect(result).toBe('Vence hoy a las 23:59');
+    });
+
+    it('retorna "Vence hoy" si es hoy y no tiene hora', () => {
+      const result = getRelativeDueDate(todayStr);
+      expect(result).toBe('Vence hoy');
+    });
+
+    it('retorna "Vence mañana" para el día siguiente', () => {
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+
+      const result = getRelativeDueDate(tomorrowStr);
+      expect(result).toBe('Vence mañana');
+    });
+
+    it('retorna "Faltan X días" para fechas futuras', () => {
+      const future = new Date(today);
+      future.setDate(today.getDate() + 5);
+      const futureStr = `${future.getFullYear()}-${pad(future.getMonth() + 1)}-${pad(future.getDate())}`;
+
+      const result = getRelativeDueDate(futureStr);
+      expect(result).toBe('Faltan 5 días');
+    });
+
+    it('retorna "Vencida hace X días" para fechas pasadas', () => {
+      const past = new Date(today);
+      past.setDate(today.getDate() - 3);
+      const pastStr = `${past.getFullYear()}-${pad(past.getMonth() + 1)}-${pad(past.getDate())}`;
+
+      const result = getRelativeDueDate(pastStr);
+      expect(result).toBe('Vencida hace 3 días');
+    });
+
+    it('funciona pasando directamente un objeto de tarea', () => {
+      const task = {
+        deadline: `${todayStr}T18:00:00`,
+        deadline_time: '18:00'
+      };
+      expect(getRelativeDueDate(task)).toBe('Vence hoy a las 18:00');
     });
   });
 });

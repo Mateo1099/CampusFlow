@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, Clock, Calendar as CalendarIcon, AlertCircle, Eye } from 'lucide-react';
+import { Plus, Check, Clock, Calendar as CalendarIcon, Flame } from 'lucide-react';
 import {
   DAY_NAMES_ES,
   getMonthMatrix,
@@ -152,6 +152,30 @@ export default function CalendarMonthGrid({
                         }}
                       >
                         HOY
+                      </span>
+                    )}
+
+                    {/* Indicador sutil de Día Cargado (3 o más entregas) */}
+                    {dayTasks.length >= 3 && (
+                      <span
+                        title={`Día cargado: ${dayTasks.length} entregas programadas`}
+                        style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 900,
+                          padding: '1px 5px',
+                          borderRadius: '6px',
+                          background: 'rgba(255, 179, 71, 0.16)',
+                          color: '#ffb347',
+                          border: '1px solid rgba(255, 179, 71, 0.45)',
+                          boxShadow: '0 0 8px rgba(255, 179, 71, 0.25)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                      >
+                        <Flame size={10} color="#ffb347" />
+                        <span className="hidden lg:inline">Día cargado</span>
+                        <span className="lg:hidden">{dayTasks.length}</span>
                       </span>
                     )}
                   </div>

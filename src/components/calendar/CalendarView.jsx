@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
@@ -7,9 +7,9 @@ import {
   Plus,
   LayoutGrid,
   Columns,
-  Sparkles,
-  RefreshCw
+  Download
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTasksContext } from '../../context/TaskContext';
 import {
   MONTH_NAMES_ES,
@@ -17,7 +17,9 @@ import {
   groupTasksByDate,
   formatWeekRange,
   getWeekDays,
-  getTaskInstitution
+  getTaskInstitution,
+  downloadICalFile,
+  matchesInstitutionFilter
 } from './calendarUtils';
 import CalendarMonthGrid from './CalendarMonthGrid';
 import CalendarWeekGrid from './CalendarWeekGrid';
@@ -86,6 +88,21 @@ export default function CalendarView() {
     const now = new Date();
     setCurrentDate(now);
     setSelectedDay(normalizeDateStr(now));
+  };
+
+  const handleExportICal = () => {
+    playClick(950);
+    const filteredTasks = tasks.filter((t) => matchesInstitutionFilter(t, courses, institutionFilter));
+    if (filteredTasks.length === 0) {
+      toast.info('No hay entregas para exportar con el filtro actual');
+      return;
+    }
+    const filterTag = institutionFilter.toLowerCase();
+    const filename = `campusflow-entregas-${filterTag}.ics`;
+    downloadICalFile(filteredTasks, filename);
+    toast.success(`Se exportaron ${filteredTasks.length} entregas a ${filename}`, {
+      description: 'Listo para importar en Google Calendar, Outlook o Apple Calendar.'
+    });
   };
 
   // Conteo de entregas por institución
@@ -457,6 +474,35 @@ export default function CalendarView() {
               </button>
             );
           })}
+
+          {/* Botón Cyber Luxe: Exportar a Calendario (.ics) */}
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            type="button"
+            onClick={handleExportICal}
+            title="Descargar archivo .ics compatible con Google Calendar, Apple Calendar y Outlook"
+            style={{
+              padding: '8px 16px',
+              borderRadius: '50px',
+              border: '1px solid rgba(0, 243, 255, 0.35)',
+              background: 'linear-gradient(135deg, rgba(0, 243, 255, 0.12), rgba(255, 255, 255, 0.02))',
+              color: '#00f3ff',
+              fontSize: '0.78rem',
+              fontWeight: 900,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 0 16px rgba(0, 243, 255, 0.15)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Download size={13} />
+            Exportar (.ics)
+          </motion.button>
         </div>
       </div>
 

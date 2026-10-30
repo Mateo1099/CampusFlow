@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Calendar, Clock, BookOpen, AlertCircle, Flame, Eye,
-  CheckCircle2, ExternalLink, Trash2, ListTodo, Layers, ArrowUpRight
+  X, Calendar, Clock, AlertCircle, Flame, Eye,
+  CheckCircle2, ExternalLink, Trash2, ListTodo, Layers, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getTaskDate, getTaskTime, getTaskInstitution, getInstitutionTheme,
-  getTaskPriority, formatLongDate
+  getTaskPriority, formatLongDate, getRelativeDueDate, getGoogleCalendarUrl, downloadICalFile
 } from './calendarUtils';
 import { playClick } from '../../lib/audioService';
 
@@ -44,6 +44,7 @@ export default function CalendarEventDetailModal({
   const dateStr = getTaskDate(task);
   const timeStr = getTaskTime(task);
   const priority = getTaskPriority(task);
+  const relativeDue = getRelativeDueDate(task);
   const currentStatus = (task.status || 'sin entregar').toLowerCase();
 
   const handleStatusChange = async (newStatus) => {
@@ -172,6 +173,55 @@ export default function CalendarEventDetailModal({
                     {priority.label}
                   </span>
                 )}
+
+                {/* Relative Due Date Urgency Badge */}
+                {relativeDue && (
+                  <span
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      fontSize: '0.72rem',
+                      fontWeight: 900,
+                      letterSpacing: '0.04em',
+                      background: relativeDue.includes('Vencida')
+                        ? 'rgba(255, 77, 77, 0.2)'
+                        : relativeDue.includes('hoy')
+                        ? 'rgba(255, 0, 85, 0.2)'
+                        : relativeDue.includes('mañana')
+                        ? 'rgba(245, 158, 11, 0.2)'
+                        : 'rgba(0, 243, 255, 0.15)',
+                      color: relativeDue.includes('Vencida')
+                        ? '#ff4d4d'
+                        : relativeDue.includes('hoy')
+                        ? '#ff0055'
+                        : relativeDue.includes('mañana')
+                        ? '#f59e0b'
+                        : '#00f3ff',
+                      border: `1px solid ${
+                        relativeDue.includes('Vencida')
+                          ? 'rgba(255, 77, 77, 0.5)'
+                          : relativeDue.includes('hoy')
+                          ? 'rgba(255, 0, 85, 0.5)'
+                          : relativeDue.includes('mañana')
+                          ? 'rgba(245, 158, 11, 0.5)'
+                          : 'rgba(0, 243, 255, 0.35)'
+                      }`,
+                      boxShadow: `0 0 10px ${
+                        relativeDue.includes('Vencida')
+                          ? 'rgba(255, 77, 77, 0.35)'
+                          : relativeDue.includes('hoy')
+                          ? 'rgba(255, 0, 85, 0.35)'
+                          : 'rgba(0, 243, 255, 0.2)'
+                      }`,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Clock size={12} />
+                    {relativeDue}
+                  </span>
+                )}
               </div>
 
               <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.25 }}>
@@ -250,6 +300,70 @@ export default function CalendarEventDetailModal({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Acciones de Exportación y Calendarios Externos */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick(900);
+                  const url = getGoogleCalendarUrl(task);
+                  if (url) {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                    toast.success('Abriendo Google Calendar...');
+                  }
+                }}
+                style={{
+                  flex: '1 1 180px',
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  background: 'rgba(66, 133, 244, 0.12)',
+                  border: '1px solid rgba(66, 133, 244, 0.35)',
+                  color: '#60a5fa',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 0 12px rgba(66, 133, 244, 0.15)'
+                }}
+              >
+                <ExternalLink size={14} />
+                Añadir a Google Calendar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  playClick(900);
+                  downloadICalFile([task], `${task.title || 'entrega'}.ics`);
+                  toast.success('Archivo .ics descargado exitosamente');
+                }}
+                style={{
+                  flex: '1 1 140px',
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  background: 'rgba(0, 243, 255, 0.1)',
+                  border: '1px solid rgba(0, 243, 255, 0.3)',
+                  color: '#00f3ff',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 0 12px rgba(0, 243, 255, 0.15)'
+                }}
+              >
+                <Download size={14} />
+                Descargar .ics
+              </button>
             </div>
 
             {/* Selector de Estado */}

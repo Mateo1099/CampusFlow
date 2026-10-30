@@ -338,3 +338,212 @@ export function formatLongDate(dateValue) {
   const monthName = MONTH_NAMES_ES[date.getMonth()];
   return `${dayName}, ${d} de ${monthName} de ${y}`;
 }
+
+/**
+ * Calcula el tiempo restante o vencido en lenguaje natural estudiantil:
+ * - "Vence hoy a las HH:mm" (o "Vence hoy")
+ * - "Vence mañana"
+ * - "Faltan X días"
+ * - "Vencida hace X días"
+ */
+export function getRelativeDueDate(dateInput, timeInput = null) {
+  if (!dateInput) return '';
+
+  let dateStr = null;
+  let timeStr = timeInput;
+
+  if (typeof dateInput === 'object' && !(dateInput instanceof Date)) {
+    dateStr = getTaskDate(dateInput);
+    timeStr = getTaskTime(dateInput) || timeInput;
+  } else {
+    dateStr = normalizeDateStr(dateInput);
+    if (!timeStr && typeof dateInput === 'string' && dateInput.includes('T')) {
+      const part = dateInput.split('T')[1]?.substring(0, 5);
+      if (part && /^\d{2}:\d{2}$/.test(part) && part !== '00:00') {
+        timeStr = part;
+      }
+    }
+  }
+
+  if (!dateStr) return '';
+
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDate = new Date(y, m - 1, d);
+
+  if (isNaN(targetDate.getTime())) return '';
+
+  const diffMs = targetDate.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) {
+    return timeStr ? `Vence hoy a las ${timeStr}` : 'Vence hoy';
+  }
+  if (diffDays === 1) {
+    return 'Vence mañana';
+  }
+  if (diffDays > 1) {
+    return `Faltan ${diffDays} días`;
+  }
+  if (diffDays === -1) {
+    return 'Vencida hace 1 día';
+  }
+  return `Vencida hace ${Math.abs(diffDays)} días`;
+}
+
+/**
+ * Genera el enlace directo para añadir la entrega en Google Calendar
+ */
+export function getGoogleCalendarUrl(event) {
+  if (!event) return '';
+  const title = event.title || 'Entrega Académica CampusFlow';
+  const dateStr = getTaskDate(event);
+  const timeStr = getTaskTime(event) || '23:59';
+
+  if (!dateStr) return '';
+
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = (timeStr || '23:59').split(':').map(Number);
+  const hours = Number.isFinite(hh) ? hh : 23;
+  const minutes = Number.isFinite(mm) ? mm : 59;
+  const startDate = new Date(y, m - 1, d, hours, minutes, 0);
+  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hora de duración
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (dt) =>
+    `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+
+  const datesParam = `${fmt(startDate)}/${fmt(endDate)}`;
+  const inst = event.institution || getTaskInstitution(event);
+  const courseName = event.courses?.name || event.course_name || '';
+  const notes = event.task_notes || event.delivery_url || '';
+
+  const detailsList = [
+    `Institución: ${inst}`,
+    courseName ? `Materia: ${courseName}` : '',
+    `Estado: ${event.status || 'sin entregar'}`,
+    notes ? `Detalles: ${notes}` : '',
+    'Sincronizado desde CampusFlow'
+  ].filter(Boolean);
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: datesParam,
+    details: detailsList.join('\n'),
+    location: `CampusFlow - ${inst}`
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/**
+ * Genera un archivo estándar RFC 5545 (.ics) con la lista de entregas / eventos
+ */
+export function generateICalFile(events = []) {
+  const eventList = Array.isArray(events) ? events : [events];
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const dtstamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+
+  const escapeICal = (str) => {
+    if (!str) return '';
+    return String(str)
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  };
+
+  const vevents = eventList
+    .map((evt, index) => {
+      if (!evt) return null;
+      const title = evt.title || `Entrega #${index + 1}`;
+      const dateStr = getTaskDate(evt);
+      if (!dateStr) return null;
+
+      const timeStr = getTaskTime(evt) || '23:59';
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const [hh, mm] = timeStr.split(':').map(Number);
+      const hours = Number.isFinite(hh) ? hh : 23;
+      const minutes = Number.isFinite(mm) ? mm : 59;
+
+      const startDate = new Date(y, m - 1, d, hours, minutes, 0);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+      const fmt = (dt) =>
+        `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+
+      const startStr = fmt(startDate);
+      const endStr = fmt(endDate);
+
+      const uid = evt.id
+        ? `${evt.id}@campusflow.app`
+        : `campusflow-${Date.now()}-${index}@campusflow.app`;
+      const inst = evt.institution || getTaskInstitution(evt);
+      const courseName = evt.courses?.name || evt.course_name || '';
+      const priority = getTaskPriority(evt)?.label || 'Normal';
+      const status = evt.status || 'sin entregar';
+
+      const descLines = [
+        `Institución: ${inst}`,
+        courseName ? `Materia: ${courseName}` : '',
+        `Estado: ${status}`,
+        `Prioridad: ${priority}`,
+        evt.task_notes ? `Notas: ${evt.task_notes}` : '',
+        evt.delivery_url ? `Enlace de entrega: ${evt.delivery_url}` : '',
+        'Gestionado desde CampusFlow'
+      ].filter(Boolean);
+
+      const escapedDesc = escapeICal(descLines.join('\n'));
+
+      return [
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${startStr}`,
+        `DTEND:${endStr}`,
+        `SUMMARY:${escapeICal(title)}`,
+        `DESCRIPTION:${escapedDesc}`,
+        `CATEGORIES:${escapeICal(inst)}`,
+        `STATUS:${status === 'entregado' ? 'COMPLETED' : 'CONFIRMED'}`,
+        'LOCATION:CampusFlow',
+        'END:VEVENT'
+      ].join('\r\n');
+    })
+    .filter(Boolean);
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//CampusFlow//CampusFlow Calendar//ES',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:CampusFlow Entregas',
+    'X-WR-TIMEZONE:America/Bogota',
+    ...vevents,
+    'END:VCALENDAR'
+  ].join('\r\n');
+}
+
+/**
+ * Descarga el archivo estándar .ics en el navegador
+ */
+export function downloadICalFile(events, filename = 'campusflow-calendario.ics') {
+  const icalContent = generateICalFile(events);
+  if (typeof window === 'undefined') return icalContent;
+
+  const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const safeName = filename.endsWith('.ics') ? filename : `${filename}.ics`;
+  link.setAttribute('download', safeName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  return icalContent;
+}
