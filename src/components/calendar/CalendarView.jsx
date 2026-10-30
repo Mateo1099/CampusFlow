@@ -25,6 +25,7 @@ import CalendarMonthGrid from './CalendarMonthGrid';
 import CalendarWeekGrid from './CalendarWeekGrid';
 import CalendarNewEventModal from './CalendarNewEventModal';
 import CalendarEventDetailModal from './CalendarEventDetailModal';
+import CalendarSyncModal from './CalendarSyncModal';
 import TaskDetailDrawer from '../ui/TaskDetailDrawer';
 import { playClick } from '../../lib/audioService';
 
@@ -53,6 +54,7 @@ export default function CalendarView() {
 
   // Modales
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [drawerTask, setDrawerTask] = useState(null);
 
@@ -463,7 +465,10 @@ export default function CalendarView() {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             type="button"
-            onClick={handleExportICal}
+            onClick={() => {
+              playClick(900);
+              setIsSyncModalOpen(true);
+            }}
             title="Descargar entregas en formato .ics para Google Calendar, Outlook o móvil"
             style={{
               padding: '8px 16px',
@@ -530,6 +535,16 @@ export default function CalendarView() {
         onUpdateSubtasks={updateSubtasks}
         onDeleteTask={deleteTask}
         onOpenFullDrawer={(task) => setDrawerTask(task)}
+      />
+
+      {/* Modal Guiado: Sincronización (.ics / Google Calendar / Móvil) */}
+      <CalendarSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        tasks={tasks}
+        courses={courses}
+        institutionFilter={institutionFilter}
+        onDownload={handleExportICal}
       />
 
       {/* Drawer Completo para desglose de subtareas y enlaces */}

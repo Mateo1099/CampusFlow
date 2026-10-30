@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import CalendarSyncModal from '../components/calendar/CalendarSyncModal.jsx';
 import {
   normalizeDateStr,
   getTaskDate,
@@ -277,6 +278,142 @@ describe('calendarUtils — Utilidades del Calendario', () => {
         deadline_time: '18:00'
       };
       expect(getRelativeDueDate(task)).toBe('Vence hoy a las 18:00');
+    });
+  });
+
+  describe('CalendarSyncModal — Modal Guiado de Sincronización', () => {
+    function findTextInTree(tree, text) {
+      let found = false;
+      function traverse(node) {
+        if (found || node === null || node === undefined) return;
+        if (typeof node === 'string' || typeof node === 'number') {
+          if (String(node).includes(text)) found = true;
+          return;
+        }
+        if (node.props?.children) {
+          const children = Array.isArray(node.props.children)
+            ? node.props.children
+            : [node.props.children];
+          children.forEach(traverse);
+        }
+      }
+      traverse(tree);
+      return found;
+    }
+
+    function findNodesByProp(tree, propName, propValue) {
+      const results = [];
+      function traverse(node) {
+        if (!node || typeof node !== 'object') return;
+        if (node.props && node.props[propName] === propValue) {
+          results.push(node);
+        }
+        if (node.props?.children) {
+          const children = Array.isArray(node.props.children)
+            ? node.props.children
+            : [node.props.children];
+          children.forEach(traverse);
+        }
+      }
+      traverse(tree);
+      return results;
+    }
+
+    it('retorna null si isOpen es false', () => {
+      const result = CalendarSyncModal({ isOpen: false, onClose: vi.fn() });
+      expect(result).toBeNull();
+    });
+
+    it('renderiza la cabecera, instrucciones de móvil y Google Calendar cuando isOpen es true', () => {
+      const onCloseMock = vi.fn();
+      const mockTasks = [
+        { id: 't1', title: 'Entrega Fase 1', deadline: '2026-11-10T23:59:00', institution: 'UNAD' },
+        { id: 't2', title: 'Taller SENA', deadline: '2026-11-12T18:00:00', institution: 'SENA' }
+      ];
+
+      const tree = CalendarSyncModal({
+        isOpen: true,
+        onClose: onCloseMock,
+        tasks: mockTasks,
+        institutionFilter: 'UNAD'
+      });
+
+      expect(tree).not.toBeNull();
+
+      // Verificación de textos clave del modal
+      expect(findTextInTree(tree, 'Sincronizar con tu Calendario')).toBe(true);
+      expect(findTextInTree(tree, 'Pasa tus entregas académicas a Google Calendar')).toBe(true);
+      expect(findTextInTree(tree, 'Descargar archivo .ics de entregas')).toBe(true);
+      expect(findTextInTree(tree, 'En tu Teléfono')).toBe(true);
+      expect(findTextInTree(tree, 'Recomendado')).toBe(true);
+      expect(findTextInTree(tree, 'En Google Calendar (PC / Web)')).toBe(true);
+      expect(findTextInTree(tree, 'Ir a Importar en Google Calendar')).toBe(true);
+      expect(findTextInTree(tree, 'Entendido / Cerrar')).toBe(true);
+
+      // Verificación del enlace directo a la importación de Google Calendar
+      const googleLinks = findNodesByProp(tree, 'href', 'https://calendar.google.com/calendar/u/0/r/settings/export');
+      expect(googleLinks.length).toBeGreaterThanOrEqual(1);
+      expect(googleLinks[0].props.target).toBe('_blank');
+      expect(googleLinks[0].props.rel).toBe('noopener noreferrer');
+    });
+
+    it('invoca onDownload al presionar el botón de descarga si se suministra', () => {
+      const onDownloadMock = vi.fn();
+      const tree = CalendarSyncModal({
+        isOpen: true,
+        onClose: vi.fn(),
+        tasks: [{ id: '1', title: 'Demo' }],
+        onDownload: onDownloadMock
+      });
+
+      function findButtonWithText(node, text) {
+        if (!node || typeof node !== 'object') return null;
+        if (node.props?.children) {
+          const children = Array.isArray(node.props.children) ? node.props.children : [node.props.children];
+          for (const child of children) {
+            const found = findButtonWithText(child, text);
+            if (found) return found;
+          }
+        }
+        if (node.props?.onClick && (node.props?.type === 'button' || node.type === 'button') && findTextInTree(node, text)) {
+          return node;
+        }
+        return null;
+      }
+
+      const downloadBtn = findButtonWithText(tree, 'Descargar archivo .ics de entregas');
+      expect(downloadBtn).not.toBeNull();
+      downloadBtn.props.onClick();
+      expect(onDownloadMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('invoca onClose al pulsar el botón Entendido / Cerrar', () => {
+      const onCloseMock = vi.fn();
+      const tree = CalendarSyncModal({
+        isOpen: true,
+        onClose: onCloseMock,
+        tasks: []
+      });
+
+      function findButtonWithText(node, text) {
+        if (!node || typeof node !== 'object') return null;
+        if (node.props?.children) {
+          const children = Array.isArray(node.props.children) ? node.props.children : [node.props.children];
+          for (const child of children) {
+            const found = findButtonWithText(child, text);
+            if (found) return found;
+          }
+        }
+        if (node.props?.onClick && (node.props?.type === 'button' || node.type === 'button') && findTextInTree(node, text)) {
+          return node;
+        }
+        return null;
+      }
+
+      const closeBtn = findButtonWithText(tree, 'Entendido / Cerrar');
+      expect(closeBtn).not.toBeNull();
+      closeBtn.props.onClick();
+      expect(onCloseMock).toHaveBeenCalledTimes(1);
     });
   });
 });
