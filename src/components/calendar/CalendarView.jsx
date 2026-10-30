@@ -188,37 +188,20 @@ export default function CalendarView() {
             <CalendarIcon size={30} color="#00f3ff" style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.6))' }} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1
-                style={{
-                  fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
-                  margin: 0,
-                  fontWeight: 950,
-                  color: 'var(--text-primary)',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.1
-                }}
-              >
-                CALENDARIO COMPLETO
-              </h1>
-              <span
-                className="hidden sm:inline-flex"
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: '12px',
-                  fontSize: '0.65rem',
-                  fontWeight: 900,
-                  letterSpacing: '0.08em',
-                  background: 'rgba(0, 243, 255, 0.12)',
-                  color: '#00f3ff',
-                  border: '1px solid rgba(0, 243, 255, 0.3)'
-                }}
-              >
-                INTERACTIVO
-              </span>
-            </div>
+            <h1
+              style={{
+                fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
+                margin: 0,
+                fontWeight: 950,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.1
+              }}
+            >
+              CALENDARIO ACADÉMICO
+            </h1>
             <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-              Visualiza tus entregas sincronizadas con filtros por institución UNAD, SENA y Personalizado.
+              Gestiona y sincroniza las fechas límite de tus materias y entregas institucionales.
             </p>
           </div>
         </div>
@@ -475,13 +458,13 @@ export default function CalendarView() {
             );
           })}
 
-          {/* Botón Cyber Luxe: Exportar a Calendario (.ics) */}
+          {/* Botón Cyber Luxe: Sincronizar a Calendario (.ics) */}
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             type="button"
             onClick={handleExportICal}
-            title="Descargar archivo .ics compatible con Google Calendar, Apple Calendar y Outlook"
+            title="Descargar entregas en formato .ics para Google Calendar, Outlook o móvil"
             style={{
               padding: '8px 16px',
               borderRadius: '50px',
@@ -495,13 +478,12 @@ export default function CalendarView() {
               alignItems: 'center',
               gap: '6px',
               boxShadow: '0 0 16px rgba(0, 243, 255, 0.15)',
-              textTransform: 'uppercase',
               letterSpacing: '0.04em',
               transition: 'all 0.2s'
             }}
           >
             <Download size={13} />
-            Exportar (.ics)
+            Sincronizar (.ics)
           </motion.button>
         </div>
       </div>

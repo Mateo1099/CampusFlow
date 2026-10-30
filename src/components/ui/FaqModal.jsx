@@ -50,6 +50,14 @@ export const FAQ_ITEMS = [
     answer: 'Simplemente marca la casilla (checkbox) del ejercicio completado. El porcentaje general de la entrega se recalculará automáticamente y se sumarán puntos de XP a tu perfil universitario por cada ejercicio resuelto con éxito.',
     keywords: ['avance', 'completar', 'xp', 'puntos', 'checklist', 'progreso', 'marcar']
   },
+  {
+    id: 'tasks-calendar-institutions-sync',
+    category: 'tasks',
+    categoryLabel: 'Trabajos & Ejercicios',
+    question: '¿Cómo funciona el Calendario Académico y los filtros institucionales?',
+    answer: 'El Calendario Académico te permite visualizar todas tus entregas en vista mensual o semanal y alternar filtros rápidos por institución (UNAD, SENA o Personalizado). Además, el botón "Sincronizar (.ics)" permite descargar tus fechas límite para integrarlas directamente en Google Calendar, Outlook o la app de calendario de tu celular.',
+    keywords: ['calendario', 'calendario academico', 'filtros', 'institucional', 'unad', 'sena', 'personalizado', 'sincronizar', 'ics', 'google calendar', 'outlook', 'movil', 'celular', 'entregas']
+  },
 
   // 2. Cuaderno de Apuntes
   {

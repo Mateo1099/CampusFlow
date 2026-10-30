@@ -53,9 +53,14 @@ describe('CampusFlow Help Center & FAQ (`src/components/ui/FaqModal.jsx`)', () =
         f => f.question.toLowerCase().includes('avance') && f.answer.toLowerCase().includes('xp')
       );
 
+      const hasCalendar = taskFaqs.some(
+        f => f.question.includes('Calendario Académico') && f.answer.includes('.ics')
+      );
+
       expect(hasBreakdown).toBe(true);
       expect(hasHttps).toBe(true);
       expect(hasXpProgress).toBe(true);
+      expect(hasCalendar).toBe(true);
     });
 
     it('categoría b) Cuaderno de Apuntes cubre buscador de conceptos, notas rápidas y acceso desde trabajos', () => {

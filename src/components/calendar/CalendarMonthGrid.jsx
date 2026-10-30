@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, Clock, Calendar as CalendarIcon, Flame } from 'lucide-react';
 import {
-  DAY_NAMES_ES,
   getMonthMatrix,
   getTaskInstitution,
   getInstitutionTheme,
@@ -55,9 +54,9 @@ export default function CalendarMonthGrid({
             textAlign: 'center'
           }}
         >
-          {DAY_NAMES_ES.map((d, idx) => (
+          {['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'].map((dayAbbr, idx) => (
             <div
-              key={d.full}
+              key={dayAbbr}
               style={{
                 padding: '8px 4px',
                 fontSize: '0.78rem',
@@ -67,8 +66,7 @@ export default function CalendarMonthGrid({
                 textTransform: 'uppercase'
               }}
             >
-              <span className="hidden sm:inline">{d.short}</span>
-              <span className="sm:hidden">{d.initial}</span>
+              {dayAbbr}
             </div>
           ))}
         </div>
