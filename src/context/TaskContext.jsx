@@ -1,10 +1,16 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { useSettings } from './SettingsContext';
 import { useTasks } from '../hooks/useTasks';
 import { useCourses } from '../hooks/useCourses';
 import { useHabits } from '../hooks/useHabits';
+import { 
+  getStudySessions, 
+  saveStudySession, 
+  calculateStudyMinutes,
+  normalizeStudySession 
+} from '../services/studySessionService';
 
 const TaskContext = createContext();
 
@@ -29,6 +35,80 @@ export function TaskProvider({ children }) {
     dailyPlan, addHabit: addDailyActivity, toggleHabitLog: toggleDailyActivity, deleteHabit: removeDailyActivity, habitsLoading 
   } = useHabits(user?.id, addXP, incrementStat);
 
+  // Estado de Sesiones de Estudio (Modo Estudio / Pomodoro)
+  const [studySessions, setStudySessions] = useState([]);
+  const [studySessionsLoading, setStudySessionsLoading] = useState(false);
+
+  // Cargar sesiones de estudio del usuario activo
+  const fetchStudySessions = useCallback(async () => {
+    if (!user?.id) {
+      setStudySessions([]);
+      return;
+    }
+    setStudySessionsLoading(true);
+    try {
+      const sessions = await getStudySessions(user.id);
+      setStudySessions(sessions || []);
+    } catch {
+      setStudySessions([]);
+    } finally {
+      setStudySessionsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchStudySessions();
+  }, [fetchStudySessions]);
+
+  // Listener reactivo para actualizaciones en tiempo real (DOM custom event)
+  useEffect(() => {
+    const handleSessionSaved = (e) => {
+      const saved = e?.detail;
+      if (!saved) return;
+      if (!user?.id || String(saved.user_id) === String(user.id)) {
+        setStudySessions(prev => {
+          const exists = prev.some(s => s.id === saved.id);
+          if (exists) {
+            return prev.map(s => s.id === saved.id ? saved : s);
+          }
+          return [saved, ...prev];
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('campusflow:study-session-saved', handleSessionSaved);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('campusflow:study-session-saved', handleSessionSaved);
+      }
+    };
+  }, [user?.id]);
+
+  // Función para registrar y persistir una nueva sesión de estudio
+  const recordStudySession = useCallback(async (sessionData) => {
+    const userId = user?.id || null;
+    const normalized = normalizeStudySession({
+      ...sessionData,
+      user_id: sessionData?.user_id || userId
+    }, userId);
+
+    // Actualización optimista inmediata en estado local del contexto
+    setStudySessions(prev => [normalized, ...prev.filter(s => s.id !== normalized.id)]);
+
+    // Persistencia asíncrona local y Supabase
+    try {
+      const result = await saveStudySession(normalized, userId);
+      if (result?.data) {
+        setStudySessions(prev => [result.data, ...prev.filter(s => s.id !== result.data.id)]);
+      }
+      return result;
+    } catch (err) {
+      return { success: false, error: err, data: normalized };
+    }
+  }, [user?.id]);
+
   // Analytics Globales
   const analytics = useMemo(() => {
     const totalTasks = tasks.length;
@@ -48,8 +128,19 @@ export function TaskProvider({ children }) {
       }
     });
 
-    return { totalTasks, completedTasks, totalXP, totalHabits, completedHabits, productivity };
-  }, [tasks, dailyPlan]);
+    // Minutos de estudio acumulados
+    const totalStudyMinutes = calculateStudyMinutes(studySessions, { userId: user?.id });
+
+    return { 
+      totalTasks, 
+      completedTasks, 
+      totalXP, 
+      totalHabits, 
+      completedHabits, 
+      productivity,
+      totalStudyMinutes 
+    };
+  }, [tasks, dailyPlan, studySessions, user?.id]);
 
   // Memoizado: sin esto, el Provider crea un objeto `value` nuevo en cada render,
   // forzando a re-renderizar TODOS los componentes que usan useTasksContext()
@@ -58,11 +149,13 @@ export function TaskProvider({ children }) {
     tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading,
     courses, addCourse, updateCourse, deleteCourse, coursesLoading,
     dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
+    studySessions, setStudySessions, recordStudySession, studySessionsLoading,
     analytics
   }), [
     tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading,
     courses, addCourse, updateCourse, deleteCourse, coursesLoading,
     dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
+    studySessions, setStudySessions, recordStudySession, studySessionsLoading,
     analytics
   ]);
 

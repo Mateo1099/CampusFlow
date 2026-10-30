@@ -128,8 +128,15 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     await page.goto('/');
 
     // 1. Navegar al Planificador desde el Sidebar.
-    await page.getByRole('link', { name: 'PLANIFICADOR SEMANAL' }).click();
+    await page.getByRole('link', { name: /(PLANIFICADOR|Calendario)/i }).click();
     await expect(page).toHaveURL(/\/planner$/);
+
+    // Cambiar a la pestaña de Bloques y Rutinas si la vista inicial es Calendario
+    const plannerTabBtn = page.getByRole('button', { name: /Bloques y Rutinas/i });
+    if (await plannerTabBtn.isVisible()) {
+      await plannerTabBtn.click();
+    }
+
     await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible({ timeout: 15000 });
 
     // 2. Clic en "+ NUEVA PLANIFICACIÓN" o "CREAR PLANIFICACIÓN"
@@ -181,10 +188,10 @@ test.describe('Recorrido interactivo largo por CampusFlow', () => {
     await expect(page).toHaveURL(/\/tasks$/);
     await expect(page.getByRole('heading', { name: 'TRABAJOS', level: 1 })).toBeVisible();
 
-    // Planificador
-    await page.getByRole('link', { name: 'PLANIFICADOR SEMANAL' }).click();
+    // Planificador / Calendario
+    await page.getByRole('link', { name: /(PLANIFICADOR|Calendario)/i }).click();
     await expect(page).toHaveURL(/\/planner$/);
-    await expect(page.getByRole('heading', { name: 'PLANIFICADOR SEMANAL', level: 1 })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /(PLANIFICADOR SEMANAL|CALENDARIO ACADÉMICO)/i, level: 1 })).toBeVisible({ timeout: 15000 });
 
     // Analítica
     await page.getByRole('link', { name: 'Analítica', exact: true }).click();

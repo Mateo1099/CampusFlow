@@ -252,6 +252,8 @@ function AppRoutes() {
             <Route path="calendar" element={<Navigate to="/planner" replace />} />
             <Route path="calendario" element={<Navigate to="/planner" replace />} />
             <Route path="pomodoro" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
+            <Route path="study" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
+            <Route path="estudio" element={<Navigate to="/pomodoro" replace />} />
             <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />
             <Route path="stats" element={<Suspense fallback={<LoadingGlass />}><Stats /></Suspense>} />
 

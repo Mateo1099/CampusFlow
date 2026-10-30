@@ -30,8 +30,8 @@ const calculateRemainingDays = (deadlineDate) => {
 
 const Dashboard = () => {
   
-  const { tasks, courses, tasksLoading, coursesLoading } = useTasksContext();
-  const { logout } = useAuth();
+  const { tasks, courses, studySessions, tasksLoading, coursesLoading } = useTasksContext();
+  const { user, logout } = useAuth();
   const { t, settings } = useSettings();
   const isLightMode = settings?.theme === 'light';
   const isDaltonicMode = settings?.theme === 'daltonic';
@@ -132,8 +132,56 @@ const Dashboard = () => {
   }).length;
   const pendingTasks = Math.max(safeTotalTasks - safeCompletedTasks, 0);
 
-  // Estimación de minutos - Cortocircuito y fallback para NaN
-  const totalMinutes = filteredTasks.reduce((acc, t) => acc + (Number(t.estimated_time) || Number(t.expected_duration) || 0), 0);
+  // SESIONES DE ESTUDIO (Modo Estudio / Pomodoro):
+  // 1. Filtro estricto por usuario activo para aislamiento multi-usuario
+  const activeUserSessions = useMemo(() => {
+    if (!user?.id) return [];
+    return (studySessions || []).filter(s => String(s?.user_id) === String(user.id));
+  }, [studySessions, user?.id]);
+
+  // 2. Filtro por institución asociada (por sesión o por materia)
+  const filteredStudySessions = useMemo(() => {
+    return activeUserSessions.filter(session => {
+      if (currentFilter !== 'TODAS') {
+        const sessionInst = String(session.institution || '').toUpperCase();
+        let courseInst = '';
+        if (session.course_id && courses.length > 0) {
+          const course = courses.find(c => String(c.id) === String(session.course_id));
+          courseInst = String(course?.institution || '').toUpperCase();
+        }
+        if (sessionInst !== currentFilter.toUpperCase() && courseInst !== currentFilter.toUpperCase()) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [activeUserSessions, currentFilter, courses]);
+
+  // 3. Suma segura de minutos de estudio acumulados en tiempo real (blindaje contra NaN, null, 0 y vacíos)
+  const accumulatedStudyMinutes = useMemo(() => {
+    return filteredStudySessions.reduce((acc, s) => {
+      const dur = Number(s?.duration_minutes);
+      return acc + (Number.isFinite(dur) && dur > 0 ? dur : 0);
+    }, 0);
+  }, [filteredStudySessions]);
+
+  // Estimación de minutos de tareas filtradas (fallback si el usuario aún no registra sesiones)
+  const estimatedTasksMinutes = useMemo(() => {
+    return filteredTasks.reduce((acc, t) => {
+      const time = Number(t?.estimated_time) || Number(t?.expected_duration) || 0;
+      return acc + (Number.isFinite(time) && time > 0 ? time : 0);
+    }, 0);
+  }, [filteredTasks]);
+
+  // Minutos Totales mostrados en la tarjeta principal:
+  // Si hay sesiones de estudio registradas para el usuario activo, refleja el tiempo de estudio acumulado.
+  // Si no hay sesiones aún, toma la estimación de tareas o 0 como fallback, garantizando un entero no-negativo nunca NaN.
+  const totalMinutes = useMemo(() => {
+    if (accumulatedStudyMinutes > 0) {
+      return accumulatedStudyMinutes;
+    }
+    return Number.isFinite(estimatedTasksMinutes) && estimatedTasksMinutes > 0 ? estimatedTasksMinutes : 0;
+  }, [accumulatedStudyMinutes, estimatedTasksMinutes]);
 
   // Sobrescribimos totalTasks y completedTasks para las métricas
   const totalTasks = safeTotalTasks;
@@ -649,13 +697,13 @@ const Dashboard = () => {
                 <div>
                   <p style={{ margin: isMobile ? '0 0 4px' : '0 0 8px', fontSize: isMobile ? '0.68rem' : '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: isLightMode ? '#475569' : metricLabelColor, fontWeight: 800, fontFamily: 'var(--font-display)', textShadow: 'none', whiteSpace: 'nowrap' }}>Minutos totales</p>
                   <motion.h3
-                    key={Number(totalMinutes) || 0}
+                    key={Number.isFinite(Number(totalMinutes)) && Number(totalMinutes) > 0 ? Number(totalMinutes) : 0}
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
                     style={{ fontSize: isMobile ? '1.9rem' : '2.8rem', fontWeight: 900, margin: '0', color: isLightMode ? '#7c3aed' : '#bc13fe', fontFamily: 'var(--font-display)', lineHeight: 1, textShadow: isLightMode ? 'none' : '0 0 20px rgba(188, 19, 254, 0.5)' }}
                   >
-                    {Math.floor(Number(totalMinutes) || 0)}
+                    {Math.floor(Number.isFinite(Number(totalMinutes)) && Number(totalMinutes) > 0 ? Number(totalMinutes) : 0)}
                   </motion.h3>
                 </div>
                 <div style={{ width: isMobile ? '36px' : '48px', height: isMobile ? '36px' : '48px', borderRadius: isMobile ? '10px' : '12px', background: isLightMode ? 'rgba(147,51,234,0.1)' : 'rgba(188, 19, 254, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../hooks/useTasks';
+import { useTasksContext } from '../context/TaskContext';
+import { saveStudySession } from '../services/studySessionService';
 import { useBreakpoint } from '../hooks/useMediaQuery';
 import { playPhaseCompleteChime, resumeAudio } from '../lib/audioService';
 import { extractPlaylistMetadata, cleanTrackTitle } from '../lib/playlistService';
@@ -66,7 +68,16 @@ const Pomodoro = () => {
   const [activePlannerBlock, setActivePlannerBlock] = useState(incomingBlock || null);
 
   const { user } = useAuth();
-  const { tasks, updateSubtasks, updateTaskNotes } = useTasks(user?.id);
+  const tasksContext = useTasksContext?.() || {};
+  const tasksHook = useTasks(user?.id);
+  const tasksContextTasks = tasksContext.tasks;
+  const tasksHookTasks = tasksHook.tasks;
+  const tasks = useMemo(() => tasksContextTasks || tasksHookTasks || [], [tasksContextTasks, tasksHookTasks]);
+  const tasksContextCourses = tasksContext.courses;
+  const courses = useMemo(() => tasksContextCourses || [], [tasksContextCourses]);
+  const recordStudySession = tasksContext.recordStudySession;
+  const updateSubtasks = tasksContext.updateSubtasks || tasksHook.updateSubtasks;
+  const updateTaskNotes = tasksContext.updateTaskNotes || tasksHook.updateTaskNotes;
   const { t, incrementStat } = useSettings();
   const { addXP } = useGamification();
   const { isMobile } = useBreakpoint();
@@ -124,6 +135,36 @@ const Pomodoro = () => {
     }
     return null;
   }, [tasks, selectedTaskId, activePlannerBlock]);
+
+  // Metadatos de la sesión actual: materia e institución asociada
+  const currentSessionMeta = useMemo(() => {
+    let subjectName = 'Estudio Libre';
+    let institutionName = null;
+    let courseId = null;
+
+    if (linkedTask) {
+      courseId = linkedTask.course_id || null;
+      subjectName = linkedTask.courses?.name || linkedTask.title || 'Materia vinculada';
+      institutionName = linkedTask.courses?.institution || null;
+      if (!institutionName && courseId && courses.length > 0) {
+        const found = courses.find(c => String(c.id) === String(courseId));
+        institutionName = found?.institution || null;
+      }
+    } else if (activePlannerBlock) {
+      courseId = activePlannerBlock.course_id || null;
+      subjectName = activePlannerBlock.title || 'Bloque de Estudio';
+      institutionName = activePlannerBlock.institution || null;
+      if (!institutionName && courseId && courses.length > 0) {
+        const found = courses.find(c => String(c.id) === String(courseId));
+        institutionName = found?.institution || null;
+        if (!subjectName || subjectName === 'Bloque de Estudio') {
+          subjectName = found?.name || subjectName;
+        }
+      }
+    }
+
+    return { subjectName, institutionName, courseId };
+  }, [linkedTask, activePlannerBlock, courses]);
 
   // Cerrar selector de objetivos al hacer clic fuera
   useEffect(() => {
@@ -186,15 +227,36 @@ const Pomodoro = () => {
         setIsActive(false);
         
         if (mode === 'focus') {
+          const fullDuration = Math.max(1, Math.round((customTimes?.focus || 1500) / 60));
           addXP(100);
           incrementStat('pomodorosCompleted');
           trackEvent('pomodoro_session_finished', { 
-            durationMinutes: Math.round((customTimes?.focus || 1500) / 60) || 25, 
-            mode: 'focus' 
+            durationMinutes: fullDuration, 
+            mode: 'focus',
+            subject: currentSessionMeta.subjectName,
+            institution: currentSessionMeta.institutionName
           });
+
+          const sessionPayload = {
+            user_id: user?.id,
+            duration_minutes: fullDuration,
+            course_id: currentSessionMeta.courseId,
+            subject: currentSessionMeta.subjectName,
+            institution: currentSessionMeta.institutionName,
+            task_id: linkedTask?.id || activePlannerBlock?.task_id || null,
+            method: selectedStudyMethod,
+            mode: 'focus'
+          };
+
+          if (typeof recordStudySession === 'function') {
+            recordStudySession(sessionPayload);
+          } else {
+            saveStudySession(sessionPayload, user?.id);
+          }
+
           toast.success("¡Tiempo Cumplido!", { 
             id: "pomodoro-toast", 
-            description: "Sesión registrada con éxito.",
+            description: `Sesión de ${fullDuration} min registrada con éxito · ${currentSessionMeta.subjectName}`,
             style: { border: '1px solid rgba(168, 85, 247, 0.4)', boxShadow: '0 0 20px rgba(168, 85, 247, 0.15)' }
           });
         } else {
@@ -234,7 +296,7 @@ const Pomodoro = () => {
       }, 0);
     }
     return () => clearInterval(interval);
-  }, [isActive, timeLeft, mode, t, addXP, incrementStat, modeConfig, customTimes?.focus]);
+  }, [isActive, timeLeft, mode, t, addXP, incrementStat, modeConfig, customTimes?.focus, user?.id, recordStudySession, currentSessionMeta, selectedStudyMethod, linkedTask, activePlannerBlock]);
 
   // El permiso de Notification debe solicitarse cuanto antes (no solo al
   // completar la primera fase) para que, si el usuario minimiza el
@@ -494,6 +556,60 @@ const Pomodoro = () => {
       id: "pomodoro-toast", 
       description: ambientSound ? "El tiempo vuelve a empezar. Audio en pausa." : "El tiempo vuelve a empezar.",
       style: { border: '1px solid rgba(245, 158, 11, 0.4)', boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)' }
+    });
+  };
+
+  const handleSaveSession = () => {
+    if (mode !== 'focus') {
+      toast.info("Solo las fases de enfoque suman minutos de estudio.", { id: "pomodoro-toast" });
+      return;
+    }
+
+    const elapsedSeconds = (customTimes[mode] || 1500) - timeLeft;
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+
+    if (elapsedMinutes < 1) {
+      toast.info("Menos de 1 minuto transcurrido. ¡Mantén el enfoque un poco más!", { id: "pomodoro-toast" });
+      return;
+    }
+
+    endTimeRef.current = null;
+    setIsActive(false);
+    setTimeLeft(customTimes[mode]);
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    const sessionPayload = {
+      user_id: user?.id,
+      duration_minutes: elapsedMinutes,
+      course_id: currentSessionMeta.courseId,
+      subject: currentSessionMeta.subjectName,
+      institution: currentSessionMeta.institutionName,
+      task_id: linkedTask?.id || activePlannerBlock?.task_id || null,
+      method: selectedStudyMethod,
+      mode: 'focus'
+    };
+
+    if (typeof recordStudySession === 'function') {
+      recordStudySession(sessionPayload);
+    } else {
+      saveStudySession(sessionPayload, user?.id);
+    }
+
+    addXP(Math.max(20, elapsedMinutes * 4));
+    incrementStat('pomodorosCompleted');
+    trackEvent('pomodoro_session_finished', {
+      durationMinutes: elapsedMinutes,
+      mode: 'focus',
+      subject: currentSessionMeta.subjectName,
+      institution: currentSessionMeta.institutionName
+    });
+
+    toast.success("¡Sesión guardada con éxito!", {
+      id: "pomodoro-toast",
+      description: `${elapsedMinutes} min registrados · ${currentSessionMeta.subjectName}`,
+      style: { border: '1px solid rgba(16, 185, 129, 0.4)', boxShadow: '0 0 20px rgba(16, 185, 129, 0.15)' }
     });
   };
   
@@ -768,8 +884,30 @@ const Pomodoro = () => {
             {isActive ? <Pause size={26} /> : <Play size={26} style={{ transform: 'translateX(2px)' }} />}
           </motion.button>
 
-          {/* Spacer to keep Play button perfectly centered. */}
-          <div className="pomodoro-spacer" style={{ width: 'clamp(38px, 4.8vh, 44px)', pointerEvents: 'none' }} />
+          {/* Spacer / Botón Guardar Sesión */}
+          {mode === 'focus' && ((customTimes[mode] || 1500) - timeLeft) >= 60 ? (
+            <motion.button 
+              className="pomodoro-save-btn"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleSaveSession}
+              aria-label="Guardar sesión"
+              title="Guardar sesión y acumular minutos de estudio"
+              style={{ 
+                width: 'clamp(38px, 4.8vh, 44px)', height: 'clamp(38px, 4.8vh, 44px)',
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', outline: 'none', backdropFilter: 'blur(12px)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3), 0 0 16px rgba(16, 185, 129, 0.25)',
+                color: '#10b981'
+              }}
+            >
+              <Check size={18} />
+            </motion.button>
+          ) : (
+            <div className="pomodoro-spacer" style={{ width: 'clamp(38px, 4.8vh, 44px)', pointerEvents: 'none' }} />
+          )}
         </div>
       </div>
 
