@@ -54,9 +54,11 @@ export function normalizeNote(raw, userId) {
     ? crypto.randomUUID() 
     : `note_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
 
+  const ownerId = raw.user_id || raw.userId || userId || null;
+
   return {
     id: String(id),
-    user_id: raw.user_id || userId || null,
+    user_id: ownerId,
     course_id: raw.course_id || null,
     title: sanitizeNoteInput(raw.title || '').trim() || 'Apunte sin título',
     content: typeof raw.content === 'string' ? sanitizeNoteInput(raw.content) : '',
@@ -313,20 +315,21 @@ export const notesService = {
    * Crea un nuevo apunte para el usuario.
    */
   async createNote(userId, noteData) {
+    const activeUserId = userId || noteData?.user_id || noteData?.userId;
     const newNote = normalizeNote({
       ...noteData,
-      user_id: userId,
+      user_id: activeUserId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }, userId);
+    }, activeUserId);
 
     // Guardar en almacenamiento local inmediato
-    const existing = loadLocalNotes(userId);
+    const existing = loadLocalNotes(activeUserId);
     const updated = [newNote, ...existing];
-    saveLocalNotes(userId, updated);
+    saveLocalNotes(activeUserId, updated);
 
     // Sincronizar en segundo plano con Supabase si está disponible
-    if (userId) {
+    if (activeUserId && activeUserId !== 'guest') {
       try {
         await supabase
           .from('study_notes')
@@ -368,9 +371,9 @@ export const notesService = {
 
     saveLocalNotes(userId, nextList);
 
-    if (userId) {
+    if (userId && userId !== 'guest') {
       try {
-        await supabase
+        let query = supabase
           .from('study_notes')
           .update({
             title: updatedNote.title,
@@ -380,6 +383,12 @@ export const notesService = {
             updated_at: updatedNote.updated_at,
           })
           .eq('id', id);
+
+        if (userId) {
+          query = query.eq('user_id', userId);
+        }
+
+        await query;
       } catch {
         // Fallback silencioso
       }
@@ -398,12 +407,18 @@ export const notesService = {
     const nextList = existing.filter(n => n.id !== String(id));
     saveLocalNotes(userId, nextList);
 
-    if (userId) {
+    if (userId && userId !== 'guest') {
       try {
-        await supabase
+        let query = supabase
           .from('study_notes')
           .delete()
           .eq('id', id);
+
+        if (userId) {
+          query = query.eq('user_id', userId);
+        }
+
+        await query;
       } catch {
         // Fallback silencioso
       }

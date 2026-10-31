@@ -111,7 +111,7 @@ export function dispatchStudySessionEvent(session) {
  * Gracefully degrades if the database table is unavailable or offline.
  */
 export async function saveStudySession(sessionData, userId) {
-  const effectiveUserId = sessionData?.user_id || userId;
+  const effectiveUserId = sessionData?.user_id || sessionData?.userId || userId;
   const normalized = normalizeStudySession(sessionData, effectiveUserId);
 
   // 1. Guardar de inmediato en local storage para cero latencia y soporte offline
@@ -124,11 +124,16 @@ export async function saveStudySession(sessionData, userId) {
   // 2. Disparar evento reactivo en la ventana actual
   dispatchStudySessionEvent(normalized);
 
+  // Si no hay usuario activo o es sesión de invitado, no intentar persistir en Supabase
+  if (!effectiveUserId || effectiveUserId === 'guest') {
+    return { success: true, localOnly: true, data: normalized };
+  }
+
   // 3. Persistir en Supabase
   try {
     const payload = {
       id: normalized.id,
-      user_id: normalized.user_id,
+      user_id: effectiveUserId,
       duration_minutes: normalized.duration_minutes,
       course_id: normalized.course_id,
       subject: normalized.subject,

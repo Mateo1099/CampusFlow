@@ -68,6 +68,7 @@ export const tasksService = {
   },
 
   async createTask(userId, task) {
+    const activeUserId = userId || task?.user_id || task?.userId;
     const taskId = task.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `asg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
 
     // MAPEAMOS A LOS NOMBRES DE COLUMNAS DE LA TABLA 'assignments'
@@ -78,7 +79,7 @@ export const tasksService = {
       start_date: task.start_date || task.startDate || null,
       deadline: task.deadline || task.dueDate || null,
       status: task.status || 'sin entregar',
-      user_id: userId,
+      user_id: activeUserId,
       priority: task.priority || 'media',
       institution: task.institution || null,
       subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
@@ -86,9 +87,9 @@ export const tasksService = {
     };
 
     // 1. Guardado inmediato local-first
-    if (userId) {
-      const existing = getLocalTasks(userId);
-      saveLocalTasks(userId, [taskData, ...existing.filter(t => t.id !== taskData.id)]);
+    if (activeUserId) {
+      const existing = getLocalTasks(activeUserId);
+      saveLocalTasks(activeUserId, [taskData, ...existing.filter(t => t.id !== taskData.id)]);
     }
 
     // 2. Persistencia en Supabase
@@ -108,7 +109,7 @@ export const tasksService = {
             start_date: taskData.start_date,
             deadline: taskData.deadline,
             status: taskData.status,
-            user_id: taskData.user_id
+            user_id: activeUserId
           };
           const { data: retryData, error: retryError } = await supabase
             .from('assignments')
@@ -218,9 +219,13 @@ export const tasksService = {
     return this.updateTask(id, { task_notes: notes });
   },
 
-  async deleteTask(id) {
+  async deleteTask(id, userId) {
     try {
-      const { error } = await supabase.from('assignments').delete().eq('id', id);
+      let query = supabase.from('assignments').delete().eq('id', id);
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+      const { error } = await query;
       if (error) {
         console.warn("Error eliminando tarea en Supabase:", error.message);
       }
