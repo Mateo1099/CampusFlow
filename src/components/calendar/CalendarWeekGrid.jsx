@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, Clock, CheckCircle2, AlertCircle, Flame, Eye } from 'lucide-react';
 import {
   getWeekDays,
@@ -25,7 +25,7 @@ export default function CalendarWeekGrid({
   onSelectEvent,
   onAddEvent
 }) {
-  const weekDays = getWeekDays(currentDate);
+  const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
 
   // En móvil, control del día activo
   const [mobileActiveDay, setMobileActiveDay] = useState(

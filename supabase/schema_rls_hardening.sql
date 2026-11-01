@@ -682,3 +682,4 @@ WHERE n.nspname = 'public'
       )
 GROUP BY c.relname, c.relrowsecurity
 ORDER BY c.relname;
+

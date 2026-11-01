@@ -99,6 +99,18 @@ class ErrorBoundary extends React.Component {
     }
   };
 
+  handleRestartApp = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null
+    });
+
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  };
+
   render() {
     const { hasError, error } = this.state;
     const { children, fallback } = this.props;
@@ -270,13 +282,37 @@ class ErrorBoundary extends React.Component {
           >
             <button
               type="button"
+              onClick={this.handleRestartApp}
+              className="btn-restart-app"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                borderRadius: '14px',
+                border: '1px solid rgba(0, 243, 255, 0.4)',
+                background: 'linear-gradient(135deg, var(--accent-primary, #00f3ff) 0%, var(--accent-secondary, #bc13fe) 100%)',
+                color: '#050811',
+                fontSize: '0.86rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 20px rgba(0, 243, 255, 0.25)',
+                transition: 'all var(--transition-fast, 0.2s ease)'
+              }}
+            >
+              <RefreshCw size={16} />
+              Reiniciar aplicación
+            </button>
+
+            <button
+              type="button"
               onClick={this.handleRetry}
               className="btn-retry-render"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '12px 22px',
+                padding: '12px 20px',
                 borderRadius: '14px',
                 border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.15))',
                 background: 'var(--bg-glass, rgba(255, 255, 255, 0.06))',
@@ -299,15 +335,14 @@ class ErrorBoundary extends React.Component {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '12px 24px',
+                padding: '12px 20px',
                 borderRadius: '14px',
-                border: '1px solid transparent',
-                background: 'linear-gradient(135deg, var(--accent-primary, #00f3ff) 0%, var(--accent-secondary, #bc13fe) 100%)',
-                color: '#0a0a0f',
+                border: '1px solid var(--border-glass-top, rgba(255, 255, 255, 0.15))',
+                background: 'var(--bg-glass, rgba(255, 255, 255, 0.06))',
+                color: 'var(--text-primary, #f5f5f7)',
                 fontSize: '0.86rem',
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(0, 243, 255, 0.25)',
                 transition: 'all var(--transition-fast, 0.2s ease)'
               }}
             >

@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTasksContext } from '../context/TaskContext';
 import { notesService } from '../services/notesService';
 import { sanitizeNoteInput } from '../lib/sanitize';
+import { handleServiceError } from '../lib/errorHandler';
 
 /**
  * Notes (Apuntes) — Módulo Oficial e Independiente de Apuntes de Estudio
@@ -107,6 +108,7 @@ export default function Notes() {
       setEditorSaveStatus('saved');
     } catch (err) {
       console.error('[Notes] Error creando apunte:', err);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al crear el apunte', context: 'Notes.handleCreateNote' });
     }
   };
 
@@ -123,6 +125,7 @@ export default function Notes() {
       }, 2000);
     } catch (err) {
       console.error('[Notes] Error guardando apunte:', err);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al guardar los cambios del apunte', context: 'Notes.persistEditorChanges' });
       setEditorSaveStatus('idle');
     }
   }, [user?.id]);
@@ -166,6 +169,7 @@ export default function Notes() {
       setDeleteConfirmId(null);
     } catch (err) {
       console.error('[Notes] Error eliminando apunte:', err);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al eliminar el apunte', context: 'Notes.handleDeleteNote' });
     }
   };
 

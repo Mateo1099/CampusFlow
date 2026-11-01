@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { coursesService } from '../lib/coursesService';
 import { dataStoreService } from '../lib/dataStoreService';
+import { handleServiceError } from '../lib/errorHandler';
 
 export const useCourses = (userId) => {
   const [courses, setCourses] = useState([]);
@@ -29,11 +30,10 @@ export const useCourses = (userId) => {
         return { id, name, color, teacher, code, institution };
       });
 
-
       setCourses(normalizedData);
     } catch (err) {
-      console.error("HOOK_COURSES_FATAL_ERROR:", err.message);
       setError(err.message);
+      handleServiceError(err, { showToast: false, context: 'useCourses.fetchCourses' });
     } finally {
       setLoading(false);
     }
@@ -62,6 +62,7 @@ export const useCourses = (userId) => {
       return normalized;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al registrar la materia', context: 'useCourses.addCourse' });
       throw err;
     }
   }, [userId]);
@@ -74,6 +75,7 @@ export const useCourses = (userId) => {
       return updatedCourse;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al actualizar la materia', context: 'useCourses.updateCourse' });
       throw err;
     }
   }, [userId]);
@@ -85,6 +87,7 @@ export const useCourses = (userId) => {
       dataStoreService.invalidate('courses', userId);
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al eliminar la materia', context: 'useCourses.deleteCourse' });
       throw err;
     }
   }, [userId]);

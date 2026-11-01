@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, Clock, Calendar as CalendarIcon, Flame } from 'lucide-react';
 import {
@@ -23,10 +23,12 @@ export default function CalendarMonthGrid({
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const matrixDays = getMonthMatrix(year, month);
+  const matrixDays = useMemo(() => getMonthMatrix(year, month), [year, month]);
 
   // Tareas del día seleccionado para el panel móvil/detalle
-  const selectedDayTasks = selectedDay ? (tasksByDate[selectedDay] || []) : [];
+  const selectedDayTasks = useMemo(() => {
+    return selectedDay ? (tasksByDate[selectedDay] || []) : [];
+  }, [selectedDay, tasksByDate]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', minWidth: 0 }}>

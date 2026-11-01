@@ -3,7 +3,13 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  esbuild: mode === 'production' ? {
+    drop: ['console', 'debugger']
+  } : {},
+  oxc: mode === 'production' ? {
+    drop: ['console', 'debugger']
+  } : {},
   plugins: [
     react(),
     VitePWA({
@@ -45,11 +51,10 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: ({ url }) => url.origin === self.location.origin && !url.pathname.startsWith('/sounds/'),
-            handler: 'NetworkFirst',
+            urlPattern: ({ url }) => url.origin === self.location.origin,
+            handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'campusflow-network-first',
-              networkTimeoutSeconds: 5,
+              cacheName: 'campusflow-local-resources',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 7
@@ -146,4 +151,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom']
   }
-})
+}))

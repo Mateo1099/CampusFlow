@@ -2,6 +2,11 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import LoadingGlass from './components/ui/LoadingGlass';
+import WeeklyPlannerSkeleton from './components/ui/WeeklyPlannerSkeleton';
+import StatsSkeleton from './components/ui/StatsSkeleton';
+import PomodoroSkeleton from './components/ui/PomodoroSkeleton';
+import NotesSkeleton from './components/ui/NotesSkeleton';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import AppTransitionWrapper from './components/ui/AppTransitionWrapper';
 import ReloadPrompt from './components/ui/ReloadPrompt';
 import * as Sentry from '@sentry/react';
@@ -21,6 +26,7 @@ const Pomodoro = React.lazy(() => import('./pages/Pomodoro'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Stats = React.lazy(() => import('./pages/Stats'));
 const Notes = React.lazy(() => import('./pages/Notes'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 const Login = React.lazy(() => import('./pages/Login'));
 const MFAChallenge = React.lazy(() => import('./pages/MFAChallenge'));
@@ -244,22 +250,22 @@ function AppRoutes() {
           }>
             <Route index element={<Suspense fallback={<LoadingGlass />}><Dashboard /></Suspense>} />
             <Route path="agenda" element={<Suspense fallback={<LoadingGlass />}><Agenda /></Suspense>} />
-            <Route path="apuntes" element={<Suspense fallback={<LoadingGlass />}><Notes /></Suspense>} />
+            <Route path="apuntes" element={<Suspense fallback={<NotesSkeleton />}><Notes /></Suspense>} />
             <Route path="notes" element={<Navigate to="/apuntes" replace />} />
             <Route path="tasks" element={<Suspense fallback={<LoadingGlass />}><TaskBoard /></Suspense>} />
             <Route path="trabajos" element={<Navigate to="/tasks" replace />} />
-            <Route path="planner" element={<Suspense fallback={<LoadingGlass />}><WeeklyPlanner /></Suspense>} />
+            <Route path="planner" element={<Suspense fallback={<WeeklyPlannerSkeleton />}><WeeklyPlanner /></Suspense>} />
             <Route path="calendar" element={<Navigate to="/planner" replace />} />
             <Route path="calendario" element={<Navigate to="/planner" replace />} />
-            <Route path="pomodoro" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
-            <Route path="study" element={<Suspense fallback={<LoadingGlass />}><Pomodoro /></Suspense>} />
+            <Route path="pomodoro" element={<Suspense fallback={<PomodoroSkeleton />}><Pomodoro /></Suspense>} />
+            <Route path="study" element={<Suspense fallback={<PomodoroSkeleton />}><Pomodoro /></Suspense>} />
             <Route path="estudio" element={<Navigate to="/pomodoro" replace />} />
             <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />
-            <Route path="stats" element={<Suspense fallback={<LoadingGlass />}><Stats /></Suspense>} />
-
+            <Route path="stats" element={<Suspense fallback={<StatsSkeleton />}><Stats /></Suspense>} />
           </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Wildcard 404 Route */}
+          <Route path="*" element={<Suspense fallback={<LoadingGlass />}><NotFound /></Suspense>} />
         </Routes>
       </Suspense>
     </AppTransitionWrapper>
@@ -268,46 +274,46 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Sentry.ErrorBoundary fallback={({ error, resetError, eventId }) => (
-      <SentryErrorFallback error={error} resetError={resetError} eventId={eventId} />
-    )}>
-      <AuthProvider>
-        <SettingsProvider>
-          <TaskProvider>
-            <GamificationProvider>
-              <BrowserRouter>
-                <Toaster 
-                  visibleToasts={1}
-                  position="bottom-right" 
-                  theme="dark" 
-                  duration={2500}
-                  toastOptions={{
-                    className: 'rounded-xl bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 font-body text-white font-semibold',
-                    descriptionClassName: 'text-slate-300 font-normal',
-                    style: {
-                      borderRadius: '12px',
-                      background: 'rgba(15, 23, 42, 0.9)',
-                      backdropFilter: 'blur(24px)',
-                      WebkitBackdropFilter: 'blur(24px)',
-                      color: '#ffffff',
-                      padding: '16px 20px',
-                      boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
-                    }
-                  }}
-                />
-                <AppRoutes />
-                <ReloadPrompt />
-                <Analytics />
-                <SpeedInsights />
-              </BrowserRouter>
-            </GamificationProvider>
-          </TaskProvider>
-        </SettingsProvider>
-      </AuthProvider>
-    </Sentry.ErrorBoundary>
+    <ErrorBoundary>
+      <Sentry.ErrorBoundary fallback={({ error, resetError, eventId }) => (
+        <SentryErrorFallback error={error} resetError={resetError} eventId={eventId} />
+      )}>
+        <AuthProvider>
+          <SettingsProvider>
+            <TaskProvider>
+              <GamificationProvider>
+                <BrowserRouter>
+                  <Toaster 
+                    visibleToasts={1}
+                    position="bottom-right" 
+                    theme="dark" 
+                    duration={2500}
+                    toastOptions={{
+                      className: 'rounded-xl bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 font-body text-white font-semibold',
+                      descriptionClassName: 'text-slate-300 font-normal',
+                      style: {
+                        borderRadius: '12px',
+                        background: 'rgba(15, 23, 42, 0.9)',
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
+                        color: '#ffffff',
+                        padding: '16px 20px',
+                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
+                      }
+                    }}
+                  />
+                  <AppRoutes />
+                  <ReloadPrompt />
+                  <Analytics />
+                  <SpeedInsights />
+                </BrowserRouter>
+              </GamificationProvider>
+            </TaskProvider>
+          </SettingsProvider>
+        </AuthProvider>
+      </Sentry.ErrorBoundary>
+    </ErrorBoundary>
   );
 }
 
-
 export default App;
-

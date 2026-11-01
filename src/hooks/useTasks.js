@@ -3,6 +3,7 @@ import { tasksService } from '../lib/tasksService';
 import { assignmentService } from '../services/assignmentService';
 import { dataStoreService } from '../lib/dataStoreService';
 import { trackEvent } from '../services/analyticsService';
+import { handleServiceError } from '../lib/errorHandler';
 
 export const useTasks = (userId) => {
   const [tasks, setTasks] = useState([]);
@@ -28,6 +29,7 @@ export const useTasks = (userId) => {
       setTasks(data.map(t => ({ ...t, xpClaimed: String(t.status).toLowerCase() === 'entregado' })));
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { showToast: false, context: 'useTasks.fetchTasks' });
     } finally {
       setLoading(false);
     }
@@ -50,6 +52,7 @@ export const useTasks = (userId) => {
       return newTask;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al crear la entrega en el servidor', context: 'useTasks.addTask' });
       throw err;
     }
   }, [userId]);
@@ -62,6 +65,7 @@ export const useTasks = (userId) => {
       return updatedTask;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al actualizar la entrega', context: 'useTasks.updateTask' });
       throw err;
     }
   }, [userId]);
@@ -76,6 +80,7 @@ export const useTasks = (userId) => {
       return updatedTask;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al guardar los ejercicios', context: 'useTasks.updateSubtasks' });
       fetchTasks();
       throw err;
     }
@@ -91,6 +96,7 @@ export const useTasks = (userId) => {
       return updatedTask;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al guardar los apuntes de la tarea', context: 'useTasks.updateTaskNotes' });
       fetchTasks();
       throw err;
     }
@@ -116,8 +122,8 @@ export const useTasks = (userId) => {
       setTasks(prev => prev.map(t => String(t.id) === String(id) ? { ...updatedTask, xpClaimed: isNowDelivered } : t));
       dataStoreService.invalidate('tasks', userId);
     } catch (err) {
-      console.error("ERROR EN updateTaskStatus:", err);
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al cambiar el estado de la entrega', context: 'useTasks.updateTaskStatus' });
       throw err;
     }
   }, [userId]);
@@ -129,6 +135,7 @@ export const useTasks = (userId) => {
       dataStoreService.invalidate('tasks', userId);
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al eliminar la entrega', context: 'useTasks.deleteTask' });
       throw err;
     }
   }, [userId]);
@@ -144,6 +151,7 @@ export const useTasks = (userId) => {
       return updatedTask;
     } catch (err) {
       setError(err.message);
+      handleServiceError(err, { fallbackMessage: 'Inconveniente al reprogramar la entrega', context: 'useTasks.updateTaskSchedule' });
       throw err;
     }
   }, [userId]);
@@ -163,4 +171,3 @@ export const useTasks = (userId) => {
     refreshTasks: fetchTasks
   };
 };
-
