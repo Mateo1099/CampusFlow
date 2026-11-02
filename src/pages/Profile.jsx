@@ -76,14 +76,17 @@ const NotificationRow = ({ checked, onChange, label, isLoading = false }) => {
       />
 
       {/* Content */}
-      <div style={{
-        position: 'relative',
-        zIndex: 2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '14px 20px'
-      }}>
+      <div
+        className="px-5 py-3"
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 20px'
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             display: 'flex',
@@ -1263,17 +1266,14 @@ const Profile = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'stretch' }}>
 
           {/* IDENTITY BAR — barra HUD unificada: avatar protagonista + identidad + consola de notificaciones */}
-          <div className="glass-panel identity-bar" style={{
-            gridColumn: '1 / -1',
-            padding: '30px 40px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '36px',
-            border: '1px solid var(--border-glass-top)',
-            position: 'relative',
-            overflow: 'hidden',
-            flexWrap: 'wrap'
-          }}>
+          <div
+            className="glass-panel identity-bar flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-2xl bg-white/[0.03] border border-cyan-500/20 backdrop-blur-md"
+            style={{
+              gridColumn: '1 / -1',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
             {/* Wash ambiental de fondo, sella el look cyber-luxe de la barra completa */}
             <div style={{
               position: 'absolute', inset: 0,
@@ -1281,9 +1281,20 @@ const Profile = () => {
               pointerEvents: 'none'
             }} />
 
-            {/* ── ZONA 1: AVATAR PROTAGONISTA + IDENTIDAD ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flex: '1 1 320px', minWidth: 0, position: 'relative', zIndex: 1 }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
+            {/* ── BLOQUE IZQUIERDO: AVATAR PROTAGONISTA + IDENTIDAD ── */}
+            <div
+              className="flex items-center gap-6 min-w-0 flex-1 relative z-10"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '24px',
+                minWidth: 0,
+                flex: '1 1 auto',
+                position: 'relative',
+                zIndex: 1
+              }}
+            >
+              <div style={{ position: 'relative', flexShrink: 0 }} className="relative shrink-0">
                 <div style={{
                   width: '132px', height: '132px', borderRadius: '50%',
                   overflow: 'hidden', border: '3px solid var(--accent-primary)',
@@ -1326,13 +1337,39 @@ const Profile = () => {
                     }}
                   />
                 </div>
-                <button onClick={() => profileInputRef.current.click()} style={{ position: 'absolute', bottom: '0px', right: '0px', width: '38px', height: '38px', borderRadius: '50%', background: 'var(--accent-primary)', border: '3px solid var(--bg-secondary)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, transition: 'transform 0.3s ease', boxShadow: '0 0 16px rgba(0,243,255,0.45)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                <button
+                  onClick={() => profileInputRef.current.click()}
+                  style={{
+                    position: 'absolute',
+                    bottom: '0px',
+                    right: '0px',
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    background: 'var(--accent-primary)',
+                    border: '3px solid var(--bg-secondary)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    transition: 'transform 0.3s ease',
+                    boxShadow: '0 0 16px rgba(0,243,255,0.45)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
                   <Camera size={16} />
                 </button>
                 <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
               </div>
 
-              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Contenedor de texto con min-w-0 flex-1 */}
+              <div
+                className="min-w-0 flex-1 flex flex-col gap-2"
+                style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}
+              >
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.22em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <User size={13} /> Perfil de Usuario
                 </span>
@@ -1352,11 +1389,13 @@ const Profile = () => {
                     const pencilIcon = e.currentTarget.querySelector('.name-pencil-icon');
                     if (pencilIcon) { pencilIcon.style.opacity = '0.6'; pencilIcon.style.transform = 'scale(1)'; }
                   }}
+                  className="flex items-center gap-2.5 min-w-0 max-w-full"
                   style={{
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: '10px',
                     minWidth: 0,
+                    maxWidth: '100%',
                     padding: '6px 14px',
                     marginLeft: 0,
                     borderRadius: '12px',
@@ -1373,27 +1412,40 @@ const Profile = () => {
                       onChange={e => setTempName(e.target.value)}
                       onBlur={handleNameSave}
                       onKeyDown={e => e.key === 'Enter' && handleNameSave()}
+                      className="font-display text-xl md:text-2xl font-bold tracking-wide text-white truncate"
                       style={{
                         background: 'transparent',
                         border: 'none',
                         borderBottom: '2px solid var(--accent-primary)',
                         color: 'var(--text-primary)',
-                        fontSize: '2.1rem',
-                        fontWeight: 950,
+                        fontSize: 'clamp(1.25rem, 2vw, 1.5rem)',
+                        fontWeight: 900,
                         textTransform: 'uppercase',
                         outline: 'none',
                         maxWidth: '320px',
+                        width: '100%',
                         padding: '0 0 2px 0'
                       }}
                     />
                   ) : (
-                    <h2 className="font-display" style={{ fontSize: 'clamp(16px, 1.5vw, 22px)', margin: 0, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '-0.01em', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'visible', width: '100%', minWidth: 0, textShadow: '0 0 26px rgba(0,243,255,0.2)' }}>
+                    <h2
+                      className="font-display text-xl md:text-2xl font-bold tracking-wide text-white truncate sm:text-clip"
+                      style={{
+                        margin: 0,
+                        textTransform: 'uppercase',
+                        color: 'var(--text-primary)',
+                        minWidth: 0,
+                        textShadow: '0 0 26px rgba(0,243,255,0.2)'
+                      }}
+                      title={settings.name || 'Mateo'}
+                    >
                       {settings.name || 'Mateo'}
                     </h2>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }}
                     className="name-pencil-icon"
+                    aria-label="Editar nombre"
                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', opacity: 0.6, transition: 'all 0.2s ease-in-out', padding: '2px', flexShrink: 0 }}
                   >
                     <Pencil size={18} />
@@ -1412,8 +1464,16 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* ── ZONA 2: CONSOLA DE NOTIFICACIONES (unificada: toggles + frecuencia por zona) ── */}
-            <div style={{ flex: '1 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 1 }}>
+            {/* ── BLOQUE DERECHO: PÍLDORA DE NOTIFICACIONES ── */}
+            <div
+              className="shrink-0 self-stretch sm:self-auto flex flex-col gap-2 relative z-10"
+              style={{
+                flexShrink: 0,
+                position: 'relative',
+                zIndex: 1,
+                minWidth: '240px'
+              }}
+            >
               <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.22em', opacity: 0.75, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Bell size={13} /> Notificaciones
               </span>
