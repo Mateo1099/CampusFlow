@@ -1,21 +1,57 @@
 import { supabase } from './supabaseClient';
 
+const COURSES_STORAGE_PREFIX = 'campusflow_courses_';
+
+function getStorage() {
+  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+  if (typeof localStorage !== 'undefined') return localStorage;
+  return null;
+}
+
+export function getLocalCourses(userId) {
+  const storage = getStorage();
+  if (!storage || !userId) return [];
+  try {
+    const raw = storage.getItem(`${COURSES_STORAGE_PREFIX}${userId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalCourses(userId, courses) {
+  const storage = getStorage();
+  if (!storage || !userId || !Array.isArray(courses)) return;
+  try {
+    storage.setItem(`${COURSES_STORAGE_PREFIX}${userId}`, JSON.stringify(courses));
+  } catch {
+    // Graceful degradation
+  }
+}
+
 export const coursesService = {
   async getCourses(userId) {
     if (!userId) return [];
     
-    // REVERSIÓN TÁCTICA: De 'subjects' a 'courses'
-    const { data, error } = await supabase
-      .from('courses')
-      .select('id, name, color, teacher, code, institution')
-      .eq('user_id', userId);
-    
-    if (error) {
-      console.error("ERROR SUPABASE courses:", error.message);
-      throw error;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('id, name, color, teacher, code, institution')
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error("ERROR SUPABASE courses:", error.message);
+        return getLocalCourses(userId);
+      }
 
-    return data || [];
+      if (Array.isArray(data)) {
+        saveLocalCourses(userId, data);
+      }
+      return data || [];
+    } catch (err) {
+      console.warn("Excepción obteniendo materias de Supabase, usando cache local:", err?.message);
+      return getLocalCourses(userId);
+    }
   },
 
   async createCourse(userId, course) {
@@ -39,7 +75,11 @@ export const coursesService = {
       .select();
     
     if (error) throw error;
-    return data[0];
+    
+    const created = data[0];
+    const local = getLocalCourses(activeUserId);
+    saveLocalCourses(activeUserId, [created, ...local.filter(c => c.id !== created.id)]);
+    return created;
   },
 
   async updateCourse(id, updates, userId) {
@@ -55,7 +95,13 @@ export const coursesService = {
     const { data, error } = await query.select();
     
     if (error) throw error;
-    return data[0];
+    
+    const updated = data[0];
+    if (userId) {
+      const local = getLocalCourses(userId);
+      saveLocalCourses(userId, local.map(c => c.id === id ? { ...c, ...updated } : c));
+    }
+    return updated;
   },
 
   async deleteCourse(id, userId) {
@@ -71,6 +117,11 @@ export const coursesService = {
     const { error } = await query;
     
     if (error) throw error;
+    
+    if (userId) {
+      const local = getLocalCourses(userId);
+      saveLocalCourses(userId, local.filter(c => c.id !== id));
+    }
     return true;
   }
 };

@@ -3,34 +3,63 @@ import { coursesService } from '../lib/coursesService';
 import { dataStoreService } from '../lib/dataStoreService';
 import { handleServiceError } from '../lib/errorHandler';
 
-export const useCourses = (userId) => {
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+// ALFA_NORMALIZATION: Blindaje contra nombres de columnas inconsistentes
+export const normalizeCourse = (item) => {
+  if (!item) return null;
+  const id = item.id;
+  const name = item.name || item.nombre || item.title || 'Materia Sin Nombre';
+  const color = item.color || item.prefix_color || item.prefixColor || '#ff0000';
+  const teacher = item.teacher || item.profesor || item.instructor || 'Sin Profesor';
+  const code = item.code || item.codigo || 'S/C';
+  const institution = item.institution || item.institucion || 'Sin Institución';
 
-  const fetchCourses = useCallback(async () => {
+  return { id, name, color, teacher, code, institution };
+};
+
+export const useCourses = (userId) => {
+  // "La mesa en la entrada": Carga síncrona inmediata desde la memoria / local storage
+  const [courses, setCourses] = useState(() => {
+    const cached = dataStoreService.getCachedData('courses', userId);
+    return Array.isArray(cached) ? cached.map(normalizeCourse).filter(Boolean) : [];
+  });
+
+  const [loading, setLoading] = useState(() => {
+    const hasCache = dataStoreService.hasCachedData('courses', userId);
+    return !hasCache && Boolean(userId);
+  });
+
+  const [error, setError] = useState(null);
+  const [lastFetched, setLastFetched] = useState(() => {
+    return dataStoreService.getCacheEntry('courses', userId)?.lastFetched || 0;
+  });
+
+  // Suscripción reactiva para revalidaciones silenciosas en segundo plano (SWR)
+  useEffect(() => {
+    if (!userId) return;
+    const unsubscribe = dataStoreService.subscribe('courses', userId, (freshCourses) => {
+      if (Array.isArray(freshCourses)) {
+        setCourses(freshCourses.map(normalizeCourse).filter(Boolean));
+        setLastFetched(Date.now());
+        setLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, [userId]);
+
+  const fetchCourses = useCallback(async (options = {}) => {
     if (!userId) {
       setCourses([]);
       return;
     }
-    setLoading(true);
+    const hasCache = dataStoreService.hasCachedData('courses', userId);
+    if (!hasCache && !options.silent) {
+      setLoading(true);
+    }
     try {
-      const data = await dataStoreService.getCourses(userId);
-      
-      // ALFA_NORMALIZATION: Blindaje contra nombres de columnas inconsistentes
-      const normalizedData = data.map(item => {
-        // Buscamos variantes comunes de nombres de columnas
-        const id = item.id;
-        const name = item.name || item.nombre || item.title || 'Materia Sin Nombre';
-        const color = item.color || item.prefix_color || item.prefixColor || '#ff0000';
-        const teacher = item.teacher || item.profesor || item.instructor || 'Sin Profesor';
-        const code = item.code || item.codigo || 'S/C';
-        const institution = item.institution || item.institucion || 'Sin Institución';
-
-        return { id, name, color, teacher, code, institution };
-      });
-
+      const data = await dataStoreService.getCourses(userId, options);
+      const normalizedData = (data || []).map(normalizeCourse).filter(Boolean);
       setCourses(normalizedData);
+      setLastFetched(Date.now());
     } catch (err) {
       setError(err.message);
       handleServiceError(err, { showToast: false, context: 'useCourses.fetchCourses' });
@@ -43,22 +72,13 @@ export const useCourses = (userId) => {
     fetchCourses();
   }, [fetchCourses]);
 
-  // useCallback: identidad estable entre renders, necesaria para que TaskContext
-  // pueda memoizar de verdad su `value` (ver comentario en TaskContext.jsx).
   const addCourse = useCallback(async (course) => {
     try {
       const newCourse = await coursesService.createCourse(userId, course);
-      // Aplicar misma normalización al insertar
-      const normalized = {
-        id: newCourse.id,
-        name: newCourse.name || newCourse.nombre || course.name,
-        color: newCourse.color || newCourse.prefix_color || course.color || '#ff0000',
-        teacher: newCourse.teacher || course.teacher,
-        code: newCourse.code || course.code,
-        institution: newCourse.institution || course.institution
-      };
-      setCourses(prev => [normalized, ...prev]);
-      dataStoreService.invalidate('courses', userId);
+      const normalized = normalizeCourse(newCourse);
+      setCourses(prev => [normalized, ...prev.filter(c => String(c.id) !== String(normalized.id))]);
+      dataStoreService.addCachedItem('courses', userId, normalized);
+      setLastFetched(Date.now());
       return normalized;
     } catch (err) {
       setError(err.message);
@@ -68,33 +88,49 @@ export const useCourses = (userId) => {
   }, [userId]);
 
   const updateCourse = useCallback(async (id, updates) => {
+    // Optimistic update
+    setCourses(prev => prev.map(c => String(c.id) === String(id) ? { ...c, ...updates } : c));
+    dataStoreService.updateCachedItem('courses', userId, id, c => ({ ...c, ...updates }));
+    setLastFetched(Date.now());
+
     try {
-      const updatedCourse = await coursesService.updateCourse(id, updates);
-      setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updatedCourse } : c));
-      dataStoreService.invalidate('courses', userId);
-      return updatedCourse;
+      const updatedCourse = await coursesService.updateCourse(id, updates, userId);
+      const normalized = normalizeCourse(updatedCourse);
+      setCourses(prev => prev.map(c => String(c.id) === String(id) ? normalized : c));
+      dataStoreService.updateCachedItem('courses', userId, id, () => normalized);
+      setLastFetched(Date.now());
+      return normalized;
     } catch (err) {
       setError(err.message);
       handleServiceError(err, { fallbackMessage: 'Inconveniente al actualizar la materia', context: 'useCourses.updateCourse' });
+      fetchCourses({ forceRefresh: true });
       throw err;
     }
-  }, [userId]);
+  }, [userId, fetchCourses]);
 
   const deleteCourse = useCallback(async (id) => {
+    // Optimistic update
+    setCourses(prev => prev.filter(c => String(c.id) !== String(id)));
+    dataStoreService.removeCachedItem('courses', userId, id);
+    setLastFetched(Date.now());
+
     try {
-      await coursesService.deleteCourse(id);
-      setCourses(prev => prev.filter(c => c.id !== id));
-      dataStoreService.invalidate('courses', userId);
+      await coursesService.deleteCourse(id, userId);
     } catch (err) {
       setError(err.message);
       handleServiceError(err, { fallbackMessage: 'Inconveniente al eliminar la materia', context: 'useCourses.deleteCourse' });
+      fetchCourses({ forceRefresh: true });
       throw err;
     }
-  }, [userId]);
+  }, [userId, fetchCourses]);
 
   return {
     courses,
+    setCourses,
     loading,
+    coursesLoading: loading,
+    lastFetched,
+    isInitialized: Boolean(lastFetched > 0 || courses.length > 0),
     error,
     addCourse,
     updateCourse,

@@ -5,11 +5,12 @@ import { useSettings } from './SettingsContext';
 import { useTasks } from '../hooks/useTasks';
 import { useCourses } from '../hooks/useCourses';
 import { useHabits } from '../hooks/useHabits';
+import { dataStoreService } from '../lib/dataStoreService';
 import { 
-  getStudySessions, 
   saveStudySession, 
   calculateStudyMinutes,
-  normalizeStudySession 
+  normalizeStudySession,
+  getLocalStudySessions 
 } from '../services/studySessionService';
 
 const TaskContext = createContext();
@@ -22,35 +23,50 @@ export function TaskProvider({ children }) {
   const addXP = settings?.addXP;
   const incrementStat = settings?.incrementStat;
 
-  // Hooks de Datos
+  // Hooks de Datos con soporte de Caché en Memoria SWR ("La mesa en la entrada")
   const { 
-    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading 
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes,
+    loading: tasksLoading, lastFetched: tasksLastFetched, isInitialized: tasksInitialized 
   } = useTasks(user?.id);
 
   const { 
-    courses, addCourse, updateCourse, deleteCourse, coursesLoading 
+    courses, setCourses, addCourse, updateCourse, deleteCourse,
+    loading: coursesLoading, lastFetched: coursesLastFetched, isInitialized: coursesInitialized 
   } = useCourses(user?.id);
 
   const { 
-    dailyPlan, addHabit: addDailyActivity, toggleHabitLog: toggleDailyActivity, deleteHabit: removeDailyActivity, habitsLoading 
+    dailyPlan, addHabit: addDailyActivity, toggleHabitLog: toggleDailyActivity, deleteHabit: removeDailyActivity,
+    loading: habitsLoading, lastFetched: habitsLastFetched, isInitialized: habitsInitialized 
   } = useHabits(user?.id, addXP, incrementStat);
 
-  // Estado de Sesiones de Estudio (Modo Estudio / Pomodoro)
-  const [studySessions, setStudySessions] = useState([]);
-  const [studySessionsLoading, setStudySessionsLoading] = useState(false);
+  // Estado de Sesiones de Estudio con hidratación inmediata ("Mesa en la entrada")
+  const [studySessions, setStudySessions] = useState(() => {
+    return dataStoreService.getCachedData('studySessions', user?.id) || getLocalStudySessions(user?.id) || [];
+  });
+  const [studySessionsLoading, setStudySessionsLoading] = useState(() => {
+    const hasCache = dataStoreService.hasCachedData('studySessions', user?.id) || getLocalStudySessions(user?.id).length > 0;
+    return !hasCache && Boolean(user?.id);
+  });
+  const [studySessionsLastFetched, setStudySessionsLastFetched] = useState(() => {
+    return dataStoreService.getCacheEntry('studySessions', user?.id)?.lastFetched || 0;
+  });
 
-  // Cargar sesiones de estudio del usuario activo
-  const fetchStudySessions = useCallback(async () => {
+  // Cargar sesiones de estudio del usuario activo con SWR
+  const fetchStudySessions = useCallback(async (options = {}) => {
     if (!user?.id) {
       setStudySessions([]);
       return;
     }
-    setStudySessionsLoading(true);
+    const hasCache = dataStoreService.hasCachedData('studySessions', user.id);
+    if (!hasCache && !options.silent) {
+      setStudySessionsLoading(true);
+    }
     try {
-      const sessions = await getStudySessions(user.id);
+      const sessions = await dataStoreService.getStudySessions(user.id, options);
       setStudySessions(sessions || []);
+      setStudySessionsLastFetched(Date.now());
     } catch {
-      setStudySessions([]);
+      setStudySessions(getLocalStudySessions(user.id) || []);
     } finally {
       setStudySessionsLoading(false);
     }
@@ -60,6 +76,19 @@ export function TaskProvider({ children }) {
     fetchStudySessions();
   }, [fetchStudySessions]);
 
+  // Suscripción reactiva para revalidaciones en segundo plano de sesiones de estudio
+  useEffect(() => {
+    if (!user?.id) return;
+    const unsubscribe = dataStoreService.subscribe('studySessions', user.id, (fresh) => {
+      if (Array.isArray(fresh)) {
+        setStudySessions(fresh);
+        setStudySessionsLastFetched(Date.now());
+        setStudySessionsLoading(false);
+      }
+    });
+    return unsubscribe;
+  }, [user?.id]);
+
   // Listener reactivo para actualizaciones en tiempo real (DOM custom event)
   useEffect(() => {
     const handleSessionSaved = (e) => {
@@ -68,10 +97,11 @@ export function TaskProvider({ children }) {
       if (!user?.id || String(saved.user_id) === String(user.id)) {
         setStudySessions(prev => {
           const exists = prev.some(s => s.id === saved.id);
-          if (exists) {
-            return prev.map(s => s.id === saved.id ? saved : s);
+          const updated = exists ? prev.map(s => s.id === saved.id ? saved : s) : [saved, ...prev];
+          if (user?.id) {
+            dataStoreService.setCachedData('studySessions', user.id, updated, true);
           }
-          return [saved, ...prev];
+          return updated;
         });
       }
     };
@@ -94,14 +124,22 @@ export function TaskProvider({ children }) {
       user_id: sessionData?.user_id || userId
     }, userId);
 
-    // Actualización optimista inmediata en estado local del contexto
+    // Actualización optimista inmediata en estado local del contexto y caché en memoria
     setStudySessions(prev => [normalized, ...prev.filter(s => s.id !== normalized.id)]);
+    if (userId) {
+      dataStoreService.addCachedItem('studySessions', userId, normalized);
+      setStudySessionsLastFetched(Date.now());
+    }
 
     // Persistencia asíncrona local y Supabase
     try {
       const result = await saveStudySession(normalized, userId);
       if (result?.data) {
         setStudySessions(prev => [result.data, ...prev.filter(s => s.id !== result.data.id)]);
+        if (userId) {
+          dataStoreService.updateCachedItem('studySessions', userId, result.data.id, () => result.data);
+          setStudySessionsLastFetched(Date.now());
+        }
       }
       return result;
     } catch (err) {
@@ -142,20 +180,32 @@ export function TaskProvider({ children }) {
     };
   }, [tasks, dailyPlan, studySessions, user?.id]);
 
+  const isInitialized = Boolean(tasksInitialized || coursesInitialized || habitsInitialized);
+
   // Memoizado: sin esto, el Provider crea un objeto `value` nuevo en cada render,
   // forzando a re-renderizar TODOS los componentes que usan useTasksContext()
   // (Dashboard, TaskBoard, Agenda, Sidebar) aunque el cambio no les afecte.
   const value = useMemo(() => ({
-    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading,
-    courses, addCourse, updateCourse, deleteCourse, coursesLoading,
-    dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
-    studySessions, setStudySessions, recordStudySession, studySessionsLoading,
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes,
+    tasksLoading, tasksLastFetched,
+    courses, setCourses, addCourse, updateCourse, deleteCourse,
+    coursesLoading, coursesLastFetched,
+    dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity,
+    habitsLoading, habitsLastFetched,
+    studySessions, setStudySessions, recordStudySession,
+    studySessionsLoading, studySessionsLastFetched,
+    isInitialized,
     analytics
   }), [
-    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes, tasksLoading,
-    courses, addCourse, updateCourse, deleteCourse, coursesLoading,
-    dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity, habitsLoading,
-    studySessions, setStudySessions, recordStudySession, studySessionsLoading,
+    tasks, setTasks, addTask, updateTaskStatus, deleteTask, updateTask, updateTaskSchedule, updateSubtasks, updateTaskNotes,
+    tasksLoading, tasksLastFetched,
+    courses, setCourses, addCourse, updateCourse, deleteCourse,
+    coursesLoading, coursesLastFetched,
+    dailyPlan, addDailyActivity, toggleDailyActivity, removeDailyActivity,
+    habitsLoading, habitsLastFetched,
+    studySessions, setStudySessions, recordStudySession,
+    studySessionsLoading, studySessionsLastFetched,
+    isInitialized,
     analytics
   ]);
 

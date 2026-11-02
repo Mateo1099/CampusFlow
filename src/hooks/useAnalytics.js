@@ -62,16 +62,26 @@ export const useAnalytics = (externalData) => {
   const { user } = useAuth();
   const userId = user?.id;
 
-  const [rawTasks, setRawTasks] = useState([]);
-  const [rawHabits, setRawHabits] = useState([]);
-  const [rawLogs, setRawLogs] = useState([]);
-  const [rawPlanners, setRawPlanners] = useState([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // "La mesa en la entrada": Carga síncrona inmediata de datos crudos si existen en memoria
+  const [rawTasks, setRawTasks] = useState(() => dataStoreService.getCachedData('tasks', userId) || []);
+  const [rawHabits, setRawHabits] = useState(() => dataStoreService.getCachedData('habits', userId) || []);
+  const [rawLogs, setRawLogs] = useState(() => dataStoreService.getCachedData('habitLogs', userId) || []);
+  const [rawPlanners, setRawPlanners] = useState(() => dataStoreService.getCachedData('planners', userId) || []);
 
   const initialCachedAnalytics = useMemo(() => {
     if (!userId) return DEFAULT_ANALYTICS;
     return inMemoryAnalyticsCache.get(userId) || getAnalyticsDataFromCache(userId) || DEFAULT_ANALYTICS;
   }, [userId]);
+
+  const [dataLoading, setDataLoading] = useState(() => {
+    if (!userId) return false;
+    const hasCachedAnalytics = Boolean(inMemoryAnalyticsCache.get(userId) || getAnalyticsDataFromCache(userId));
+    const hasCoreData = Boolean(
+      dataStoreService.hasCachedData('tasks', userId) &&
+      dataStoreService.hasCachedData('habits', userId)
+    );
+    return !(hasCachedAnalytics || hasCoreData);
+  });
 
   const [analytics, setAnalytics] = useState(initialCachedAnalytics);
   const [loading, setLoading] = useState(!hasAnyFastAnalyticsData(initialCachedAnalytics));
@@ -85,7 +95,6 @@ export const useAnalytics = (externalData) => {
 
   useEffect(() => {
     if (!userId) {
-       
       setAnalytics(DEFAULT_ANALYTICS);
       setLoading(false);
       return;
@@ -93,9 +102,9 @@ export const useAnalytics = (externalData) => {
 
     const cachedAnalytics = inMemoryAnalyticsCache.get(userId) || getAnalyticsDataFromCache(userId);
     if (cachedAnalytics && hasAnyFastAnalyticsData(cachedAnalytics)) {
-       
       setAnalytics(cachedAnalytics);
       setLoading(false);
+      setDataLoading(false);
     }
   }, [userId]);
 
@@ -129,7 +138,6 @@ export const useAnalytics = (externalData) => {
         if (isMounted && data) {
           const mapped = mapSnapshotToAnalytics(data);
           if (mapped) {
-             
             setAnalytics(mapped);
             inMemoryAnalyticsCache.set(userId, mapped);
           }
@@ -146,7 +154,7 @@ export const useAnalytics = (externalData) => {
     return () => { isMounted = false; };
   }, [userId, externalData, initialCachedAnalytics]);
 
-  // Fetch core data (tasks, habits, etc.)
+  // Fetch core data (tasks, habits, etc.) using SWR & in-flight deduplication
   useEffect(() => {
     if (!userId) return;
     if (externalData) {
