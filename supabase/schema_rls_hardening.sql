@@ -79,9 +79,15 @@ CREATE TABLE IF NOT EXISTS public.courses (
   institution text,
   teacher text,
   color text DEFAULT '#4f46e5',
+  icon text,
+  term text,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+
+ALTER TABLE public.courses
+  ADD COLUMN IF NOT EXISTS icon text,
+  ADD COLUMN IF NOT EXISTS term text;
 
 CREATE TABLE IF NOT EXISTS public.subjects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -163,8 +169,12 @@ CREATE TABLE IF NOT EXISTS public.study_sessions (
   task_id text,
   method text,
   mode text,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  completed_at timestamptz DEFAULT now()
 );
+
+ALTER TABLE public.study_sessions
+  ADD COLUMN IF NOT EXISTS completed_at timestamptz DEFAULT now();
 
 -- 1.6 Hábitos y Registros de Cumplimiento (habits, habit_logs)
 CREATE TABLE IF NOT EXISTS public.habits (

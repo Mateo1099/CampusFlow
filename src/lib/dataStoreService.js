@@ -18,6 +18,7 @@ import { habitsService } from './habitsService';
 import { plannerService } from './plannerService';
 import { getCurrentWeekSnapshot } from './analyticsService';
 import { getStudySessions, getLocalStudySessions, saveLocalStudySessions } from '../services/studySessionService';
+import { notesService, loadLocalNotes, saveLocalNotes } from '../services/notesService';
 
 // ─── Cache configuration ────────────────────────────────────────────
 // TTL: 4 minutes (between 3 and 5 minutes as specified)
@@ -60,6 +61,10 @@ function _getLocalStorageData(entity, userId) {
         const local = getLocalStudySessions(userId);
         return Array.isArray(local) && local.length > 0 ? local : null;
       }
+      case 'notes': {
+        const local = loadLocalNotes(userId);
+        return Array.isArray(local) && local.length > 0 ? local : null;
+      }
       default:
         return null;
     }
@@ -80,6 +85,9 @@ function _syncLocalStorage(entity, userId, data) {
         break;
       case 'studySessions':
         saveLocalStudySessions(userId, data);
+        break;
+      case 'notes':
+        saveLocalNotes(userId, data);
         break;
       default:
         break;
@@ -326,7 +334,15 @@ export const dataStoreService = {
   getTasks(userId, options = {}) {
     if (!userId) return Promise.resolve([]);
     const key = _cacheKey('tasks', userId);
-    return _fetchSWR(key, 'tasks', userId, () => tasksService.getTasks(userId).catch(() => getLocalTasks(userId) || []), options);
+    return _fetchSWR(key, 'tasks', userId, () => tasksService.getTasks(userId, options).catch(() => getLocalTasks(userId) || []), options);
+  },
+
+  getCompletedTasks(userId, options = {}) {
+    if (!userId) return Promise.resolve([]);
+    const limit = options.limit || 50;
+    const page = options.page || 1;
+    const key = `ds:completedTasks:${userId}:${page}:${limit}`;
+    return _fetchSWR(key, 'completedTasks', userId, () => tasksService.getCompletedTasks(userId, options).catch(() => []), options);
   },
 
   getCourses(userId, options = {}) {
@@ -367,7 +383,13 @@ export const dataStoreService = {
   getStudySessions(userId, options = {}) {
     if (!userId) return Promise.resolve([]);
     const key = _cacheKey('studySessions', userId);
-    return _fetchSWR(key, 'studySessions', userId, () => getStudySessions(userId).catch(() => getLocalStudySessions(userId) || []), options);
+    return _fetchSWR(key, 'studySessions', userId, () => getStudySessions(userId, options).catch(() => getLocalStudySessions(userId) || []), options);
+  },
+
+  getNotes(userId, options = {}) {
+    if (!userId) return Promise.resolve([]);
+    const key = _cacheKey('notes', userId);
+    return _fetchSWR(key, 'notes', userId, () => notesService.getNotes(userId, options).catch(() => loadLocalNotes(userId) || []), options);
   },
 
   // ── Bulk fetch for analytics ────────────────────────────────────
@@ -420,7 +442,7 @@ export const dataStoreService = {
 
   invalidateAll(userId, options = {}) {
     if (!userId) return;
-    for (const entity of ['tasks', 'courses', 'habits', 'habitLogs', 'planners', 'snapshot', 'studySessions']) {
+    for (const entity of ['tasks', 'courses', 'habits', 'habitLogs', 'planners', 'snapshot', 'studySessions', 'notes', 'completedTasks']) {
       this.invalidate(entity, userId, options);
     }
   },

@@ -6,7 +6,12 @@ import { supabase } from './supabaseClient';
  * 2. Tabla Materias: 'courses'
  * 3. Relación: assignments.course_id -> courses.id
  * 4. Local-first: Cache y sincronización inmediata con localStorage para evitar desfases de UI
+ * 5. Proyección estricta: Se prohíbe el uso de select('*') para optimizar ancho de banda y latencia.
  */
+
+export const TASK_LIST_COLUMNS = 'id, user_id, title, deadline, status, priority, course_id, institution, created_at, updated_at';
+export const TASK_JOINED_PROJECTION = `${TASK_LIST_COLUMNS}, courses(name, color, institution)`;
+export const TASK_DETAIL_PROJECTION = 'id, user_id, title, deadline, start_date, status, priority, course_id, institution, subtasks, task_notes, created_at, updated_at, courses(name, color, institution)';
 
 const STORAGE_PREFIX = 'campusflow_tasks_';
 
@@ -42,16 +47,31 @@ export function saveLocalTasks(userId, tasks) {
 }
 
 export const tasksService = {
-  async getTasks(userId) {
+  async getTasks(userId, options = {}) {
     if (!userId) return [];
     
-    // TABLA ACTUALIZADA: assignments join courses (incluyendo institucion)
+    // TABLA ACTUALIZADA: assignments join courses (con proyección estricta)
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('assignments')
-        .select('*, courses(name, color, institution)')
+        .select(TASK_JOINED_PROJECTION)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
+
+      if (options.status) {
+        query = query.eq('status', options.status);
+      }
+
+      if (options.limit && typeof query.limit === 'function') {
+        query = query.limit(options.limit);
+      }
+
+      if (options.offset !== undefined && typeof query.range === 'function') {
+        const pageSize = options.limit || 50;
+        query = query.range(options.offset, options.offset + pageSize - 1);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         console.warn("ALFA_FETCH_WARNING (assignments):", error.message);
@@ -64,6 +84,72 @@ export const tasksService = {
     } catch (err) {
       console.warn("Excepción obteniendo trabajos, fallback a local:", err?.message);
       return getLocalTasks(userId);
+    }
+  },
+
+  /**
+   * Consulta optimizada de tareas completadas con ordenamiento explícito,
+   * límite de seguridad por defecto (50) y soporte para paginación bajo demanda.
+   */
+  async getCompletedTasks(userId, options = {}) {
+    if (!userId) return [];
+    const limit = options.limit !== undefined ? options.limit : 50;
+    const page = options.page || 1;
+    const offset = options.offset !== undefined ? options.offset : (page - 1) * limit;
+
+    try {
+      let query = supabase
+        .from('assignments')
+        .select(TASK_JOINED_PROJECTION)
+        .eq('user_id', userId)
+        .in('status', ['entregado', 'ENTREGADO'])
+        .order('created_at', { ascending: false });
+
+      if (limit > 0) {
+        if (typeof query.range === 'function') {
+          query = query.range(offset, offset + limit - 1);
+        } else if (typeof query.limit === 'function') {
+          query = query.limit(limit);
+        }
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn("ALFA_FETCH_WARNING (completed assignments):", error.message);
+        const local = getLocalTasks(userId);
+        return local.filter(t => t.status === 'entregado' || t.status === 'ENTREGADO');
+      }
+
+      return data || [];
+    } catch (err) {
+      console.warn("Excepción obteniendo tareas completadas:", err?.message);
+      const local = getLocalTasks(userId);
+      return local.filter(t => t.status === 'entregado' || t.status === 'ENTREGADO');
+    }
+  },
+
+  /**
+   * Obtiene el detalle completo de una tarea individual incluyendo subtasks y notas.
+   */
+  async getTaskById(id, userId) {
+    if (!id) return null;
+    try {
+      let query = supabase
+        .from('assignments')
+        .select(TASK_DETAIL_PROJECTION)
+        .eq('id', id);
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+      const { data, error } = await query.single();
+      if (error) {
+        const local = getLocalTasks(userId);
+        return local.find(t => t.id === id) || null;
+      }
+      return data;
+    } catch {
+      const local = getLocalTasks(userId);
+      return local.find(t => t.id === id) || null;
     }
   },
 
@@ -107,7 +193,7 @@ export const tasksService = {
       const { data, error } = await supabase
         .from('assignments')
         .insert([taskData])
-        .select('*, courses(name, color, institution)');
+        .select(TASK_JOINED_PROJECTION);
       
       if (error) {
         // Fallback si la tabla no tiene columnas extendidas priority o institution
@@ -124,7 +210,7 @@ export const tasksService = {
           const { data: retryData, error: retryError } = await supabase
             .from('assignments')
             .insert([coreData])
-            .select('*, courses(name, color, institution)');
+            .select(TASK_JOINED_PROJECTION);
           
           if (!retryError && retryData && retryData[0]) {
             const merged = { ...taskData, ...retryData[0] };
@@ -234,7 +320,7 @@ export const tasksService = {
         .from('assignments')
         .update(cloudMapping)
         .eq('id', id)
-        .select('*, courses(name, color, institution)');
+        .select(TASK_JOINED_PROJECTION);
       
       if (error) {
         if (error.message && (error.message.includes('priority') || error.message.includes('institution'))) {
@@ -244,7 +330,7 @@ export const tasksService = {
             .from('assignments')
             .update(cloudMapping)
             .eq('id', id)
-            .select('*, courses(name, color, institution)');
+            .select(TASK_JOINED_PROJECTION);
           if (!retryError && retryData && retryData[0]) {
             return retryData[0];
           }

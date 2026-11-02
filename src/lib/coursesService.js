@@ -1,5 +1,8 @@
 import { supabase } from './supabaseClient';
 
+export const COURSE_COLUMNS = 'id, user_id, name, color, icon, term, created_at';
+export const COURSE_FALLBACK_COLUMNS = 'id, user_id, name, color, created_at';
+
 const COURSES_STORAGE_PREFIX = 'campusflow_courses_';
 
 function getStorage() {
@@ -34,18 +37,39 @@ export const coursesService = {
     if (!userId) return [];
     
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('courses')
-        .select('id, name, color, teacher, code, institution')
+        .select(COURSE_COLUMNS)
         .eq('user_id', userId);
       
+      if (error && error.message && (error.message.includes('icon') || error.message.includes('term'))) {
+        const retryResult = await supabase
+          .from('courses')
+          .select(COURSE_FALLBACK_COLUMNS)
+          .eq('user_id', userId);
+        data = retryResult.data;
+        error = retryResult.error;
+      }
+
       if (error) {
         console.error("ERROR SUPABASE courses:", error.message);
         return getLocalCourses(userId);
       }
 
       if (Array.isArray(data)) {
-        saveLocalCourses(userId, data);
+        // Preservar propiedades locales extendidas como institution, teacher o code si existen
+        const local = getLocalCourses(userId);
+        const localMap = new Map(local.map(c => [c.id, c]));
+        const merged = data.map(remoteCourse => {
+          const cached = localMap.get(remoteCourse.id);
+          if (cached) {
+            return { ...cached, ...remoteCourse };
+          }
+          return remoteCourse;
+        });
+
+        saveLocalCourses(userId, merged);
+        return merged;
       }
       return data || [];
     } catch (err) {
@@ -69,14 +93,21 @@ export const coursesService = {
       user_id: activeUserId
     };
 
-    const { data, error } = await supabase
+    let result = await supabase
       .from('courses')
       .insert([courseData])
-      .select();
+      .select(COURSE_COLUMNS);
     
-    if (error) throw error;
+    if (result.error && result.error.message && (result.error.message.includes('icon') || result.error.message.includes('term'))) {
+      result = await supabase
+        .from('courses')
+        .insert([courseData])
+        .select(COURSE_FALLBACK_COLUMNS);
+    }
     
-    const created = data[0];
+    if (result.error) throw result.error;
+    
+    const created = { ...courseData, ...(result.data && result.data[0] ? result.data[0] : {}) };
     const local = getLocalCourses(activeUserId);
     saveLocalCourses(activeUserId, [created, ...local.filter(c => c.id !== created.id)]);
     return created;
@@ -92,11 +123,14 @@ export const coursesService = {
       query = query.eq('user_id', userId);
     }
 
-    const { data, error } = await query.select();
+    let result = await query.select(COURSE_COLUMNS);
+    if (result.error && result.error.message && (result.error.message.includes('icon') || result.error.message.includes('term'))) {
+      result = await query.select(COURSE_FALLBACK_COLUMNS);
+    }
     
-    if (error) throw error;
+    if (result.error) throw result.error;
     
-    const updated = data[0];
+    const updated = result.data && result.data[0] ? result.data[0] : { id, ...updates };
     if (userId) {
       const local = getLocalCourses(userId);
       saveLocalCourses(userId, local.map(c => c.id === id ? { ...c, ...updated } : c));

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { TASK_DETAIL_PROJECTION } from '../lib/tasksService';
 
 /**
  * Servicio desacoplado para gestión de subtareas / ejercicios y notas de estudio
@@ -43,7 +44,7 @@ export const assignmentService = {
       .from('assignments')
       .update({ subtasks: cleanSubtasks })
       .eq('id', assignmentId)
-      .select('*, courses(name, color)');
+      .select(TASK_DETAIL_PROJECTION);
 
     if (error) {
       console.error('[assignmentService] Error al actualizar subtasks:', error.message || error);
@@ -71,7 +72,7 @@ export const assignmentService = {
       .from('assignments')
       .update({ task_notes: cleanNotes })
       .eq('id', assignmentId)
-      .select('*, courses(name, color)');
+      .select(TASK_DETAIL_PROJECTION);
 
     if (error) {
       console.error('[assignmentService] Error al actualizar task_notes:', error.message || error);
@@ -94,7 +95,7 @@ export const assignmentService = {
 
     const { data, error } = await supabase
       .from('assignments')
-      .select('*, courses(name, color)')
+      .select(TASK_DETAIL_PROJECTION)
       .eq('id', assignmentId)
       .single();
 

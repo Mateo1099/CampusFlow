@@ -112,6 +112,22 @@ export default function Notes() {
     }
   };
 
+  // Abrir apunte y cargar contenido completo bajo demanda si aún no está disponible
+  const handleOpenNote = async (note) => {
+    setActiveNote(note);
+    if (!note.content && note.id) {
+      try {
+        const fullNote = await notesService.getNoteById(note.id, user?.id);
+        if (fullNote && fullNote.content) {
+          setActiveNote(fullNote);
+          setNotes(prev => prev.map(n => n.id === fullNote.id ? fullNote : n));
+        }
+      } catch (err) {
+        console.warn('[Notes] Error cargando nota individual:', err);
+      }
+    }
+  };
+
   // Auto-guardado en editor con debounce
   const persistEditorChanges = useCallback(async (updatedNote) => {
     if (!updatedNote?.id) return;
@@ -585,7 +601,7 @@ export default function Notes() {
                 key={note.id}
                 layout
                 whileHover={{ y: -4, borderColor: 'rgba(0, 243, 255, 0.35)', boxShadow: '0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 243, 255, 0.1)' }}
-                onClick={() => setActiveNote(note)}
+                onClick={() => handleOpenNote(note)}
                 style={{
                   background: 'linear-gradient(180deg, rgba(20, 24, 38, 0.85) 0%, rgba(12, 15, 25, 0.9) 100%)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',

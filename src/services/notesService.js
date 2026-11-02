@@ -6,6 +6,9 @@ import { sanitizeNoteInput } from '../lib/sanitize';
  * Soporta persistencia local-first con sincronización a Supabase y fallback a localStorage.
  */
 
+export const NOTE_LIST_COLUMNS = 'id, user_id, title, course_id, created_at, updated_at';
+export const NOTE_DETAIL_COLUMNS = 'id, user_id, title, content, course_id, tags, created_at, updated_at';
+
 const STORAGE_PREFIX = 'campusflow_notes_';
 const MIGRATION_STORAGE_KEY_PREFIX = 'campusflow_tasks_notes_migrated_';
 
@@ -276,7 +279,7 @@ export const notesService = {
    * Obtiene la lista completa de apuntes del usuario, ordenados por fecha de actualización descendente.
    * Ejecuta la migración pasiva inicial si el usuario aún no la ha completado.
    */
-  async getNotes(userId) {
+  async getNotes(userId, options = {}) {
     const activeUserId = userId || 'guest';
 
     // Migración pasiva automática sin bloquear
@@ -293,23 +296,77 @@ export const notesService = {
     }
 
     try {
-      // Intentar fetch desde Supabase si la tabla study_notes existe
-      const { data, error } = await supabase
+      // Intentar fetch desde Supabase si la tabla study_notes existe con proyección ligera
+      let query = supabase
         .from('study_notes')
-        .select('*')
+        .select(NOTE_LIST_COLUMNS)
         .eq('user_id', userId)
         .order('updated_at', { ascending: false });
 
+      if (options.limit && typeof query.limit === 'function') {
+        query = query.limit(options.limit);
+      }
+
+      const { data, error } = await query;
+
       if (!error && Array.isArray(data) && data.length > 0) {
         const normalized = data.map(n => normalizeNote(n, userId)).filter(Boolean);
-        saveLocalNotes(userId, normalized);
-        return normalized;
+        // Preservar contenidos locales ya cargados para evitar vaciarlos en memoria
+        const localNotes = loadLocalNotes(userId);
+        const localMap = new Map(localNotes.map(n => [n.id, n]));
+        const mergedWithContent = normalized.map(n => {
+          const cached = localMap.get(n.id);
+          if (cached && cached.content && !n.content) {
+            return { ...n, content: cached.content, tags: (n.tags && n.tags.length > 0) ? n.tags : cached.tags };
+          }
+          return n;
+        });
+
+        saveLocalNotes(userId, mergedWithContent);
+        return mergedWithContent;
       }
     } catch {
       // Fallback transparente a almacenamiento local
     }
 
     return loadLocalNotes(userId);
+  },
+
+  /**
+   * Carga una nota individual con su contenido pesado y enriquecido completo (content, tags).
+   */
+  async getNoteById(id, userId) {
+    if (!id) return null;
+    const activeUserId = userId || 'guest';
+    const local = loadLocalNotes(activeUserId);
+    const cached = local.find(n => n.id === String(id));
+
+    if (!userId || userId === 'guest') {
+      return cached || null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('study_notes')
+        .select(NOTE_DETAIL_COLUMNS)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+
+      if (!error && data) {
+        const normalized = normalizeNote(data, userId);
+        const updatedLocal = local.map(n => n.id === normalized.id ? normalized : n);
+        if (!local.some(n => n.id === normalized.id)) {
+          updatedLocal.unshift(normalized);
+        }
+        saveLocalNotes(userId, updatedLocal);
+        return normalized;
+      }
+    } catch (err) {
+      console.warn('[notesService] Error obteniendo nota individual:', err?.message);
+    }
+
+    return cached || null;
   },
 
   /**

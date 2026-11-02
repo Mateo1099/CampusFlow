@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabaseClient';
 import { safeDevLog } from '../lib/authSecurity';
 
 export const STUDY_SESSIONS_STORAGE_PREFIX = 'campusflow_study_sessions_';
+export const STUDY_SESSION_COLUMNS = 'id, user_id, course_id, duration_minutes, completed_at, created_at';
+export const STUDY_SESSION_FALLBACK_COLUMNS = 'id, user_id, course_id, duration_minutes, created_at';
 
 /**
  * Safely access localStorage without crashing in restricted environments.
@@ -60,6 +62,7 @@ export function normalizeStudySession(raw, fallbackUserId = null) {
     method: raw?.method || 'pomodoro',
     mode: raw?.mode || 'focus',
     created_at: raw?.created_at || raw?.completed_at || now,
+    completed_at: raw?.completed_at || raw?.created_at || now,
     pending_sync: raw?.pending_sync !== undefined ? Boolean(raw.pending_sync) : false
   };
 }
@@ -158,10 +161,19 @@ export async function saveStudySession(sessionData, userId) {
       created_at: normalized.created_at
     };
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('study_sessions')
       .insert([payload])
-      .select();
+      .select(STUDY_SESSION_COLUMNS);
+
+    if (error && error.message && error.message.includes('completed_at')) {
+      const retryResult = await supabase
+        .from('study_sessions')
+        .insert([payload])
+        .select(STUDY_SESSION_FALLBACK_COLUMNS);
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
       safeDevLog('warn', '[studySessionService] Supabase insert falló, sesión guardada localmente:', { error: error.message });
@@ -177,20 +189,69 @@ export async function saveStudySession(sessionData, userId) {
 }
 
 /**
- * Fetches all study sessions for a given user from Supabase,
- * with fallback and merge from local storage cache.
+ * Fetches all study sessions for a given user from Supabase with safe historical delimitation,
+ * explicit date ordering ('created_at' DESC), strict column projection, and fallback to local cache.
+ *
+ * @param {string} userId - User identifier
+ * @param {object} [options={}] - Query options
+ * @param {number} [options.limit=100] - Safe default limit of historical records
+ * @param {number} [options.page=1] - Page number for on-demand pagination
+ * @param {number} [options.offset] - Specific record offset for pagination
+ * @param {string} [options.orderBy='created_at'] - Order field
+ * @param {boolean} [options.ascending=false] - Order direction
  */
-export async function getStudySessions(userId) {
+export async function getStudySessions(userId, options = {}) {
   if (!userId) return [];
 
   const localSessions = getLocalStudySessions(userId);
+  const limit = options.limit !== undefined ? options.limit : 100;
+  const page = options.page || 1;
+  const offset = options.offset !== undefined ? options.offset : (page - 1) * limit;
+  const orderBy = options.orderBy || 'created_at';
+  const ascending = options.ascending !== undefined ? options.ascending : false;
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('study_sessions')
-      .select('*')
+      .select(STUDY_SESSION_COLUMNS)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order(orderBy, { ascending });
+
+    if (options.startDate) {
+      query = query.gte('created_at', options.startDate);
+    }
+    if (options.endDate) {
+      query = query.lte('created_at', options.endDate);
+    }
+
+    if (limit > 0) {
+      if (typeof query.range === 'function') {
+        query = query.range(offset, offset + limit - 1);
+      } else if (typeof query.limit === 'function') {
+        query = query.limit(limit);
+      }
+    }
+
+    let { data, error } = await query;
+
+    if (error && error.message && error.message.includes('completed_at')) {
+      let retryQuery = supabase
+        .from('study_sessions')
+        .select(STUDY_SESSION_FALLBACK_COLUMNS)
+        .eq('user_id', userId)
+        .order(orderBy, { ascending });
+
+      if (limit > 0) {
+        if (typeof retryQuery.range === 'function') {
+          retryQuery = retryQuery.range(offset, offset + limit - 1);
+        } else if (typeof retryQuery.limit === 'function') {
+          retryQuery = retryQuery.limit(limit);
+        }
+      }
+      const retryResult = await retryQuery;
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
       safeDevLog('warn', '[studySessionService] Error leyendo study_sessions en Supabase, usando cache local:', { error: error.message });
