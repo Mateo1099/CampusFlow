@@ -65,6 +65,7 @@ export function normalizeNote(raw, userId) {
     tags: Array.isArray(raw.tags) ? raw.tags.map(t => sanitizeNoteInput(String(t)).trim()).filter(Boolean) : [],
     created_at: raw.created_at || new Date().toISOString(),
     updated_at: raw.updated_at || new Date().toISOString(),
+    pending_sync: raw.pending_sync !== undefined ? Boolean(raw.pending_sync) : false,
   };
 }
 
@@ -104,7 +105,7 @@ function getStorage() {
   return null;
 }
 
-function loadLocalNotes(userId) {
+export function loadLocalNotes(userId) {
   try {
     const storage = getStorage();
     if (!storage) return getInitialSeedNotes(userId);
@@ -123,7 +124,7 @@ function loadLocalNotes(userId) {
   }
 }
 
-function saveLocalNotes(userId, notesList) {
+export function saveLocalNotes(userId, notesList) {
   try {
     const storage = getStorage();
     if (!storage) return;
@@ -315,27 +316,50 @@ export const notesService = {
    * Crea un nuevo apunte para el usuario.
    */
   async createNote(userId, noteData) {
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
     const activeUserId = userId || noteData?.user_id || noteData?.userId;
     const newNote = normalizeNote({
       ...noteData,
       user_id: activeUserId,
+      pending_sync: isOffline,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, activeUserId);
+    newNote.pending_sync = isOffline;
 
     // Guardar en almacenamiento local inmediato
     const existing = loadLocalNotes(activeUserId);
     const updated = [newNote, ...existing];
     saveLocalNotes(activeUserId, updated);
 
+    // Si estamos sin conexión, omitir la llamada a Supabase
+    if (isOffline) {
+      return newNote;
+    }
+
     // Sincronizar en segundo plano con Supabase si está disponible
     if (activeUserId && activeUserId !== 'guest') {
       try {
-        await supabase
+        const payload = {
+          id: newNote.id,
+          user_id: newNote.user_id,
+          course_id: newNote.course_id,
+          title: newNote.title,
+          content: newNote.content,
+          tags: newNote.tags,
+          created_at: newNote.created_at,
+          updated_at: newNote.updated_at
+        };
+        const { error } = await supabase
           .from('study_notes')
-          .insert([newNote]);
+          .insert([payload]);
+        if (error) {
+          newNote.pending_sync = true;
+          saveLocalNotes(activeUserId, updated.map(n => n.id === newNote.id ? { ...n, pending_sync: true } : n));
+        }
       } catch {
-        // Fallback silencioso
+        newNote.pending_sync = true;
+        saveLocalNotes(activeUserId, updated.map(n => n.id === newNote.id ? { ...n, pending_sync: true } : n));
       }
     }
 
@@ -347,6 +371,7 @@ export const notesService = {
    */
   async updateNote(id, updates, userId) {
     if (!id) throw new Error('[notesService] id es requerido para actualizar');
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
     const existing = loadLocalNotes(userId);
     let updatedNote = null;
@@ -356,6 +381,7 @@ export const notesService = {
         updatedNote = normalizeNote({
           ...item,
           ...updates,
+          pending_sync: isOffline ? true : (item.pending_sync || false),
           updated_at: new Date().toISOString(),
         }, userId);
         return updatedNote;
@@ -364,12 +390,20 @@ export const notesService = {
     });
 
     if (!updatedNote) {
-      // Si no existía localmente, crear con los updates
-      updatedNote = normalizeNote({ id, ...updates, updated_at: new Date().toISOString() }, userId);
+      updatedNote = normalizeNote({ 
+        id, 
+        ...updates, 
+        pending_sync: isOffline,
+        updated_at: new Date().toISOString() 
+      }, userId);
       nextList.unshift(updatedNote);
     }
 
     saveLocalNotes(userId, nextList);
+
+    if (isOffline) {
+      return updatedNote;
+    }
 
     if (userId && userId !== 'guest') {
       try {
@@ -388,9 +422,14 @@ export const notesService = {
           query = query.eq('user_id', userId);
         }
 
-        await query;
+        const { error } = await query;
+        if (error) {
+          updatedNote.pending_sync = true;
+          saveLocalNotes(userId, nextList.map(n => n.id === updatedNote.id ? { ...n, pending_sync: true } : n));
+        }
       } catch {
-        // Fallback silencioso
+        updatedNote.pending_sync = true;
+        saveLocalNotes(userId, nextList.map(n => n.id === updatedNote.id ? { ...n, pending_sync: true } : n));
       }
     }
 
@@ -425,5 +464,49 @@ export const notesService = {
     }
 
     return true;
+  },
+
+  async syncPendingNotes(userId) {
+    if (!userId || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      return { syncedCount: 0 };
+    }
+    const localNotes = loadLocalNotes(userId);
+    const pending = localNotes.filter(n => n.pending_sync === true);
+    if (!pending.length) return { syncedCount: 0 };
+
+    let syncedCount = 0;
+    const updatedList = [...localNotes];
+
+    for (const note of pending) {
+      try {
+        const payload = {
+          id: note.id,
+          user_id: note.user_id || userId,
+          course_id: note.course_id || null,
+          title: note.title,
+          content: note.content,
+          tags: Array.isArray(note.tags) ? note.tags : [],
+          created_at: note.created_at,
+          updated_at: note.updated_at
+        };
+
+        const { error } = await supabase
+          .from('study_notes')
+          .upsert([payload]);
+
+        if (!error) {
+          syncedCount++;
+          const idx = updatedList.findIndex(n => n.id === note.id);
+          if (idx !== -1) {
+            updatedList[idx] = { ...updatedList[idx], pending_sync: false };
+          }
+        }
+      } catch (err) {
+        console.warn('[notesService] Error sincronizando apunte:', note.id, err?.message);
+      }
+    }
+
+    saveLocalNotes(userId, updatedList);
+    return { syncedCount };
   }
 };

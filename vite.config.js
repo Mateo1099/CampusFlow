@@ -36,7 +36,9 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2,ttf,eot}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/\/api\//],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
@@ -51,12 +53,31 @@ export default defineConfig(({ mode }) => ({
             }
           },
           {
+            urlPattern: ({ url }) => 
+              url.pathname.includes('/fonts/') || 
+              url.pathname.endsWith('.woff2') || 
+              url.pathname.endsWith('.woff') || 
+              url.pathname.endsWith('.ttf') || 
+              url.pathname.endsWith('.otf'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'campusflow-fonts',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
             urlPattern: ({ url }) => url.origin === self.location.origin,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'campusflow-local-resources',
               expiration: {
-                maxEntries: 100,
+                maxEntries: 150,
                 maxAgeSeconds: 60 * 60 * 24 * 7
               },
               cacheableResponse: {

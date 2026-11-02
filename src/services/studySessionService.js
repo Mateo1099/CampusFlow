@@ -13,10 +13,13 @@ export const STUDY_SESSIONS_STORAGE_PREFIX = 'campusflow_study_sessions_';
  * Safely access localStorage without crashing in restricted environments.
  */
 function getSafeStorage() {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return null;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage;
   }
-  return window.localStorage;
+  if (typeof localStorage !== 'undefined') {
+    return localStorage;
+  }
+  return null;
 }
 
 /**
@@ -56,7 +59,8 @@ export function normalizeStudySession(raw, fallbackUserId = null) {
     task_id: raw?.task_id || raw?.taskId || null,
     method: raw?.method || 'pomodoro',
     mode: raw?.mode || 'focus',
-    created_at: raw?.created_at || raw?.completed_at || now
+    created_at: raw?.created_at || raw?.completed_at || now,
+    pending_sync: raw?.pending_sync !== undefined ? Boolean(raw.pending_sync) : false
   };
 }
 
@@ -114,6 +118,11 @@ export async function saveStudySession(sessionData, userId) {
   const effectiveUserId = sessionData?.user_id || sessionData?.userId || userId;
   const normalized = normalizeStudySession(sessionData, effectiveUserId);
 
+  const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if (isOffline) {
+    normalized.pending_sync = true;
+  }
+
   // 1. Guardar de inmediato en local storage para cero latencia y soporte offline
   if (effectiveUserId) {
     const localExisting = getLocalStudySessions(effectiveUserId);
@@ -123,6 +132,11 @@ export async function saveStudySession(sessionData, userId) {
 
   // 2. Disparar evento reactivo en la ventana actual
   dispatchStudySessionEvent(normalized);
+
+  // Si estamos offline, omitir la llamada a Supabase
+  if (isOffline) {
+    return { success: true, localOnly: true, offline: true, data: normalized };
+  }
 
   // Si no hay usuario activo o es sesión de invitado, no intentar persistir en Supabase
   if (!effectiveUserId || effectiveUserId === 'guest') {
@@ -267,3 +281,52 @@ export function calculateStudyMinutes(sessions, options = {}) {
   return Math.floor(Number.isFinite(total) && total > 0 ? total : 0);
 }
 
+
+/**
+ * Sincroniza las sesiones de estudio marcadas con pending_sync hacia Supabase.
+ */
+export async function syncPendingStudySessions(userId) {
+  if (!userId || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+    return { syncedCount: 0 };
+  }
+  const localSessions = getLocalStudySessions(userId);
+  const pending = localSessions.filter(s => s.pending_sync === true);
+  if (!pending.length) return { syncedCount: 0 };
+
+  let syncedCount = 0;
+  const updatedList = [...localSessions];
+
+  for (const session of pending) {
+    try {
+      const payload = {
+        id: session.id,
+        user_id: session.user_id || userId,
+        duration_minutes: session.duration_minutes,
+        course_id: session.course_id || null,
+        subject: session.subject || 'Estudio Libre',
+        institution: session.institution || null,
+        task_id: session.task_id || null,
+        method: session.method || 'pomodoro',
+        mode: session.mode || 'focus',
+        created_at: session.created_at
+      };
+
+      const { error } = await supabase
+        .from('study_sessions')
+        .upsert([payload]);
+
+      if (!error) {
+        syncedCount++;
+        const idx = updatedList.findIndex(s => s.id === session.id);
+        if (idx !== -1) {
+          updatedList[idx] = { ...updatedList[idx], pending_sync: false };
+        }
+      }
+    } catch (err) {
+      console.warn('[studySessionService] Error sincronizando sesión:', session.id, err?.message);
+    }
+  }
+
+  saveLocalStudySessions(userId, updatedList);
+  return { syncedCount };
+}

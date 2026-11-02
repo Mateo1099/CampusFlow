@@ -9,6 +9,7 @@ import NotesSkeleton from './components/ui/NotesSkeleton';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import AppTransitionWrapper from './components/ui/AppTransitionWrapper';
 import ReloadPrompt from './components/ui/ReloadPrompt';
+import OfflineBanner from './components/ui/OfflineBanner';
 import * as Sentry from '@sentry/react';
 import SentryErrorFallback from './components/ui/SentryErrorFallback';
 import { usePrefetchRoutes } from './hooks/usePrefetchRoutes';
@@ -302,6 +303,7 @@ function App() {
                       }
                     }}
                   />
+                  <OfflineBanner />
                   <AppRoutes />
                   <ReloadPrompt />
                   <Analytics />

@@ -86,10 +86,20 @@ export const tasksService = {
       task_notes: task.task_notes || task.taskNotes || task.notes || ''
     };
 
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if (isOffline) {
+      taskData.pending_sync = true;
+    }
+
     // 1. Guardado inmediato local-first
     if (activeUserId) {
       const existing = getLocalTasks(activeUserId);
       saveLocalTasks(activeUserId, [taskData, ...existing.filter(t => t.id !== taskData.id)]);
+    }
+
+    // Si está offline, omitir la petición a Supabase
+    if (isOffline) {
+      return taskData;
     }
 
     // 2. Persistencia en Supabase
@@ -127,11 +137,49 @@ export const tasksService = {
       return data && data[0] ? { ...taskData, ...data[0] } : taskData;
     } catch (err) {
       console.warn("Excepción guardando en Supabase, guardado local:", err?.message);
+      taskData.pending_sync = true;
+      if (activeUserId) {
+        const current = getLocalTasks(activeUserId);
+        saveLocalTasks(activeUserId, current.map(t => t.id === taskId ? { ...t, pending_sync: true } : t));
+      }
       return taskData;
     }
   },
 
-  async updateTask(id, updates) {
+  async updateTask(id, updates, userId) {
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if (isOffline) {
+      if (userId) {
+        const local = getLocalTasks(userId);
+        const idx = local.findIndex(t => t.id === id);
+        if (idx !== -1) {
+          local[idx] = { ...local[idx], ...updates, pending_sync: true };
+          saveLocalTasks(userId, local);
+          return local[idx];
+        }
+      }
+      const storage = getStorage();
+      if (storage) {
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i);
+          if (key && key.startsWith(STORAGE_PREFIX)) {
+            try {
+              const tasks = JSON.parse(storage.getItem(key) || '[]');
+              const idx = tasks.findIndex(t => t.id === id);
+              if (idx !== -1) {
+                tasks[idx] = { ...tasks[idx], ...updates, pending_sync: true };
+                storage.setItem(key, JSON.stringify(tasks));
+                break;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+      return { id, ...updates, pending_sync: true };
+    }
+
     // BLINDAJE: Solo enviamos lo que viene, mapeando a nombres reales de columnas
     const cloudMapping = {};
     
@@ -234,5 +282,52 @@ export const tasksService = {
       console.warn("Excepción eliminando tarea:", err?.message);
       return true;
     }
+  },
+
+  async syncPendingTasks(userId) {
+    if (!userId || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      return { syncedCount: 0 };
+    }
+    const localTasks = getLocalTasks(userId);
+    const pending = localTasks.filter(t => t.pending_sync === true);
+    if (!pending.length) return { syncedCount: 0 };
+
+    let syncedCount = 0;
+    const updatedTasks = [...localTasks];
+
+    for (const task of pending) {
+      try {
+        const payload = {
+          id: task.id,
+          title: task.title,
+          course_id: task.course_id || null,
+          start_date: task.start_date || null,
+          deadline: task.deadline || null,
+          status: task.status || 'sin entregar',
+          user_id: task.user_id || userId,
+          priority: task.priority || 'media',
+          institution: task.institution || null,
+          subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
+          task_notes: task.task_notes || ''
+        };
+
+        const { error } = await supabase
+          .from('assignments')
+          .upsert([payload]);
+
+        if (!error) {
+          syncedCount++;
+          const idx = updatedTasks.findIndex(t => t.id === task.id);
+          if (idx !== -1) {
+            updatedTasks[idx] = { ...updatedTasks[idx], pending_sync: false };
+          }
+        }
+      } catch (err) {
+        console.warn('[tasksService] Error sincronizando tarea:', task.id, err?.message);
+      }
+    }
+
+    saveLocalTasks(userId, updatedTasks);
+    return { syncedCount };
   }
 };
