@@ -375,7 +375,7 @@ export function SettingsProvider({ children }) {
 
       if (data) {
         const fullAvatarUrl = data.avatar_url
-          ? (data.avatar_url.startsWith('http') ? data.avatar_url : `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${data.avatar_url}`)
+          ? ((data.avatar_url.startsWith('http') || data.avatar_url.startsWith('data:')) ? data.avatar_url : `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${data.avatar_url}`)
           : fallbackAvatar;
 
         setSettings(prev => ({
@@ -518,7 +518,7 @@ export function SettingsProvider({ children }) {
 
       if (processedUpdates.avatarUrl !== undefined) {
         cloudMapping.avatar_url = processedUpdates.avatarUrl;
-        if (!processedUpdates.avatarUrl.startsWith('http') && !processedUpdates.avatarUrl.startsWith('blob')) {
+        if (!processedUpdates.avatarUrl.startsWith('http') && !processedUpdates.avatarUrl.startsWith('blob') && !processedUpdates.avatarUrl.startsWith('data:')) {
           const fullUrl = `https://tknrxiksvsmygtszlytf.supabase.co/storage/v1/object/public/avatars/${processedUpdates.avatarUrl}`;
           setSettings(prev => ({ ...prev, avatarUrl: fullUrl }));
         }

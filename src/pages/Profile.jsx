@@ -20,6 +20,15 @@ import {
   getSafeAuthErrorMessage,
   safeDevLog
 } from '../lib/authSecurity';
+import {
+  validateRawAvatarFile,
+  optimizeAvatarImage,
+  saveOfflineAvatar,
+  getOfflineAvatar,
+  clearOfflineAvatar,
+  dataUrlToBlob
+} from '../utils/imageOptimizer';
+import { getHumanizedErrorMessage } from '../lib/errorHandler';
 
 const THEMES = [
   { id: 'dark', labelKey: 'darkMode', icon: '🌙', gradient: 'linear-gradient(135deg, #0f172a, #1e293b)' },
@@ -386,6 +395,21 @@ const Profile = () => {
   const [toastMessage, setToastMessage] = useState(null);
   const [showToast, setShowToast] = useState(false);
 
+  const showNotification = useCallback((message) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3500);
+  }, []);
+
+  const [localAvatarPreview, setLocalAvatarPreview] = useState(() => {
+    try {
+      const offline = getOfflineAvatar(user?.id);
+      return offline?.dataUrl || null;
+    } catch {
+      return null;
+    }
+  });
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(settings.name);
 
@@ -464,8 +488,7 @@ const Profile = () => {
     };
     window.addEventListener('campusflow:settings-save-error', handleSaveError);
     return () => window.removeEventListener('campusflow:settings-save-error', handleSaveError);
-     
-  }, []);
+  }, [showNotification]);
 
   useEffect(() => {
     setRedCustomDaysInput(settings.redAlertCustomDays || 1);
@@ -537,29 +560,126 @@ const Profile = () => {
     };
   }, [securityScreen, mfaData, closeMfaEnrollment, closeSecurityModal]);
 
+  // Sincronización automática de avatar offline cuando regresa la conexión
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const syncPendingAvatar = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      const pending = getOfflineAvatar(user.id);
+      if (!pending || !pending.dataUrl) return;
+
+      try {
+        const blob = dataUrlToBlob(pending.dataUrl);
+        const fileName = pending.fileName || `${user.id}-${Date.now()}.webp`;
+        const file = new File([blob], fileName, { type: pending.mimeType || 'image/webp' });
+
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: pending.mimeType || 'image/webp'
+        });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+        const avatarPublicUrl = publicUrlData?.publicUrl || fileName;
+
+        await supabase.auth.updateUser({ data: { avatar_path: fileName } });
+        await updateSettings({ avatarUrl: avatarPublicUrl });
+
+        clearOfflineAvatar(user.id);
+        setLocalAvatarPreview(null);
+        showNotification('✅ Avatar sincronizado con éxito');
+      } catch (syncErr) {
+        safeDevLog('warn', 'Error sincronizando avatar offline', { message: syncErr?.message });
+      }
+    };
+
+    syncPendingAvatar();
+
+    const handleOnline = () => {
+      syncPendingAvatar();
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user?.id, updateSettings, showNotification]);
+
   const handleProfileImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // Validación estricta de archivo: MIME type, extensión y peso máximo (5 MB)
-    const fileValidation = validateAvatarFile(file, user.id);
-    if (!fileValidation.isValid) {
-      alert(fileValidation.error);
+    // 1. Validación estricta en la entrada (MIME type y límite bruto de 10 MB)
+    const rawValidation = validateRawAvatarFile(file);
+    if (!rawValidation.isValid) {
+      showNotification(rawValidation.error);
       e.target.value = '';
       return;
     }
 
+    setIsLoadingAvatar(true);
+
+    // 2. Compresión y redimensionamiento en cliente (HTML5 Canvas / WebP a 512x512 y < 200 KB)
+    let optimized;
     try {
-      const fileName = fileValidation.safeFileName;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+      optimized = await optimizeAvatarImage(file, { userId: user.id });
+    } catch (optErr) {
+      safeDevLog('warn', 'Error optimizando avatar', { message: optErr?.message });
+      showNotification(`❌ ${optErr?.message || 'No se pudo procesar la imagen seleccionada.'}`);
+      setIsLoadingAvatar(false);
+      e.target.value = '';
+      return;
+    }
+
+    // 3. Resiliencia de subida y fallback offline
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if (isOffline) {
+      saveOfflineAvatar(optimized.dataUrl, user.id, optimized.fileName, optimized.format);
+      setLocalAvatarPreview(optimized.dataUrl);
+      setIsLoadingAvatar(false);
+      e.target.value = '';
+      showNotification('⚠️ Sin conexión. El avatar se guardó localmente y se sincronizará cuando regrese internet.');
+      return;
+    }
+
+    try {
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(optimized.fileName, optimized.file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: optimized.format
+      });
+
       if (uploadError) throw uploadError;
-      await supabase.auth.updateUser({ data: { avatar_path: fileName } });
-      await updateSettings({ avatarUrl: fileName });
-      downloadAvatar(fileName);
+
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(optimized.fileName);
+      const avatarPublicUrl = publicUrlData?.publicUrl || optimized.fileName;
+
+      await supabase.auth.updateUser({ data: { avatar_path: optimized.fileName } });
+      await updateSettings({ avatarUrl: avatarPublicUrl });
+
+      clearOfflineAvatar(user.id);
+      setLocalAvatarPreview(null);
+      setAvatarLoaded(false);
+      showNotification('✅ Avatar actualizado con éxito');
     } catch (error) {
       safeDevLog('warn', 'Error subiendo avatar', { message: error?.message });
-      alert(getSafeAuthErrorMessage(error, 'No se pudo subir la imagen de perfil. Verifica el formato e inténtalo de nuevo.'));
+
+      const isNetworkFailure = (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        error?.message?.toLowerCase().includes('failed to fetch') ||
+        error?.message?.toLowerCase().includes('network') ||
+        error?.message?.toLowerCase().includes('offline');
+
+      if (isNetworkFailure) {
+        saveOfflineAvatar(optimized.dataUrl, user.id, optimized.fileName, optimized.format);
+        setLocalAvatarPreview(optimized.dataUrl);
+        showNotification('⚠️ Sin conexión. El avatar se guardó localmente y se sincronizará cuando regrese internet.');
+      } else {
+        const userMsg = getHumanizedErrorMessage(error, 'No se pudo subir la imagen de perfil. Verifica los permisos.');
+        showNotification(`❌ ${userMsg}`);
+      }
     } finally {
+      setIsLoadingAvatar(false);
       e.target.value = '';
     }
   };
@@ -793,14 +913,8 @@ const Profile = () => {
     }
   };
 
-  const avatarSource = settings.avatarUrl || null;
+  const avatarSource = localAvatarPreview || settings.avatarUrl || null;
   const fallbackAvatarUrl = `https://ui-avatars.com/api/?name=${settings.name || 'User'}&background=00f3ff&color=fff&font-size=0.4&bold=true`;
-
-  const showNotification = (message) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
 
   const handleEmailNotifChange = (newValue) => {
     if (settingsLoading) return;
@@ -965,6 +1079,13 @@ const Profile = () => {
           border: 2px solid rgba(34, 197, 94, 1);
           color: #22c55e;
           box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.5), 0 0 30px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.6);
+        }
+
+        .cyber-toast.warning {
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+          border: 2px solid rgba(245, 158, 11, 1);
+          color: #f59e0b;
+          box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.5), 0 0 30px rgba(245, 158, 11, 0.8), 0 0 60px rgba(245, 158, 11, 0.6);
         }
 
         .cyber-toast.error {
@@ -1362,7 +1483,7 @@ const Profile = () => {
                 >
                   <Camera size={16} />
                 </button>
-                <input type="file" ref={profileInputRef} hidden accept="image/*" onChange={handleProfileImageUpload} />
+                <input type="file" ref={profileInputRef} hidden accept="image/jpeg,image/png,image/webp" onChange={handleProfileImageUpload} />
               </div>
 
               {/* Contenedor de texto con min-w-0 flex-1 */}
