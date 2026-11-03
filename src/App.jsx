@@ -262,6 +262,8 @@ function AppRoutes() {
             <Route path="study" element={<Suspense fallback={<PomodoroSkeleton />}><Pomodoro /></Suspense>} />
             <Route path="estudio" element={<Navigate to="/pomodoro" replace />} />
             <Route path="profile" element={<Suspense fallback={<LoadingGlass />}><Profile /></Suspense>} />
+            <Route path="ajustes" element={<Navigate to="/profile" replace />} />
+            <Route path="settings" element={<Navigate to="/profile" replace />} />
             <Route path="stats" element={<Suspense fallback={<StatsSkeleton />}><Stats /></Suspense>} />
           </Route>
 
